@@ -14,6 +14,7 @@ Use the runtime assets in:
 - `.claude/agents/lean-spec/`
 - `.claude/commands/lean-spec/`
 - `.claude/hooks/lean-spec/`
+- `.claude/lean-spec/templates/`
 
 Merge hook configuration from:
 - the lean-spec settings example into `.claude/settings.json`

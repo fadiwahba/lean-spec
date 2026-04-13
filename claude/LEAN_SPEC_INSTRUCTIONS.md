@@ -29,6 +29,12 @@ For each feature, the canonical artifacts live in:
 - `lean-spec/features/<slug>/notes.md`
 - `lean-spec/features/<slug>/review.md`
 
+Template sources live in:
+
+- `.claude/lean-spec/templates/spec.md`
+- `.claude/lean-spec/templates/notes.md`
+- `.claude/lean-spec/templates/review.md`
+
 ## Orchestrator Rules
 
 The default session agent owns:
@@ -83,6 +89,7 @@ Use when:
 
 Expected outcome:
 - feature folder exists
+- scaffold files are copied from `.claude/lean-spec/templates/`
 - `spec.md` is created or updated by `architect`
 - `notes.md` and `review.md` exist
 - the phase stops and waits for the human
@@ -107,17 +114,21 @@ Use when:
 Expected outcome:
 - `architect` reviews against `spec.md`, `notes.md`, and code changes
 - `review.md` is updated with findings and dispositions
+- `spec.md` is reconciled during review so checklist progress and status stay aligned with the reviewed implementation
 - the phase stops and waits for the human
 
 ### `/end <slug>`
 
 Use when:
-- you want a final artifact-state summary
-- you want to stop without auto-continuing
+- review is clean or all findings are dispositioned
+- you want the workflow to perform final reconciliation and close cleanly
 
 Expected outcome:
-- concise summary of current `spec.md`, `notes.md`, and `review.md`
-- clear signal about whether the feature is actually ready to stop
+- `spec.md`, `notes.md`, and `review.md` are reconciled with the final clean state
+- `spec.md` status is `completed`
+- task checklist items in `spec.md` are marked complete
+- timestamps are refreshed from a shell-backed runtime source
+- clear signal about whether closure actually completed or was blocked
 
 ## Core Rules
 
@@ -127,6 +138,9 @@ Expected outcome:
 - `coder` must not silently change scope
 - `architect` must not implement code in this workflow
 - the default session agent must stop after each phase until the human runs the next command
+- `/end` is the explicit final reconciliation phase and should clean up artifact state when closure is valid
+- review passes should progressively reconcile `spec.md`; `/end` should finalize closure, not perform the first meaningful checklist reconciliation
+- a feature must not close with open notes, open findings, stale `spec.md` status, or unchecked completed tasks
 
 ## Context Discipline
 
@@ -151,6 +165,8 @@ Applies to:
 Timestamp rules:
 - retrieve timestamps from the environment at write time; do not invent, estimate, or hardcode them
 - use a shell command such as `date "+%Y-%m-%d %H:%M %Z"` or an equivalent environment-backed source
+- for scaffold creation, fetch the timestamp once from the shell and reuse that exact value for every created field in that scaffold pass
+- placeholder values such as `YYYY-MM-DD HH:MM TZ` and fabricated values such as `00:00 UTC` are invalid
 - use the timestamp format `YYYY-MM-DD HH:MM TZ`
 
 ## Tooling Discipline

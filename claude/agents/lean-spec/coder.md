@@ -46,4 +46,6 @@ Rules:
 - when editing `notes.md`, update `Updated At` and do not change `Created At`
 - retrieve timestamps from the environment at write time; do not invent, estimate, or hardcode them
 - use a shell command such as `date "+%Y-%m-%d %H:%M %Z"` or an equivalent environment-backed source
+- when creating a new artifact, fetch the timestamp from the shell at write time and reuse that exact value for all created timestamp fields in that write
+- placeholder values such as `YYYY-MM-DD HH:MM TZ` and fabricated values such as `00:00 UTC` are invalid
 - use the timestamp format `YYYY-MM-DD HH:MM TZ`

@@ -149,13 +149,10 @@ Portable Claude assets live in:
 - `lean-spec/claude/hooks/lean-spec/remind-manual-workflow.sh`
 - `lean-spec/claude/hooks/lean-spec/enforce-manual-workflow.sh`
 - `lean-spec/claude/hooks/lean-spec/remind-ui-validation-on-stop.sh`
+- `lean-spec/claude/lean-spec/templates/spec.md`
+- `lean-spec/claude/lean-spec/templates/notes.md`
+- `lean-spec/claude/lean-spec/templates/review.md`
 - `lean-spec/claude/LEAN_SPEC_INSTRUCTIONS.md`
-
-Templates live in:
-
-- `lean-spec/templates/spec.md`
-- `lean-spec/templates/notes.md`
-- `lean-spec/templates/review.md`
 
 ## Core Rules
 
@@ -168,6 +165,9 @@ Templates live in:
 7. The Architect agent must not implement code in this workflow.
 8. The default session agent should not auto-advance after `/plan`, `/implement`, or `/review`.
 9. There is no separate active-state file; workflow state is derived from `spec.md`, `notes.md`, and `review.md`.
+10. Artifact timestamps must come from a shell-backed runtime source such as `date "+%Y-%m-%d %H:%M %Z"`; fabricated or placeholder timestamps are invalid.
+11. `/end` is a real cleanup phase: when the feature is clean, it should reconcile `spec.md`, refresh artifact timestamps, and close the workflow coherently.
+12. Review passes should keep `spec.md` reconciled as work progresses; `/end` should only finalize closure, not backfill the entire checklist for the first time.
 
 ## Hooks
 
@@ -190,6 +190,14 @@ This framework is not a Claude plugin.
 To use it in a project, copy the assets into that project's `.claude/` folder and merge `settings.example.json` into the target project's `.claude/settings.json`.
 If you want the extra end-of-turn UI reminder, also merge `settings.stop-ui.example.json`.
 
+The template source belongs under the target project's hidden Claude config:
+- `.claude/lean-spec/templates/spec.md`
+- `.claude/lean-spec/templates/notes.md`
+- `.claude/lean-spec/templates/review.md`
+
+Feature artifacts remain project-visible and should be scaffolded into:
+- `lean-spec/features/<slug>/`
+
 ## Typical Flow
 
 1. Run `/plan <slug>` to scaffold the feature and have the `architect` agent write `spec.md`.
@@ -198,4 +206,4 @@ If you want the extra end-of-turn UI reminder, also merge `settings.stop-ui.exam
 4. Run `/review <slug>` to have the `architect` agent review the implementation and write findings.
 5. Run `/status <slug>` or `/resume <slug>` when you need to inspect or rebuild workflow state.
 6. If review findings exist, run `/implement <slug>` again for fixes.
-7. Run `/end <slug>` when you want a final artifact-state summary and stop.
+7. Run `/end <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.

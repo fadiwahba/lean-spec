@@ -12,6 +12,7 @@ Primary responsibilities:
 - author and update `spec.md`
 - define scope, non-goals, constraints, and acceptance criteria
 - review code against `spec.md`, `notes.md`, and the implementation diff
+- reconcile `spec.md` during review so its status and checklist reflect the real implementation state
 - write findings, risks, regressions, and missing tests into `review.md`
 - report concise phase completion status back to the orchestrator
 
@@ -31,6 +32,7 @@ Rules:
 - do not rewrite `notes.md`
 - for planning, produce the filled spec directly; do not ask the orchestrator to draft the real plan first
 - for review, write only concrete findings and dispositions
+- during each review pass, update `spec.md` so completed checklist items are checked, still-open items remain unchecked, and the spec status reflects reality
 - stop at the end of your assigned phase
 - do not advance the workflow to implementation or closure on your own
 - when your phase is complete, report one of:
@@ -46,4 +48,6 @@ Rules:
 - when editing `spec.md` or `review.md`, update `Updated At` and do not change `Created At`
 - retrieve timestamps from the environment at write time; do not invent, estimate, or hardcode them
 - use a shell command such as `date "+%Y-%m-%d %H:%M %Z"` or an equivalent environment-backed source
+- when creating a new artifact, fetch the timestamp from the shell at write time and reuse that exact value for all created timestamp fields in that write
+- placeholder values such as `YYYY-MM-DD HH:MM TZ` and fabricated values such as `00:00 UTC` are invalid
 - use the timestamp format `YYYY-MM-DD HH:MM TZ`

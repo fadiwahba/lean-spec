@@ -46,5 +46,5 @@ Infer the current phase from artifact state:
 4. Infer the current owner from the next correct manual phase:
    - planning or review -> `architect`
    - implementation or review fixes -> `coder`
-   - final summary / stop -> default session agent
+   - final reconciliation / closure -> default session agent
 5. Report that state was reconstructed from the canonical feature artifacts.

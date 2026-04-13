@@ -14,6 +14,7 @@ For an active Claude Code project, the meaningful runtime files are:
 - `.claude/agents/lean-spec/*.md`
 - `.claude/commands/lean-spec/*.md`
 - `.claude/hooks/lean-spec/*.sh`
+- `.claude/lean-spec/templates/*.md`
 - `.claude/settings.json`
 
 The `lean-spec/` folder contains:
@@ -32,6 +33,7 @@ To install it into a target project, copy these files into the target project's 
 - `lean-spec/claude/agents/lean-spec/coder.md` -> `.claude/agents/lean-spec/coder.md`
 - `lean-spec/claude/commands/lean-spec/*.md` -> `.claude/commands/lean-spec/*.md`
 - `lean-spec/claude/hooks/lean-spec/*.sh` -> `.claude/hooks/lean-spec/*.sh`
+- `lean-spec/claude/lean-spec/templates/*.md` -> `.claude/lean-spec/templates/*.md`
 - `lean-spec/claude/LEAN_SPEC_INSTRUCTIONS.md` -> `.claude/LEAN_SPEC_INSTRUCTIONS.md`
 - `lean-spec/claude/CLAUDE.example.md` -> use as a merge example for the target project's root `CLAUDE.md`
 
@@ -43,6 +45,10 @@ Then merge:
 Then update the target project's root `CLAUDE.md` so it points to:
 
 - `.claude/LEAN_SPEC_INSTRUCTIONS.md`
+
+Also make sure the project-visible artifact root exists:
+
+- `lean-spec/features/`
 
 The hook commands in `settings.example.json` assume the hooks are copied to:
 
@@ -60,7 +66,7 @@ Use this sequence for most work:
 4. Run `/review <slug>`
 5. Run `/status <slug>` or `/resume <slug>` when you need state inspection or recovery
 6. If review findings remain, run `/implement <slug>` again
-7. Run `/end <slug>` when you want to stop with a final status summary
+7. Run `/end <slug>` when review is clean and you want the framework to reconcile and close the feature
 
 Strict ownership:
 - scaffold and routing -> default session agent
@@ -97,6 +103,7 @@ Do not implement yet. Stop after the spec is ready.
 
 The expected result of `/plan` is:
 - feature folder exists
+- the scaffold is copied from `.claude/lean-spec/templates/`
 - `spec.md` is authored by the `architect` agent
 - `notes.md` and `review.md` are scaffolded
 - the workflow stops and waits for you
@@ -125,6 +132,7 @@ When the implementation is ready for review, run:
 Expected result:
 - the `architect` agent reviews against `spec.md`, `notes.md`, and the implementation
 - findings are written into `review.md`
+- `spec.md` checklist and status are reconciled to match the reviewed implementation state
 - the workflow stops and waits for you
 
 If findings remain, run `/implement <slug>` again to address them.
@@ -150,18 +158,19 @@ If you want the extra end-of-turn UI reminder, merge `lean-spec/claude/settings.
 
 ## Ending
 
-When you want a final summary and no automatic next step, run:
+When review is clean and you want the framework to perform final cleanup, run:
 
 ```text
 /end todo-app-zustand
 ```
 
 Expected result:
-- current status from `spec.md`
-- remaining unchecked tasks
-- open notes
-- open review findings
-- a clear indication of whether the feature is actually ready to stop
+- `spec.md` status is reconciled to `completed`
+- checklist items in `spec.md` are marked complete
+- `Updated At` fields are refreshed from a shell-backed timestamp
+- open notes and open review findings must be zero, or closure is blocked
+
+`/end` should be the final cleanup pass, not the first time the spec checklist catches up with reality.
 
 ## Good Prompting Pattern
 

@@ -15,17 +15,26 @@ Rules:
 - The Architect agent owns `review.md`.
 - The Architect agent must review against `spec.md`, `notes.md`, and the implementation diff.
 - The Architect agent must write concrete findings, risks, regressions, and missing tests into `review.md`.
+- The Architect agent must also reconcile `spec.md` during review so the checklist and status stay aligned with the reviewed implementation state.
+- Non-defect process notes or coverage notes must not remain as open findings. Record them as accepted/deferred dispositions or as neutral notes instead.
 - The Architect agent must not implement code changes in this workflow.
 - Stop after the review pass is complete.
-- Do not continue to fixes automatically. The human decides whether to run `/implement` again or `/end`.
+- Do not continue to fixes automatically. The human decides whether to run `/implement` again or, after a clean/dispositioned review, `/end`.
 
 Tasks:
 1. Confirm the feature folder exists.
 2. Read the current spec, notes, review ledger, and relevant code changes.
 3. Delegate formal review to `architect`.
 4. Update `review.md` with findings and dispositions.
-5. Report concise phase status back to the human, including:
+5. Reconcile `spec.md`:
+   - check completed checklist items
+   - leave incomplete or still-failing items unchecked
+   - update `Updated At`
+   - keep status aligned with the reviewed state
+6. Report concise phase status back to the human, including:
    - number of open findings
    - whether the review is clean
    - whether `notes.md` suggests follow-up work
-   - the likely next manual command: `/implement <slug>` or `/end <slug>`
+   - the likely next manual command:
+     - `/implement <slug>` when real open findings remain
+     - `/end <slug>` only when no open findings remain after resolution or disposition
