@@ -12,12 +12,12 @@ Roles:
 - `coder`: implementer / coder
 
 The human advances phases explicitly with:
-- `/plan <slug>`
-- `/implement <slug>`
-- `/review <slug>`
-- `/status <slug>`
-- `/resume <slug>`
-- `/end <slug>`
+- `/lean-spec:plan <slug>`
+- `/lean-spec:implement <slug>`
+- `/lean-spec:review <slug>`
+- `/lean-spec:status <slug>`
+- `/lean-spec:resume <slug>`
+- `/lean-spec:end <slug>`
 
 There are no automatic gates or automatic phase transitions.
 
@@ -81,7 +81,7 @@ The orchestrator must not:
 
 ## Command Semantics
 
-### `/plan <slug>`
+### `/lean-spec:plan <slug>`
 
 Use when:
 - starting a new feature
@@ -94,7 +94,7 @@ Expected outcome:
 - `notes.md` and `review.md` exist
 - the phase stops and waits for the human
 
-### `/implement <slug>`
+### `/lean-spec:implement <slug>`
 
 Use when:
 - the spec is approved
@@ -105,7 +105,7 @@ Expected outcome:
 - `notes.md` captures blockers, deviations, and partial completion notes
 - the phase stops and waits for the human
 
-### `/review <slug>`
+### `/lean-spec:review <slug>`
 
 Use when:
 - implementation is ready for review
@@ -117,7 +117,7 @@ Expected outcome:
 - `spec.md` is reconciled during review so checklist progress and status stay aligned with the reviewed implementation
 - the phase stops and waits for the human
 
-### `/end <slug>`
+### `/lean-spec:end <slug>`
 
 Use when:
 - review is clean or all findings are dispositioned
@@ -136,6 +136,7 @@ Expected outcome:
 - `notes.md` is authored only by `coder`
 - `review.md` is authored only by `architect`
 - `coder` must not silently change scope
+- `coder` must not edit `spec.md` status, checklist items, or `review.md`
 - `architect` must not implement code in this workflow
 - the default session agent must stop after each phase until the human runs the next command
 - `/end` is the explicit final reconciliation phase and should clean up artifact state when closure is valid
@@ -173,11 +174,24 @@ Timestamp rules:
 
 Use `Context7` before implementation or review when external APIs, libraries, frameworks, or tool behavior matter.
 
-Use `sequential-thinking` before multi-step or risky planning, implementation, or review work when the task is ambiguous.
+Use `sequential-thinking` before multi-step or risky planning, implementation, or review work when the task is ambiguous or materially risky.
 
 For frontend/UI work:
-- use Playwright or equivalent browser validation when available
+- use Playwright or equivalent browser validation before declaring implementation or review complete, unless it is explicitly unavailable
 - treat visible regressions, broken layout, or spec mismatch as real review issues
+
+Required completion discipline:
+- do not report implementation or review complete when `Context7` was required but not used, unless it was explicitly unavailable
+- do not report implementation or review complete when `sequential-thinking` was required but not used, unless it was explicitly unavailable
+- do not report implementation complete for frontend/UI work when Playwright validation was required but not used, unless it was explicitly unavailable
+- every implementation or review summary should state whether `Context7`, `sequential-thinking`, and Playwright were used when relevant
+- if a required tool was unavailable, say so explicitly and treat that as an incomplete verification step
+
+Required artifact discipline:
+- during `/lean-spec:implement`, `coder` may update `notes.md` and implementation code only
+- during `/lean-spec:implement`, do not edit `spec.md` or `review.md`
+- during `/lean-spec:implement`, do not update `spec.md` status, task checklists, or timestamps
+- only `architect` may reconcile `spec.md` status, checklists, and closure state during review or end
 
 ## Hook Guidance
 

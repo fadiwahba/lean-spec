@@ -26,10 +26,10 @@ The canonical feature artifacts live in:
 
 This workflow is human-controlled.
 Advance phases only when the human explicitly runs:
-- `/plan <slug>`
-- `/implement <slug>`
-- `/review <slug>`
-- `/status <slug>`
-- `/resume <slug>`
-- `/end <slug>`
+- `/lean-spec:plan <slug>`
+- `/lean-spec:implement <slug>`
+- `/lean-spec:review <slug>`
+- `/lean-spec:status <slug>`
+- `/lean-spec:resume <slug>`
+- `/lean-spec:end <slug>`
 ```

@@ -42,8 +42,9 @@ Rules:
   - `review_clean`
 - use `Context7` before planning or review when external APIs, libraries, frameworks, or tool behavior matter
 - use `sequential-thinking` before multi-step planning, architecture, or review work when the task is ambiguous or risky
-- for frontend/UI reviews, use Playwright or equivalent browser validation when available
+- for frontend/UI reviews, use Playwright or equivalent browser validation before claiming the review is complete, unless it is explicitly unavailable
 - treat visible regressions, missing styling, broken layout, or spec mismatch as real findings
+- explicitly report whether `Context7`, `sequential-thinking`, and Playwright were used, or that a required tool was unavailable
 - when creating `spec.md` or `review.md`, set both `Created At` and `Updated At`
 - when editing `spec.md` or `review.md`, update `Updated At` and do not change `Created At`
 - retrieve timestamps from the environment at write time; do not invent, estimate, or hardcode them

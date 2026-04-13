@@ -12,8 +12,9 @@ Rules:
   - `lean-spec/features/<slug>/notes.md`
   - `lean-spec/features/<slug>/review.md`
 - The default session agent owns workflow closure and status reporting.
-- The human running `/end <slug>` is the explicit request to perform final closure cleanup.
-- `/end` must not close a feature that still has open notes or open review findings.
+- The human running `/lean-spec:end <slug>` is the explicit request to perform final closure cleanup.
+- `/lean-spec:end` must not close a feature that still has open notes or open review findings.
+- Do not fabricate prior verification. If the artifacts do not support closure confidently, stop and report that closure is blocked.
 - Before writing closure updates, retrieve the current timestamp from the shell with a command such as `date "+%Y-%m-%d %H:%M %Z"`.
 - Use the shell-fetched timestamp for all final artifact updates in the same closure pass.
 - Do not invent, estimate, hardcode, or round timestamps.
@@ -39,6 +40,7 @@ Report:
 - open notes
 - open review findings
 - whether closure was completed
+- whether prior implementation/review verification appears sufficiently documented in the artifacts
 - any follow-up command only if closure was blocked
 
 Keep the response compact and operational.

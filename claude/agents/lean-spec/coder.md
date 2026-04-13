@@ -30,6 +30,7 @@ Rules:
 - do not change feature scope silently
 - do not rewrite intended behavior in `spec.md`
 - do not rewrite `review.md`
+- do not update `spec.md` status, checklist items, or timestamps during implementation
 - if a requirement is ambiguous, infeasible, or partially complete, record it in `notes.md`
 - keep edits small and targeted
 - stop at the end of your assigned implementation pass
@@ -41,7 +42,8 @@ Rules:
   - `fixes_applied`
 - use `Context7` before implementation when external APIs, libraries, frameworks, or tool behavior matter
 - use `sequential-thinking` before multi-step or risky implementation work when the task is ambiguous
-- for frontend/UI work, use Playwright or equivalent browser validation when available before claiming the implementation is visually complete
+- for frontend/UI work, use Playwright or equivalent browser validation before claiming the implementation is visually complete, unless it is explicitly unavailable
+- explicitly report whether `Context7`, `sequential-thinking`, and Playwright were used, or that a required tool was unavailable
 - when creating `notes.md`, set both `Created At` and `Updated At`
 - when editing `notes.md`, update `Updated At` and do not change `Created At`
 - retrieve timestamps from the environment at write time; do not invent, estimate, or hardcode them

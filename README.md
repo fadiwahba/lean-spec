@@ -1,10 +1,10 @@
-# lean-spec v0.2
+# lean-spec v0.5
 
-A lightweight, Claude-only, spec-driven workflow for day-to-day development tasks.
+A lightweight, spec-driven workflow for day-to-day development tasks in Claude Code and Gemini CLI.
 
 ## Overview
 
-lean-spec is now a manual, human-controlled workflow built around three Claude roles inside one overall system:
+lean-spec is now a manual, human-controlled workflow built around three roles inside one overall system:
 
 - `Default session agent`: orchestrator
 - `Architect agent`: planner / architect / reviewer
@@ -12,12 +12,8 @@ lean-spec is now a manual, human-controlled workflow built around three Claude r
 
 The human explicitly controls phase progression with slash commands:
 
-- `/plan <slug>`
-- `/implement <slug>`
-- `/review <slug>`
-- `/status <slug>`
-- `/resume <slug>`
-- `/end <slug>`
+- Claude Code: `/lean-spec:plan <slug>`, `/lean-spec:implement <slug>`, `/lean-spec:review <slug>`, `/lean-spec:status <slug>`, `/lean-spec:resume <slug>`, `/lean-spec:end <slug>`
+- Gemini CLI: `/lean-spec:plan <slug>`, `/lean-spec:implement <slug>`, `/lean-spec:review <slug>`, `/lean-spec:status <slug>`, `/lean-spec:resume <slug>`, `/lean-spec:end <slug>`
 
 There are no automatic gates. The workflow advances only when the human runs the next command.
 
@@ -31,8 +27,8 @@ Responsibilities:
 - accept slash command inputs from the human
 - resolve the target feature folder from the feature slug
 - scaffold or locate workflow files
-- route work to the correct specialist agent
-- collect completion status from spawned agents
+- route work to the correct specialist role or session
+- collect completion status from the current role/session
 - report concise phase status back to the human
 
 The default session agent does not own the content of `spec.md`, `notes.md`, or `review.md`.
@@ -154,6 +150,47 @@ Portable Claude assets live in:
 - `lean-spec/claude/lean-spec/templates/review.md`
 - `lean-spec/claude/LEAN_SPEC_INSTRUCTIONS.md`
 
+Portable Gemini assets live in:
+
+- `lean-spec/gemini/GEMINI.example.md`
+- `lean-spec/gemini/LEAN_SPEC_INSTRUCTIONS.md`
+- `lean-spec/gemini/settings.example.json`
+- `lean-spec/gemini/settings.strict.example.json`
+- `lean-spec/gemini/settings.pro.example.json`
+- `lean-spec/gemini/settings.flash.example.json`
+- `lean-spec/gemini/geminiignore.example`
+- `lean-spec/gemini/hooks/lean-spec/remind-manual-workflow.sh`
+- `lean-spec/gemini/hooks/lean-spec/enforce-manual-workflow.sh`
+- `lean-spec/gemini/hooks/lean-spec/validate-final-response.sh`
+- `lean-spec/gemini/commands/lean-spec/plan.toml`
+- `lean-spec/gemini/commands/lean-spec/implement.toml`
+- `lean-spec/gemini/commands/lean-spec/review.toml`
+- `lean-spec/gemini/commands/lean-spec/status.toml`
+- `lean-spec/gemini/commands/lean-spec/resume.toml`
+- `lean-spec/gemini/commands/lean-spec/end.toml`
+- `lean-spec/gemini/lean-spec/templates/spec.md`
+- `lean-spec/gemini/lean-spec/templates/notes.md`
+- `lean-spec/gemini/lean-spec/templates/review.md`
+
+Portable OpenCode assets live in:
+
+- `lean-spec/opencode/AGENTS.md`
+- `lean-spec/opencode/AGENTS.example.md`
+- `lean-spec/opencode/LEAN_SPEC_INSTRUCTIONS.md`
+- `lean-spec/opencode/opencode.example.json`
+- `lean-spec/opencode/agents/lean-spec-architect.md`
+- `lean-spec/opencode/agents/lean-spec-coder.md`
+- `lean-spec/opencode/commands/lean-spec/plan.md`
+- `lean-spec/opencode/commands/lean-spec/implement.md`
+- `lean-spec/opencode/commands/lean-spec/review.md`
+- `lean-spec/opencode/commands/lean-spec/status.md`
+- `lean-spec/opencode/commands/lean-spec/resume.md`
+- `lean-spec/opencode/commands/lean-spec/end.md`
+- `lean-spec/opencode/skills/lean-spec-workflow/SKILL.md`
+- `lean-spec/opencode/lean-spec/templates/spec.md`
+- `lean-spec/opencode/lean-spec/templates/notes.md`
+- `lean-spec/opencode/lean-spec/templates/review.md`
+
 ## Core Rules
 
 1. The human controls phase progression by running the next slash command.
@@ -163,11 +200,11 @@ Portable Claude assets live in:
 5. The orchestrator owns scaffolding, routing, and concise status reporting.
 6. The Coder agent must not silently change scope.
 7. The Architect agent must not implement code in this workflow.
-8. The default session agent should not auto-advance after `/plan`, `/implement`, or `/review`.
+8. The default session agent should not auto-advance after `/lean-spec:plan`, `/lean-spec:implement`, or `/lean-spec:review`.
 9. There is no separate active-state file; workflow state is derived from `spec.md`, `notes.md`, and `review.md`.
 10. Artifact timestamps must come from a shell-backed runtime source such as `date "+%Y-%m-%d %H:%M %Z"`; fabricated or placeholder timestamps are invalid.
-11. `/end` is a real cleanup phase: when the feature is clean, it should reconcile `spec.md`, refresh artifact timestamps, and close the workflow coherently.
-12. Review passes should keep `spec.md` reconciled as work progresses; `/end` should only finalize closure, not backfill the entire checklist for the first time.
+11. `/lean-spec:end` is a real cleanup phase: when the feature is clean, it should reconcile `spec.md`, refresh artifact timestamps, and close the workflow coherently.
+12. Review passes should keep `spec.md` reconciled as work progresses; `/lean-spec:end` should only finalize closure, not backfill the entire checklist for the first time.
 
 ## Hooks
 
@@ -198,12 +235,36 @@ The template source belongs under the target project's hidden Claude config:
 Feature artifacts remain project-visible and should be scaffolded into:
 - `lean-spec/features/<slug>/`
 
+Gemini follows the same lifecycle model, but maps onto:
+- `GEMINI.md`
+- `.gemini/settings.json`
+- `.gemini/commands/lean-spec/*.toml`
+- `.gemini/hooks/lean-spec/*.sh`
+- `.gemini/lean-spec/templates/*.md`
+
+Gemini-specific note:
+- `Architect` and `Coder` are session roles, not native spawned subagents
+- use `gemini -m gemini-3-pro-preview` for planning, review, status, resume, and end
+- use `gemini -m gemini-3-flash-preview` for implementation
+- hooks should remind and enforce workflow discipline, but they should not pretend to switch the current model session
+
+OpenCode-specific note:
+- OpenCode can be used either as a Coder companion or as a full lean-spec host with separate Architect and Coder agents
+- root `AGENTS.md` is the primary instruction surface
+- `opencode.json` can include `.opencode/LEAN_SPEC_INSTRUCTIONS.md` via the `instructions` field
+- OpenCode has native agents and subagents, so the lean-spec Coder maps naturally to a dedicated subagent
+- the workflow here is enforced through `AGENTS.md`, agent prompts, commands, skills, and permissions
+
+Recommended Gemini session split:
+- `gemini -m gemini-3-pro-preview` for planning, review, status, resume, and end
+- `gemini -m gemini-3-flash-preview` for implementation
+
 ## Typical Flow
 
-1. Run `/plan <slug>` to scaffold the feature and have the `architect` agent write `spec.md`.
+1. Run `/lean-spec:plan <slug>` to scaffold the feature and have the `architect` role write `spec.md`.
 2. Review the spec manually.
-3. Run `/implement <slug>` to have the `coder` agent implement from the approved spec.
-4. Run `/review <slug>` to have the `architect` agent review the implementation and write findings.
-5. Run `/status <slug>` or `/resume <slug>` when you need to inspect or rebuild workflow state.
-6. If review findings exist, run `/implement <slug>` again for fixes.
-7. Run `/end <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.
+3. Run `/lean-spec:implement <slug>` to have the `coder` role implement from the approved spec.
+4. Run `/lean-spec:review <slug>` to have the `architect` role review the implementation and write findings.
+5. Run `/lean-spec:status <slug>` or `/lean-spec:resume <slug>` when you need to inspect or rebuild workflow state.
+6. If review findings exist, run `/lean-spec:implement <slug>` again for fixes.
+7. Run `/lean-spec:end <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.

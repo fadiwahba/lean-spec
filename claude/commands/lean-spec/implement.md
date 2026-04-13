@@ -12,12 +12,17 @@ Rules:
   - `lean-spec/features/<slug>/notes.md`
   - `lean-spec/features/<slug>/review.md`
 - The Coder agent owns code implementation and `notes.md`.
+- Use `Context7` before implementation when external APIs, libraries, frameworks, or tool behavior matter.
+- Use `sequential-thinking` before implementation when the work is multi-step, risky, or ambiguous.
 - The Coder agent must implement from `spec.md`.
 - If `review.md` contains open findings, the Coder agent should address those findings as part of this phase.
+- For frontend/UI work, use Playwright or equivalent browser validation before reporting implementation complete, unless it is explicitly unavailable.
 - The Coder agent must not rewrite `spec.md` or `review.md`.
+- The Coder agent must not update `spec.md` status, checklist items, or timestamps during implementation.
 - If scope is unclear or blocked, record that in `notes.md`.
 - Stop when the implementation pass is complete.
-- Do not continue to review automatically. The human must explicitly run `/review`.
+- Do not continue to review automatically. The human must explicitly run `/lean-spec:review`.
+- Do not claim implementation complete unless the required tool usage and artifact ownership rules above were satisfied.
 
 Tasks:
 1. Confirm the feature folder exists.
@@ -27,5 +32,6 @@ Tasks:
 5. Report concise phase status back to the human, including:
    - implementation complete / partial / blocked
    - whether `notes.md` was updated
+   - whether `Context7`, `sequential-thinking`, and Playwright were used or unavailable
    - whether open review findings remain
-   - that the next likely manual phase is `/review <slug>` when ready
+   - that the next likely manual phase is `/lean-spec:review <slug>` when ready

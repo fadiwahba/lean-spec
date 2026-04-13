@@ -73,10 +73,10 @@ else:
 
 case "$FILE_PATH" in
   */lean-spec/features/*/spec.md)
-    build_json "Lean-spec reminder: spec.md is owned by architect. If you are the orchestrator or coder, do not author or rewrite this file directly. Delegate planning or spec updates to architect."
+    build_json "Lean-spec reminder: spec.md is owned by architect. If you are the orchestrator or coder, do not author or rewrite this file directly. During implementation, coder must not edit spec.md status, checklist items, or timestamps."
     ;;
   */lean-spec/features/*/review.md)
-    build_json "Lean-spec reminder: review.md is owned by architect. If you are the orchestrator or coder, do not author review findings directly. Delegate review work to architect."
+    build_json "Lean-spec reminder: review.md is owned by architect. If you are the orchestrator or coder, do not author review findings directly. During implementation, coder must not edit review.md. Delegate review work to architect."
     ;;
   */lean-spec/features/*/notes.md)
     build_json "Lean-spec reminder: notes.md is owned by coder. If you are the orchestrator or architect, do not author implementation notes directly. Delegate implementation and blocker logging to coder."

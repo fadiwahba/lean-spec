@@ -24,23 +24,23 @@ PROMPT_LOWER="$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]')"
 COMMAND_HINT=""
 
 case "$PROMPT_LOWER" in
-  *"/plan "*|"/plan")
+  *"/lean-spec:plan "*|*"/plan "*|"/lean-spec:plan"|"/plan")
     COMMAND_HINT="This is the planning phase: scaffold or locate the feature folder, delegate spec authoring to architect, and stop when spec.md is ready."
     ;;
-  *"/implement "*|"/implement")
-    COMMAND_HINT="This is the implementation phase: delegate code work and notes.md updates to coder, then stop after the implementation pass."
+  *"/lean-spec:implement "*|*"/implement "*|"/lean-spec:implement"|"/implement")
+    COMMAND_HINT="This is the implementation phase: delegate code work and notes.md updates to coder, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, use Context7 before implementation when library or framework behavior matters, use sequential-thinking before multi-step or risky work, and use Playwright for frontend/UI validation before reporting implementation complete unless it is unavailable."
     ;;
-  *"/review "*|"/review")
-    COMMAND_HINT="This is the review phase: delegate review.md authoring to architect, then stop after the review pass."
+  *"/lean-spec:review "*|*"/review "*|"/lean-spec:review"|"/review")
+    COMMAND_HINT="This is the review phase: delegate review.md authoring to architect, reconcile spec.md during review, use Context7 when library or framework behavior matters, use sequential-thinking for multi-step or risky review work, and use Playwright for frontend/UI review before reporting the review complete unless it is unavailable."
     ;;
-  *"/status "*|"/status")
+  *"/lean-spec:status "*|*"/status "*|"/lean-spec:status"|"/status")
     COMMAND_HINT="This is a status check: read only spec.md, notes.md, and review.md, then report the current manual workflow state."
     ;;
-  *"/resume "*|"/resume")
+  *"/lean-spec:resume "*|*"/resume "*|"/lean-spec:resume"|"/resume")
     COMMAND_HINT="This is a resume request: rebuild state from spec.md, review.md, and notes.md, then either stop with the report or proceed only if the human explicitly asked."
     ;;
-  *"/end "*|"/end")
-    COMMAND_HINT="This is the end phase: summarize the artifact state and stop. Do not invent completion or approval."
+  *"/lean-spec:end "*|*"/end "*|"/lean-spec:end"|"/end")
+    COMMAND_HINT="This is the end phase: summarize the artifact state and stop. Do not invent completion or approval. Close only when spec.md, notes.md, and review.md support it."
     ;;
 esac
 
@@ -57,10 +57,13 @@ base = (
     "Delegate implementation and notes.md ownership to coder. "
     "architect owns spec.md and review.md. "
     "coder owns notes.md and implementation work. "
+    "coder must not edit spec.md or review.md during implement. "
+    "coder must not update spec.md status, checklist items, or timestamps during implement. "
     "Workflow state is derived only from spec.md, notes.md, and review.md; there is no separate active-state file. "
     "Tooling discipline: use Context7 before implementation or review when external APIs, libraries, frameworks, or tool behavior matter. "
-    "Use sequential-thinking before multi-step or risky planning, implementation, or review work when the task is ambiguous. "
-    "For frontend and UI work, use Playwright or equivalent browser validation when available and treat visible regressions, broken layout, or spec mismatch as real review issues."
+    "Use sequential-thinking before multi-step or risky planning, implementation, or review work when the task is ambiguous or materially risky. "
+    "For frontend and UI work, use Playwright or equivalent browser validation before claiming implementation or review completion unless it is unavailable. "
+    "Do not claim implementation or review complete unless the required tool usage is satisfied or explicit unavailability is reported."
 )
 
 message = base if not command_hint else f"{base} {command_hint}"
