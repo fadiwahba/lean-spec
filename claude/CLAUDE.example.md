@@ -8,11 +8,15 @@ Use this as a merge example for an existing project's root `CLAUDE.md`.
 This project uses `lean-spec` for feature delivery.
 
 For lean-spec work, read and follow:
-- `lean-spec/claude/LEAN_SPEC_INSTRUCTIONS.md`
+- `.claude/LEAN_SPEC_INSTRUCTIONS.md`
 
 Use the runtime assets in:
 - `.claude/agents/lean-spec/`
 - `.claude/commands/lean-spec/`
+- `.claude/hooks/lean-spec/`
+
+Merge hook configuration from:
+- the lean-spec settings example into `.claude/settings.json`
 
 The canonical feature artifacts live in:
 - `lean-spec/features/<slug>/spec.md`

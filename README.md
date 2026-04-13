@@ -144,6 +144,11 @@ Portable Claude assets live in:
 - `lean-spec/claude/commands/lean-spec/status.md`
 - `lean-spec/claude/commands/lean-spec/resume.md`
 - `lean-spec/claude/commands/lean-spec/end.md`
+- `lean-spec/claude/settings.example.json`
+- `lean-spec/claude/settings.stop-ui.example.json`
+- `lean-spec/claude/hooks/lean-spec/remind-manual-workflow.sh`
+- `lean-spec/claude/hooks/lean-spec/enforce-manual-workflow.sh`
+- `lean-spec/claude/hooks/lean-spec/remind-ui-validation-on-stop.sh`
 - `lean-spec/claude/LEAN_SPEC_INSTRUCTIONS.md`
 
 Templates live in:
@@ -163,6 +168,27 @@ Templates live in:
 7. The Architect agent must not implement code in this workflow.
 8. The default session agent should not auto-advance after `/plan`, `/implement`, or `/review`.
 9. There is no separate active-state file; workflow state is derived from `spec.md`, `notes.md`, and `review.md`.
+
+## Hooks
+
+Hooks are the right place to reduce orchestrator drift, but only if they are used narrowly:
+
+- `UserPromptSubmit` should remind the default session agent of the lean-spec manual workflow before it reasons over each human prompt.
+- `PreToolUse` should reinforce delegation and file ownership before agent spawning or file edits.
+- Hooks should not introduce a second workflow state file.
+- Canonical workflow state should remain in `spec.md`, `notes.md`, and `review.md`.
+
+The provided hook assets follow that model:
+
+- `settings.example.json` shows the project-level hook wiring for `.claude/settings.json`
+- `settings.stop-ui.example.json` shows an optional Stop-hook wiring for UI validation reminders
+- `remind-manual-workflow.sh` injects a concise lifecycle reminder on every human prompt
+- `enforce-manual-workflow.sh` injects targeted ownership and delegation reminders before specialist-agent spawning and file edits
+- `remind-ui-validation-on-stop.sh` is an optional end-of-turn reminder for UI-heavy tasks
+
+This framework is not a Claude plugin.
+To use it in a project, copy the assets into that project's `.claude/` folder and merge `settings.example.json` into the target project's `.claude/settings.json`.
+If you want the extra end-of-turn UI reminder, also merge `settings.stop-ui.example.json`.
 
 ## Typical Flow
 

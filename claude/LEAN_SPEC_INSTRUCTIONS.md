@@ -162,3 +162,15 @@ Use `sequential-thinking` before multi-step or risky planning, implementation, o
 For frontend/UI work:
 - use Playwright or equivalent browser validation when available
 - treat visible regressions, broken layout, or spec mismatch as real review issues
+
+## Hook Guidance
+
+Hooks are appropriate for reducing orchestration drift in this workflow.
+
+Use:
+- `UserPromptSubmit` to remind the default session agent of the manual workflow before it handles each human prompt
+- `PreToolUse` to reinforce delegation and artifact ownership before agent spawning or file edits
+- optional `Stop` hooks to remind the agent about rendered validation for UI-heavy work before ending the turn
+
+Do not use hooks to create or maintain a second workflow state file.
+Hook logic must derive lean-spec state from the canonical feature artifacts.

@@ -1,0 +1,14 @@
+{
+  "Stop": [
+    {
+      "matcher": "*",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "bash .claude/hooks/lean-spec/remind-ui-validation-on-stop.sh",
+          "timeout": 10
+        }
+      ]
+    }
+  ]
+}
