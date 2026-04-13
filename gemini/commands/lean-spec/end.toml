@@ -1,0 +1,17 @@
+description = "Finalize and close a lean-spec feature when the workflow is clean."
+
+prompt = """
+Follow the lean-spec manual workflow from GEMINI.md and .gemini/LEAN_SPEC_INSTRUCTIONS.md.
+
+Run the end phase for feature slug: {{args}}
+
+Requirements:
+- read `spec.md`, `notes.md`, and `review.md`
+- block closure if open notes or open findings remain
+- before writing closure updates, fetch one shell-backed timestamp with:
+  `date "+%Y-%m-%d %H:%M %Z"`
+- reconcile `spec.md`, update timestamps, and append the final change-log line
+- this phase must run in the Gemini Pro session
+- if this session is not the intended Pro session, stop and tell the human to switch sessions and rerun the command
+- stop after reporting the final reconciled state
+"""

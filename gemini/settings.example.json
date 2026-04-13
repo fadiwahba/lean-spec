@@ -1,0 +1,44 @@
+{
+  "model": {
+    "name": "gemini-3-pro-preview"
+  },
+  "hooks": {
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "name": "lean-spec-reminder",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/lean-spec/remind-manual-workflow.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace|run_shell_command",
+        "hooks": [
+          {
+            "name": "lean-spec-enforcement",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/lean-spec/enforce-manual-workflow.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "AfterAgent": [
+      {
+        "hooks": [
+          {
+            "name": "lean-spec-final-response-validation",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/lean-spec/validate-final-response.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}

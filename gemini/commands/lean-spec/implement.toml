@@ -1,0 +1,22 @@
+description = "Run the implementation phase for a lean-spec feature."
+
+prompt = """
+Follow the lean-spec manual workflow from GEMINI.md and .gemini/LEAN_SPEC_INSTRUCTIONS.md.
+
+Run the implementation phase for feature slug: {{args}}
+
+Requirements:
+- read `lean-spec/features/<slug>/spec.md`, `notes.md`, and `review.md`
+- this phase must run in the Gemini Flash session for the Coder role
+- if this session is not the intended Flash session, stop and tell the human to switch sessions and rerun the command
+- use `context7` before implementation when external library, framework, or tool behavior matters
+- use `sequential_thinking` before implementation when the work is multi-step, risky, or ambiguous
+- implement from `spec.md`
+- for frontend/UI work, use `playwright` before reporting implementation complete, unless it is explicitly unavailable
+- update `notes.md` with blockers, deviations, and partial completion notes when needed
+- do not rewrite `spec.md` or `review.md`
+- do not update `spec.md` status, checklist items, or timestamps during implementation
+- stop after the implementation pass
+- in the final report, explicitly state whether `context7`, `sequential_thinking`, and `playwright` were used, or whether any required tool was unavailable
+- do not claim implementation complete unless the required tool usage and artifact ownership rules above were satisfied
+"""

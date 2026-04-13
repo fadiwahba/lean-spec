@@ -1,0 +1,14 @@
+description = "Show the current lean-spec status for a feature."
+
+prompt = """
+Follow the lean-spec manual workflow from GEMINI.md and .gemini/LEAN_SPEC_INSTRUCTIONS.md.
+
+Summarize lean-spec status for feature slug: {{args}}
+
+Requirements:
+- read only `spec.md`, `notes.md`, and `review.md`
+- prefer the Gemini Pro session for status checks
+- infer phase and owner from artifact state only
+- do not make code changes
+- keep the output compact and operational
+"""

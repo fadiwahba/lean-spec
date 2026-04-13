@@ -1,0 +1,22 @@
+description = "Run the review phase for a lean-spec feature."
+
+prompt = """
+Follow the lean-spec manual workflow from GEMINI.md and .gemini/LEAN_SPEC_INSTRUCTIONS.md.
+
+Run the review phase for feature slug: {{args}}
+
+Requirements:
+- read `lean-spec/features/<slug>/spec.md`, `notes.md`, and `review.md`
+- use `context7` before review when external library, framework, or tool behavior matters
+- use `sequential_thinking` before review when the work is multi-step, risky, or ambiguous
+- review against the implementation and the current spec
+- this phase must run in the Gemini Pro session for the Architect role
+- if this session is not the intended Pro session, stop and tell the human to switch sessions and rerun the command
+- for frontend/UI review, use `playwright` before reporting the review complete, unless it is explicitly unavailable
+- update `review.md` with concrete findings and dispositions
+- reconcile `spec.md` during review so checklist progress and status match the reviewed implementation
+- do not leave non-defect process notes as open findings
+- stop after the review pass
+- in the final report, explicitly state whether `context7`, `sequential_thinking`, and `playwright` were used, or whether any required tool was unavailable
+- do not claim review complete unless the required tool usage above was satisfied
+"""
