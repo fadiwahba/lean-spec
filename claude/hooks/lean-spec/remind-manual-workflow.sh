@@ -24,22 +24,22 @@ PROMPT_LOWER="$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]')"
 COMMAND_HINT=""
 
 case "$PROMPT_LOWER" in
-  *"/lean-spec:plan "*|*"/plan "*|"/lean-spec:plan"|"/plan")
+  *"/lean-spec:start-spec "*|"/lean-spec:start-spec")
     COMMAND_HINT="This is the planning phase: scaffold or locate the feature folder, delegate spec authoring to architect, and stop when spec.md is ready."
     ;;
-  *"/lean-spec:implement "*|*"/implement "*|"/lean-spec:implement"|"/implement")
+  *"/lean-spec:implement-spec "*|"/lean-spec:implement-spec")
     COMMAND_HINT="This is the implementation phase: delegate code work and notes.md updates to coder, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, use Context7 before implementation when library or framework behavior matters, use sequential-thinking before multi-step or risky work, use Playwright for frontend/UI validation before reporting implementation complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, and never save Playwright screenshots into the project root."
     ;;
-  *"/lean-spec:review "*|*"/review "*|"/lean-spec:review"|"/review")
+  *"/lean-spec:review-spec "*|"/lean-spec:review-spec")
     COMMAND_HINT="This is the review phase: delegate review.md authoring to architect, reconcile spec.md during review, use Context7 when library or framework behavior matters, use sequential-thinking for multi-step or risky review work, use Playwright for frontend/UI review before reporting the review complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, and never save Playwright screenshots into the project root."
     ;;
-  *"/lean-spec:status "*|*"/status "*|"/lean-spec:status"|"/status")
+  *"/lean-spec:spec-status "*|"/lean-spec:spec-status")
     COMMAND_HINT="This is a status check: read only spec.md, notes.md, and review.md, then report the current manual workflow state."
     ;;
-  *"/lean-spec:resume "*|*"/resume "*|"/lean-spec:resume"|"/resume")
+  *"/lean-spec:resume-spec "*|"/lean-spec:resume-spec")
     COMMAND_HINT="This is a resume request: rebuild state from spec.md, review.md, and notes.md, then either stop with the report or proceed only if the human explicitly asked."
     ;;
-  *"/lean-spec:end "*|*"/end "*|"/lean-spec:end"|"/end")
+  *"/lean-spec:close-spec "*|"/lean-spec:close-spec")
     COMMAND_HINT="This is the end phase: summarize the artifact state and stop. Do not invent completion or approval. Close only when spec.md, notes.md, and review.md support it."
     ;;
 esac
