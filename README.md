@@ -12,8 +12,8 @@ lean-spec is now a manual, human-controlled workflow built around three roles in
 
 The human explicitly controls phase progression with slash commands:
 
-- Claude Code: `/lean-spec:plan <slug>`, `/lean-spec:implement <slug>`, `/lean-spec:review <slug>`, `/lean-spec:status <slug>`, `/lean-spec:resume <slug>`, `/lean-spec:end <slug>`
-- Gemini CLI: `/lean-spec:plan <slug>`, `/lean-spec:implement <slug>`, `/lean-spec:review <slug>`, `/lean-spec:status <slug>`, `/lean-spec:resume <slug>`, `/lean-spec:end <slug>`
+- Claude Code: `/lean-spec:start-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
+- Gemini CLI: `/lean-spec:start-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
 
 There are no automatic gates. The workflow advances only when the human runs the next command.
 
@@ -134,12 +134,12 @@ Portable Claude assets live in:
 
 - `lean-spec/claude/agents/lean-spec/architect.md`
 - `lean-spec/claude/agents/lean-spec/coder.md`
-- `lean-spec/claude/commands/lean-spec/plan.md`
-- `lean-spec/claude/commands/lean-spec/implement.md`
-- `lean-spec/claude/commands/lean-spec/review.md`
-- `lean-spec/claude/commands/lean-spec/status.md`
-- `lean-spec/claude/commands/lean-spec/resume.md`
-- `lean-spec/claude/commands/lean-spec/end.md`
+- `lean-spec/claude/commands/lean-spec/start-spec.md`
+- `lean-spec/claude/commands/lean-spec/implement-spec.md`
+- `lean-spec/claude/commands/lean-spec/review-spec.md`
+- `lean-spec/claude/commands/lean-spec/spec-status.md`
+- `lean-spec/claude/commands/lean-spec/resume-spec.md`
+- `lean-spec/claude/commands/lean-spec/close-spec.md`
 - `lean-spec/claude/settings.example.json`
 - `lean-spec/claude/settings.stop-ui.example.json`
 - `lean-spec/claude/hooks/lean-spec/remind-manual-workflow.sh`
@@ -162,12 +162,12 @@ Portable Gemini assets live in:
 - `lean-spec/gemini/hooks/lean-spec/remind-manual-workflow.sh`
 - `lean-spec/gemini/hooks/lean-spec/enforce-manual-workflow.sh`
 - `lean-spec/gemini/hooks/lean-spec/validate-final-response.sh`
-- `lean-spec/gemini/commands/lean-spec/plan.toml`
-- `lean-spec/gemini/commands/lean-spec/implement.toml`
-- `lean-spec/gemini/commands/lean-spec/review.toml`
-- `lean-spec/gemini/commands/lean-spec/status.toml`
-- `lean-spec/gemini/commands/lean-spec/resume.toml`
-- `lean-spec/gemini/commands/lean-spec/end.toml`
+- `lean-spec/gemini/commands/lean-spec/start-spec.toml`
+- `lean-spec/gemini/commands/lean-spec/implement-spec.toml`
+- `lean-spec/gemini/commands/lean-spec/review-spec.toml`
+- `lean-spec/gemini/commands/lean-spec/spec-status.toml`
+- `lean-spec/gemini/commands/lean-spec/resume-spec.toml`
+- `lean-spec/gemini/commands/lean-spec/close-spec.toml`
 - `lean-spec/gemini/lean-spec/templates/spec.md`
 - `lean-spec/gemini/lean-spec/templates/notes.md`
 - `lean-spec/gemini/lean-spec/templates/review.md`
@@ -180,12 +180,12 @@ Portable OpenCode assets live in:
 - `lean-spec/opencode/opencode.example.json`
 - `lean-spec/opencode/agents/lean-spec-architect.md`
 - `lean-spec/opencode/agents/lean-spec-coder.md`
-- `lean-spec/opencode/commands/lean-spec/plan.md`
-- `lean-spec/opencode/commands/lean-spec/implement.md`
-- `lean-spec/opencode/commands/lean-spec/review.md`
-- `lean-spec/opencode/commands/lean-spec/status.md`
-- `lean-spec/opencode/commands/lean-spec/resume.md`
-- `lean-spec/opencode/commands/lean-spec/end.md`
+- `lean-spec/opencode/commands/lean-spec/start-spec.md`
+- `lean-spec/opencode/commands/lean-spec/implement-spec.md`
+- `lean-spec/opencode/commands/lean-spec/review-spec.md`
+- `lean-spec/opencode/commands/lean-spec/spec-status.md`
+- `lean-spec/opencode/commands/lean-spec/resume-spec.md`
+- `lean-spec/opencode/commands/lean-spec/close-spec.md`
 - `lean-spec/opencode/skills/lean-spec-workflow/SKILL.md`
 - `lean-spec/opencode/lean-spec/templates/spec.md`
 - `lean-spec/opencode/lean-spec/templates/notes.md`
@@ -200,11 +200,11 @@ Portable OpenCode assets live in:
 5. The orchestrator owns scaffolding, routing, and concise status reporting.
 6. The Coder agent must not silently change scope.
 7. The Architect agent must not implement code in this workflow.
-8. The default session agent should not auto-advance after `/lean-spec:plan`, `/lean-spec:implement`, or `/lean-spec:review`.
+8. The default session agent should not auto-advance after `/lean-spec:start-spec`, `/lean-spec:implement-spec`, or `/lean-spec:review-spec`.
 9. There is no separate active-state file; workflow state is derived from `spec.md`, `notes.md`, and `review.md`.
 10. Artifact timestamps must come from a shell-backed runtime source such as `date "+%Y-%m-%d %H:%M %Z"`; fabricated or placeholder timestamps are invalid.
-11. `/lean-spec:end` is a real cleanup phase: when the feature is clean, it should reconcile `spec.md`, refresh artifact timestamps, and close the workflow coherently.
-12. Review passes should keep `spec.md` reconciled as work progresses; `/lean-spec:end` should only finalize closure, not backfill the entire checklist for the first time.
+11. `/lean-spec:close-spec` is a real cleanup phase: when the feature is clean, it should reconcile `spec.md`, refresh artifact timestamps, and close the workflow coherently.
+12. Review passes should keep `spec.md` reconciled as work progresses; `/lean-spec:close-spec` should only finalize closure, not backfill the entire checklist for the first time.
 
 ## Hooks
 
@@ -261,10 +261,10 @@ Recommended Gemini session split:
 
 ## Typical Flow
 
-1. Run `/lean-spec:plan <slug>` to scaffold the feature and have the `architect` role write `spec.md`.
+1. Run `/lean-spec:start-spec <slug>` to scaffold the feature and have the `architect` role write `spec.md`.
 2. Review the spec manually.
-3. Run `/lean-spec:implement <slug>` to have the `coder` role implement from the approved spec.
-4. Run `/lean-spec:review <slug>` to have the `architect` role review the implementation and write findings.
-5. Run `/lean-spec:status <slug>` or `/lean-spec:resume <slug>` when you need to inspect or rebuild workflow state.
-6. If review findings exist, run `/lean-spec:implement <slug>` again for fixes.
-7. Run `/lean-spec:end <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.
+3. Run `/lean-spec:implement-spec <slug>` to have the `coder` role implement from the approved spec.
+4. Run `/lean-spec:review-spec <slug>` to have the `architect` role review the implementation and write findings.
+5. Run `/lean-spec:spec-status <slug>` or `/lean-spec:resume-spec <slug>` when you need to inspect or rebuild workflow state.
+6. If review findings exist, run `/lean-spec:implement-spec <slug>` again for fixes.
+7. Run `/lean-spec:close-spec <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.

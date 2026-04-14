@@ -1,5 +1,5 @@
 ---
-name: status
+name: spec-status
 description: Show the current lifecycle status of a lean-spec feature including open notes, review findings, and next recommended action.
 ---
 

@@ -27,12 +27,12 @@ Canonical feature artifacts live in:
 - `lean-spec/features/<slug>/review.md`
 
 Lean-spec commands:
-- `/lean-spec:plan <slug>`
-- `/lean-spec:implement <slug>`
-- `/lean-spec:review <slug>`
-- `/lean-spec:status <slug>`
-- `/lean-spec:resume <slug>`
-- `/lean-spec:end <slug>`
+- `/lean-spec:start-spec <slug>`
+- `/lean-spec:implement-spec <slug>`
+- `/lean-spec:review-spec <slug>`
+- `/lean-spec:spec-status <slug>`
+- `/lean-spec:resume-spec <slug>`
+- `/lean-spec:close-spec <slug>`
 
 Ownership rules:
 - Architect owns `spec.md`
@@ -44,8 +44,8 @@ Ownership rules:
 - use `sequential_thinking` for multi-step or risky work
 
 If you are running mixed mode:
-- use Claude for `/lean-spec:plan`, `/lean-spec:review`, `/lean-spec:end`
-- use OpenCode for `/lean-spec:implement`, `/lean-spec:status`, `/lean-spec:resume`
+- use Claude for `/lean-spec:start-spec`, `/lean-spec:review-spec`, `/lean-spec:close-spec`
+- use OpenCode for `/lean-spec:implement-spec`, `/lean-spec:spec-status`, `/lean-spec:resume-spec`
 
 If you are running full OpenCode mode:
 - assign your desired Architect and Coder models to the two OpenCode agents

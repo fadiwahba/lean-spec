@@ -1,5 +1,5 @@
 ---
-name: review
+name: review-spec
 description: Run the review phase for a lean-spec feature using the Architect agent.
 ---
 
@@ -25,7 +25,7 @@ Rules:
 - Non-defect process notes or coverage notes must not remain as open findings. Record them as accepted/deferred dispositions or as neutral notes instead.
 - The Architect agent must not implement code changes in this workflow.
 - Stop after the review pass is complete.
-- Do not continue to fixes automatically. The human decides whether to run `/lean-spec:implement` again or, after a clean/dispositioned review, `/lean-spec:end`.
+- Do not continue to fixes automatically. The human decides whether to run `/lean-spec:implement-spec` again or, after a clean/dispositioned review, `/lean-spec:close-spec`.
 - Do not claim review complete unless the required tool usage above was satisfied.
 
 Tasks:
@@ -44,5 +44,5 @@ Tasks:
    - whether `Context7`, `sequential-thinking`, and Playwright were used or unavailable
    - whether `notes.md` suggests follow-up work
    - the likely next manual command:
-     - `/lean-spec:implement <slug>` when real open findings remain
-     - `/lean-spec:end <slug>` only when no open findings remain after resolution or disposition
+     - `/lean-spec:implement-spec <slug>` when real open findings remain
+     - `/lean-spec:close-spec <slug>` only when no open findings remain after resolution or disposition

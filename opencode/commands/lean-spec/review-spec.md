@@ -31,4 +31,4 @@ End by reporting:
 - number of open findings
 - whether the review is clean
 - whether `context7`, `sequential_thinking`, and `playwright` were used or unavailable
-- whether the next likely manual phase is `/lean-spec:implement $ARGUMENTS` or `/lean-spec:end $ARGUMENTS`
+- whether the next likely manual phase is `/lean-spec:implement-spec $ARGUMENTS` or `/lean-spec:close-spec $ARGUMENTS`

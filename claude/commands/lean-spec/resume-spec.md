@@ -1,5 +1,5 @@
 ---
-name: resume
+name: resume-spec
 description: Rebuild lean-spec workflow state after context compaction, session pause, or model change.
 ---
 

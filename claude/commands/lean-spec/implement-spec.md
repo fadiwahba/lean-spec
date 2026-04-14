@@ -1,5 +1,5 @@
 ---
-name: implement
+name: implement-spec
 description: Run the implementation phase for a lean-spec feature using the Coder agent.
 ---
 
@@ -24,7 +24,7 @@ Rules:
 - The Coder agent must not update `spec.md` status, checklist items, or timestamps during implementation.
 - If scope is unclear or blocked, record that in `notes.md`.
 - Stop when the implementation pass is complete.
-- Do not continue to review automatically. The human must explicitly run `/lean-spec:review`.
+- Do not continue to review automatically. The human must explicitly run `/lean-spec:review-spec`.
 - Do not claim implementation complete unless the required tool usage and artifact ownership rules above were satisfied.
 
 Tasks:
@@ -37,4 +37,4 @@ Tasks:
    - whether `notes.md` was updated
    - whether `Context7`, `sequential-thinking`, and Playwright were used or unavailable
    - whether open review findings remain
-   - that the next likely manual phase is `/lean-spec:review <slug>` when ready
+   - that the next likely manual phase is `/lean-spec:review-spec <slug>` when ready

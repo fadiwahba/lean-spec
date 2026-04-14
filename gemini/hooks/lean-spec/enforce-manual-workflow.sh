@@ -58,12 +58,12 @@ print("")
 if [ -n "$FILE_PATH" ]; then
   case "$FILE_PATH" in
     */lean-spec/features/*/spec.md)
-      if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement'; then
+      if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement-spec'; then
         /usr/bin/python3 - <<'PY'
 import json
 print(json.dumps({
     "decision": "deny",
-    "reason": "Lean-spec guard: /lean-spec:implement must not edit spec.md. The Coder role may update notes.md and implementation code only."
+    "reason": "Lean-spec guard: /lean-spec:implement-spec must not edit spec.md. The Coder role may update notes.md and implementation code only."
 }))
 PY
         exit 0
@@ -72,12 +72,12 @@ PY
       exit 0
       ;;
     */lean-spec/features/*/review.md)
-      if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement'; then
+      if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement-spec'; then
         /usr/bin/python3 - <<'PY'
 import json
 print(json.dumps({
     "decision": "deny",
-    "reason": "Lean-spec guard: /lean-spec:implement must not edit review.md. The Coder role may update notes.md and implementation code only."
+    "reason": "Lean-spec guard: /lean-spec:implement-spec must not edit review.md. The Coder role may update notes.md and implementation code only."
 }))
 PY
         exit 0

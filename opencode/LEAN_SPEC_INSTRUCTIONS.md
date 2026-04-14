@@ -12,12 +12,12 @@ Roles:
 - `lean-spec-coder`: implementer / coder
 
 The human advances phases explicitly with:
-- `/lean-spec:plan <slug>`
-- `/lean-spec:implement <slug>`
-- `/lean-spec:review <slug>`
-- `/lean-spec:status <slug>`
-- `/lean-spec:resume <slug>`
-- `/lean-spec:end <slug>`
+- `/lean-spec:start-spec <slug>`
+- `/lean-spec:implement-spec <slug>`
+- `/lean-spec:review-spec <slug>`
+- `/lean-spec:spec-status <slug>`
+- `/lean-spec:resume-spec <slug>`
+- `/lean-spec:close-spec <slug>`
 
 There are no automatic gates or automatic phase transitions.
 
@@ -71,7 +71,7 @@ The orchestrator must not:
 
 ## Command Semantics
 
-### `/lean-spec:plan <slug>`
+### `/lean-spec:start-spec <slug>`
 
 Use when:
 - starting a new feature
@@ -84,7 +84,7 @@ Expected outcome:
 - `notes.md` and `review.md` exist
 - the phase stops and waits for the human
 
-### `/lean-spec:implement <slug>`
+### `/lean-spec:implement-spec <slug>`
 
 Use when:
 - the spec is approved
@@ -95,7 +95,7 @@ Expected outcome:
 - `notes.md` captures blockers, deviations, and partial completion notes
 - the phase stops and waits for the human
 
-### `/lean-spec:review <slug>`
+### `/lean-spec:review-spec <slug>`
 
 Use when:
 - implementation is ready for review
@@ -107,7 +107,7 @@ Expected outcome:
 - `spec.md` is reconciled during review so checklist progress and status stay aligned with the reviewed implementation
 - the phase stops and waits for the human
 
-### `/lean-spec:end <slug>`
+### `/lean-spec:close-spec <slug>`
 
 Use when:
 - review is clean or all findings are dispositioned
@@ -144,9 +144,9 @@ Timestamp rules:
 
 If you are running mixed mode:
 - OpenCode should be used for:
-  - `/lean-spec:implement <slug>`
-  - `/lean-spec:status <slug>`
-  - `/lean-spec:resume <slug>`
+  - `/lean-spec:implement-spec <slug>`
+  - `/lean-spec:spec-status <slug>`
+  - `/lean-spec:resume-spec <slug>`
 - planning, review, and end stay in Claude Code
 
 If the human asks OpenCode to run Architect phases in mixed mode, stop and direct them to Claude Code.
@@ -187,9 +187,9 @@ Required completion discipline:
 - if a required tool was unavailable, say so explicitly and treat that as an incomplete verification step
 
 Required artifact discipline:
-- during `/lean-spec:implement`, the Coder may update `notes.md` and implementation code only
-- during `/lean-spec:implement`, do not edit `spec.md` or `review.md`
-- during `/lean-spec:implement`, do not update `spec.md` status, task checklists, or timestamps
+- during `/lean-spec:implement-spec`, the Coder may update `notes.md` and implementation code only
+- during `/lean-spec:implement-spec`, do not edit `spec.md` or `review.md`
+- during `/lean-spec:implement-spec`, do not update `spec.md` status, task checklists, or timestamps
 - only the Architect may reconcile `spec.md` status, checklists, and closure state during review or end
 
 ## Completion Discipline
@@ -200,4 +200,4 @@ At the end of any phase:
 - note whether `context7`, `sequential_thinking`, and `playwright` were used or unavailable when relevant
 - note the likely next manual phase
 
-Never claim closure is complete unless the active phase is `/lean-spec:end` and the artifacts support that claim.
+Never claim closure is complete unless the active phase is `/lean-spec:close-spec` and the artifacts support that claim.

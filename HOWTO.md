@@ -85,8 +85,8 @@ Also make sure the project-visible artifact root exists:
 - `lean-spec/features/`
 
 Recommended session split:
-- `gemini -m gemini-3-pro-preview` for `/lean-spec:plan`, `/lean-spec:review`, `/lean-spec:status`, `/lean-spec:resume`, `/lean-spec:end`
-- `gemini -m gemini-3-flash-preview` for `/lean-spec:implement`
+- `gemini -m gemini-3-pro-preview` for `/lean-spec:start-spec`, `/lean-spec:review-spec`, `/lean-spec:spec-status`, `/lean-spec:resume-spec`, `/lean-spec:close-spec`
+- `gemini -m gemini-3-flash-preview` for `/lean-spec:implement-spec`
 
 Gemini-specific note:
 - `Architect` and `Coder` are session roles, not native spawned subagents
@@ -106,12 +106,12 @@ Copy these files into the target project:
 - `lean-spec/opencode/opencode.example.json` -> merge into the target project's root `opencode.json`
 - `lean-spec/opencode/agents/lean-spec-architect.md` -> `.opencode/agents/lean-spec-architect.md`
 - `lean-spec/opencode/agents/lean-spec-coder.md` -> `.opencode/agents/lean-spec-coder.md`
-- `lean-spec/opencode/commands/lean-spec/plan.md` -> `.opencode/commands/lean-spec/plan.md`
-- `lean-spec/opencode/commands/lean-spec/implement.md` -> `.opencode/commands/lean-spec/implement.md`
-- `lean-spec/opencode/commands/lean-spec/review.md` -> `.opencode/commands/lean-spec/review.md`
-- `lean-spec/opencode/commands/lean-spec/status.md` -> `.opencode/commands/lean-spec/status.md`
-- `lean-spec/opencode/commands/lean-spec/resume.md` -> `.opencode/commands/lean-spec/resume.md`
-- `lean-spec/opencode/commands/lean-spec/end.md` -> `.opencode/commands/lean-spec/end.md`
+- `lean-spec/opencode/commands/lean-spec/start-spec.md` -> `.opencode/commands/lean-spec/start-spec.md`
+- `lean-spec/opencode/commands/lean-spec/implement-spec.md` -> `.opencode/commands/lean-spec/implement-spec.md`
+- `lean-spec/opencode/commands/lean-spec/review-spec.md` -> `.opencode/commands/lean-spec/review-spec.md`
+- `lean-spec/opencode/commands/lean-spec/spec-status.md` -> `.opencode/commands/lean-spec/spec-status.md`
+- `lean-spec/opencode/commands/lean-spec/resume-spec.md` -> `.opencode/commands/lean-spec/resume-spec.md`
+- `lean-spec/opencode/commands/lean-spec/close-spec.md` -> `.opencode/commands/lean-spec/close-spec.md`
 - `lean-spec/opencode/skills/lean-spec-workflow/SKILL.md` -> `.opencode/skills/lean-spec-workflow/SKILL.md`
 - `lean-spec/opencode/lean-spec/templates/*.md` -> `.opencode/lean-spec/templates/*.md`
 
@@ -120,30 +120,30 @@ Also make sure the canonical artifact root exists:
 - `lean-spec/features/`
 
 If you are running mixed mode:
-- `/lean-spec:implement <slug>`
-- `/lean-spec:status <slug>`
-- `/lean-spec:resume <slug>`
+- `/lean-spec:implement-spec <slug>`
+- `/lean-spec:spec-status <slug>`
+- `/lean-spec:resume-spec <slug>`
 
 Keep these phases in Claude Code:
-- `/lean-spec:plan <slug>`
-- `/lean-spec:review <slug>`
-- `/lean-spec:end <slug>`
+- `/lean-spec:start-spec <slug>`
+- `/lean-spec:review-spec <slug>`
+- `/lean-spec:close-spec <slug>`
 
 If you are running full OpenCode mode:
-- use `/lean-spec:plan`, `/lean-spec:implement`, `/lean-spec:review`, `/lean-spec:status`, `/lean-spec:resume`, and `/lean-spec:end` in OpenCode
+- use `/lean-spec:start-spec`, `/lean-spec:implement-spec`, `/lean-spec:review-spec`, `/lean-spec:spec-status`, `/lean-spec:resume-spec`, and `/lean-spec:close-spec` in OpenCode
 - assign different models to `.opencode/agents/lean-spec-architect.md` and `.opencode/agents/lean-spec-coder.md` if you want different Architect and Coder behavior
 
 ## Standard Flow
 
 Use this sequence for most work:
 
-1. Run `/lean-spec:plan <slug>`
+1. Run `/lean-spec:start-spec <slug>`
 2. Review `spec.md`
-3. Run `/lean-spec:implement <slug>`
-4. Run `/lean-spec:review <slug>`
-5. Run `/lean-spec:status <slug>` or `/lean-spec:resume <slug>` when you need state inspection or recovery
-6. If review findings remain, run `/lean-spec:implement <slug>` again
-7. Run `/lean-spec:end <slug>` when review is clean and you want the framework to reconcile and close the feature
+3. Run `/lean-spec:implement-spec <slug>`
+4. Run `/lean-spec:review-spec <slug>`
+5. Run `/lean-spec:spec-status <slug>` or `/lean-spec:resume-spec <slug>` when you need state inspection or recovery
+6. If review findings remain, run `/lean-spec:implement-spec <slug>` again
+7. Run `/lean-spec:close-spec <slug>` when review is clean and you want the framework to reconcile and close the feature
 
 Strict ownership:
 - scaffold and routing -> default session agent
@@ -156,7 +156,7 @@ Strict ownership:
 Run:
 
 ```text
-/lean-spec:plan todo-app-zustand
+/lean-spec:start-spec todo-app-zustand
 ```
 
 Then provide only the feature brief, requirements, design direction, and constraints.
@@ -178,7 +178,7 @@ Requirements:
 Do not implement yet. Stop after the spec is ready.
 ```
 
-The expected result of `/lean-spec:plan` is:
+The expected result of `/lean-spec:start-spec` is:
 - feature folder exists
 - the scaffold is copied from the host CLI template source:
   - Claude: `.claude/lean-spec/templates/`
@@ -192,7 +192,7 @@ The expected result of `/lean-spec:plan` is:
 After the spec is approved, run:
 
 ```text
-/lean-spec:implement todo-app-zustand
+/lean-spec:implement-spec todo-app-zustand
 ```
 
 Expected result:
@@ -205,7 +205,7 @@ Expected result:
 When the implementation is ready for review, run:
 
 ```text
-/lean-spec:review todo-app-zustand
+/lean-spec:review-spec todo-app-zustand
 ```
 
 Expected result:
@@ -214,7 +214,7 @@ Expected result:
 - `spec.md` checklist and status are reconciled to match the reviewed implementation state
 - the workflow stops and waits for you
 
-If findings remain, run `/lean-spec:implement <slug>` again to address them.
+If findings remain, run `/lean-spec:implement-spec <slug>` again to address them.
 
 ## Hook Strategy
 
@@ -241,7 +241,7 @@ The hook files are project-copy assets.
 When review is clean and you want the framework to perform final cleanup, run:
 
 ```text
-/lean-spec:end todo-app-zustand
+/lean-spec:close-spec todo-app-zustand
 ```
 
 Expected result:
@@ -250,7 +250,7 @@ Expected result:
 - `Updated At` fields are refreshed from a shell-backed timestamp
 - open notes and open review findings must be zero, or closure is blocked
 
-`/lean-spec:end` should be the final cleanup pass, not the first time the spec checklist catches up with reality.
+`/lean-spec:close-spec` should be the final cleanup pass, not the first time the spec checklist catches up with reality.
 
 ## Good Prompting Pattern
 
@@ -270,7 +270,7 @@ That leaves too much planning ambiguity for the Architect.
 
 ## Common Mistakes
 
-- Running `/lean-spec:implement` before `spec.md` is ready
+- Running `/lean-spec:implement-spec` before `spec.md` is ready
 - Expecting the default session agent to continue automatically after a phase
 - Letting the Coder rewrite `spec.md`
 - Letting the Architect implement fixes directly

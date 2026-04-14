@@ -17,22 +17,22 @@ PROMPT_LOWER="$(printf '%s' "$PROMPT_TEXT" | tr '[:upper:]' '[:lower:]')"
 COMMAND_HINT=""
 
 case "$PROMPT_LOWER" in
-  *"/lean-spec:plan "*|*"/plan "*|"/lean-spec:plan"|"/plan")
+  *"/lean-spec:start-spec "*|"/lean-spec:start-spec")
     COMMAND_HINT="This is the planning phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Use the Architect role, scaffold from .gemini/lean-spec/templates/, and stop when spec.md is ready."
     ;;
-  *"/lean-spec:implement "*|*"/implement "*|"/lean-spec:implement"|"/implement")
+  *"/lean-spec:implement-spec "*|"/lean-spec:implement-spec")
     COMMAND_HINT="This is the implementation phase. It must run in the Gemini Flash session. If you are not in the intended Flash session, stop and tell the human to rerun it there. Use the Coder role, update notes.md as needed, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, use context7 before implementation when library or framework behavior matters, use sequential_thinking before multi-step or risky work, use playwright for frontend/UI validation before reporting implementation complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, and stop any local dev server or validation port you started before ending the phase."
     ;;
-  *"/lean-spec:review "*|*"/review "*|"/lean-spec:review"|"/review")
+  *"/lean-spec:review-spec "*|"/lean-spec:review-spec")
     COMMAND_HINT="This is the review phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Use the Architect role, update review.md, reconcile spec.md, use context7 when library or framework behavior matters, use sequential_thinking for multi-step or risky review work, use playwright for frontend/UI review before reporting the review complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, and stop any local dev server or validation port you started before ending the phase."
     ;;
-  *"/lean-spec:status "*|*"/status "*|"/lean-spec:status"|"/status")
+  *"/lean-spec:spec-status "*|"/lean-spec:spec-status")
     COMMAND_HINT="This is a status check. Prefer the Gemini Pro session. Read only spec.md, notes.md, and review.md and report the current manual workflow state."
     ;;
-  *"/lean-spec:resume "*|*"/resume "*|"/lean-spec:resume"|"/resume")
+  *"/lean-spec:resume-spec "*|"/lean-spec:resume-spec")
     COMMAND_HINT="This is a resume request. Prefer the Gemini Pro session. Rebuild state from spec.md, review.md, and notes.md, then either stop with the report or proceed only if the human explicitly asked."
     ;;
-  *"/lean-spec:end "*|*"/end "*|"/lean-spec:end"|"/end")
+  *"/lean-spec:close-spec "*|"/lean-spec:close-spec")
     COMMAND_HINT="This is the end phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Only finalize closure when review is clean or all findings are dispositioned. Reconcile spec.md and refresh timestamps from the shell."
     ;;
 esac

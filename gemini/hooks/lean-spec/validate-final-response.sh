@@ -31,7 +31,7 @@ if ! printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:'; then
   exit 0
 fi
 
-if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:end'; then
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:close-spec'; then
   if printf '%s' "$TEXT" | grep -qE 'ready to close|feature is complete|workflow is complete|closure complete|close cleanly'; then
     /usr/bin/python3 - <<'PY'
 import json
@@ -45,7 +45,7 @@ PY
   fi
 fi
 
-if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:status\|/lean-spec:resume\|/lean-spec:plan'; then
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:spec-status\|/lean-spec:resume-spec\|/lean-spec:start-spec'; then
   exit 0
 fi
 
@@ -77,7 +77,7 @@ PY
   fi
 }
 
-if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement'; then
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement-spec'; then
   if printf '%s' "$RESPONSE_LOWER" | grep -qE 'implementation complete|implemented|ready for review'; then
     require_tool_report "context7" "Lean-spec validation: implementation reports must explicitly say whether context7 was used when relevant, or that it was unavailable."
     require_tool_report "sequential" "Lean-spec validation: implementation reports must explicitly say whether sequential_thinking was used when relevant, or that it was unavailable."
@@ -85,7 +85,7 @@ if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:implement'; then
   fi
 fi
 
-if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:review'; then
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:review-spec'; then
   if printf '%s' "$RESPONSE_LOWER" | grep -qE 'review complete|review is complete|ready to close|no findings'; then
     require_tool_report "context7" "Lean-spec validation: review reports must explicitly say whether context7 was used when relevant, or that it was unavailable."
     require_tool_report "sequential" "Lean-spec validation: review reports must explicitly say whether sequential_thinking was used when relevant, or that it was unavailable."

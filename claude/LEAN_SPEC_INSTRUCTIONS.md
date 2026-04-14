@@ -12,12 +12,12 @@ Roles:
 - `coder`: implementer / coder
 
 The human advances phases explicitly with:
-- `/lean-spec:plan <slug>`
-- `/lean-spec:implement <slug>`
-- `/lean-spec:review <slug>`
-- `/lean-spec:status <slug>`
-- `/lean-spec:resume <slug>`
-- `/lean-spec:end <slug>`
+- `/lean-spec:start-spec <slug>`
+- `/lean-spec:implement-spec <slug>`
+- `/lean-spec:review-spec <slug>`
+- `/lean-spec:spec-status <slug>`
+- `/lean-spec:resume-spec <slug>`
+- `/lean-spec:close-spec <slug>`
 
 There are no automatic gates or automatic phase transitions.
 
@@ -81,7 +81,7 @@ The orchestrator must not:
 
 ## Command Semantics
 
-### `/lean-spec:plan <slug>`
+### `/lean-spec:start-spec <slug>`
 
 Use when:
 - starting a new feature
@@ -94,7 +94,7 @@ Expected outcome:
 - `notes.md` and `review.md` exist
 - the phase stops and waits for the human
 
-### `/lean-spec:implement <slug>`
+### `/lean-spec:implement-spec <slug>`
 
 Use when:
 - the spec is approved
@@ -105,7 +105,7 @@ Expected outcome:
 - `notes.md` captures blockers, deviations, and partial completion notes
 - the phase stops and waits for the human
 
-### `/lean-spec:review <slug>`
+### `/lean-spec:review-spec <slug>`
 
 Use when:
 - implementation is ready for review
@@ -117,7 +117,7 @@ Expected outcome:
 - `spec.md` is reconciled during review so checklist progress and status stay aligned with the reviewed implementation
 - the phase stops and waits for the human
 
-### `/lean-spec:end <slug>`
+### `/lean-spec:close-spec <slug>`
 
 Use when:
 - review is clean or all findings are dispositioned
@@ -139,8 +139,8 @@ Expected outcome:
 - `coder` must not edit `spec.md` status, checklist items, or `review.md`
 - `architect` must not implement code in this workflow
 - the default session agent must stop after each phase until the human runs the next command
-- `/end` is the explicit final reconciliation phase and should clean up artifact state when closure is valid
-- review passes should progressively reconcile `spec.md`; `/end` should finalize closure, not perform the first meaningful checklist reconciliation
+- `/close-spec` is the explicit final reconciliation phase and should clean up artifact state when closure is valid
+- review passes should progressively reconcile `spec.md`; `/close-spec` should finalize closure, not perform the first meaningful checklist reconciliation
 - a feature must not close with open notes, open findings, stale `spec.md` status, or unchecked completed tasks
 
 ## Context Discipline
@@ -200,9 +200,9 @@ Required completion discipline:
 - if a required tool was unavailable, say so explicitly and treat that as an incomplete verification step
 
 Required artifact discipline:
-- during `/lean-spec:implement`, `coder` may update `notes.md` and implementation code only
-- during `/lean-spec:implement`, do not edit `spec.md` or `review.md`
-- during `/lean-spec:implement`, do not update `spec.md` status, task checklists, or timestamps
+- during `/lean-spec:implement-spec`, `coder` may update `notes.md` and implementation code only
+- during `/lean-spec:implement-spec`, do not edit `spec.md` or `review.md`
+- during `/lean-spec:implement-spec`, do not update `spec.md` status, task checklists, or timestamps
 - only `architect` may reconcile `spec.md` status, checklists, and closure state during review or end
 
 ## Hook Guidance

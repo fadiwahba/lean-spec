@@ -25,12 +25,12 @@ The canonical feature artifacts live in:
 
 This workflow is human-controlled.
 Advance phases only when the human explicitly runs:
-- `/lean-spec:plan <slug>`
-- `/lean-spec:implement <slug>`
-- `/lean-spec:review <slug>`
-- `/lean-spec:status <slug>`
-- `/lean-spec:resume <slug>`
-- `/lean-spec:end <slug>`
+- `/lean-spec:start-spec <slug>`
+- `/lean-spec:implement-spec <slug>`
+- `/lean-spec:review-spec <slug>`
+- `/lean-spec:spec-status <slug>`
+- `/lean-spec:resume-spec <slug>`
+- `/lean-spec:close-spec <slug>`
 
 Recommended session split:
 - use `gemini -m gemini-3-pro-preview` for planning, review, status, resume, and end

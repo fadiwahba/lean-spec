@@ -1,5 +1,5 @@
 ---
-name: end
+name: close-spec
 description: End a lean-spec feature by reconciling the final artifact state and closing the workflow when it is truly clean.
 ---
 
@@ -12,8 +12,8 @@ Rules:
   - `lean-spec/features/<slug>/notes.md`
   - `lean-spec/features/<slug>/review.md`
 - The default session agent owns workflow closure and status reporting.
-- The human running `/lean-spec:end <slug>` is the explicit request to perform final closure cleanup.
-- `/lean-spec:end` must not close a feature that still has open notes or open review findings.
+- The human running `/lean-spec:close-spec <slug>` is the explicit request to perform final closure cleanup.
+- `/lean-spec:close-spec` must not close a feature that still has open notes or open review findings.
 - Do not fabricate prior verification. If the artifacts do not support closure confidently, stop and report that closure is blocked.
 - Before writing closure updates, retrieve the current timestamp from the shell with a command such as `date "+%Y-%m-%d %H:%M %Z"`.
 - Use the shell-fetched timestamp for all final artifact updates in the same closure pass.

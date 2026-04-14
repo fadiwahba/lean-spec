@@ -27,4 +27,4 @@ End by reporting:
 - feature folder path
 - whether files were created or reused
 - whether `spec.md` is ready for review
-- that the next likely manual phase is `/lean-spec:implement $ARGUMENTS`
+- that the next likely manual phase is `/lean-spec:implement-spec $ARGUMENTS`
