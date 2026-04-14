@@ -1,6 +1,26 @@
-# lean-spec v0.5
+<p align="center">
+  <img src="./lean-spec-logo.png" alt="Lean-Spec logo" width="160" />
+</p>
 
-A lightweight, spec-driven workflow for day-to-day development tasks in Claude Code and Gemini CLI.
+<h1 align="center">lean-spec</h1>
+
+<p align="center">
+  A minimalist, spec-driven workflow for AI coding agents.
+</p>
+
+<p align="center">
+  Claude Code · Gemini CLI · OpenCode
+</p>
+
+<p align="center">
+  <a href="#overview">Overview</a> ·
+  <a href="#typical-flow">Typical Flow</a> ·
+  <a href="#agent-roles">Roles</a> ·
+  <a href="#runtime-assets">Runtime Assets</a> ·
+  <a href="#root-guidance-files">Root Guidance</a>
+</p>
+
+A lightweight, spec-driven workflow for day-to-day development tasks in Claude Code, Gemini CLI, and OpenCode.
 
 ## Overview
 
@@ -16,6 +36,16 @@ The human explicitly controls phase progression with slash commands:
 - Gemini CLI: `/lean-spec:start-spec <slug>`, `/lean-spec:update-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
 
 There are no automatic gates. The workflow advances only when the human runs the next command.
+
+## Typical Flow
+
+1. Run `/lean-spec:start-spec <slug>` to scaffold the feature and have the `architect` role write `spec.md`.
+2. Review the spec manually.
+3. Run `/lean-spec:implement-spec <slug>` to have the `coder` role implement from the approved spec.
+4. Run `/lean-spec:review-spec <slug>` to have the `architect` role review the implementation and write findings.
+5. Run `/lean-spec:spec-status <slug>` or `/lean-spec:resume-spec <slug>` when you need to inspect or rebuild workflow state.
+6. If review findings exist, run `/lean-spec:implement-spec <slug>` again for fixes.
+7. Run `/lean-spec:close-spec <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.
 
 ## Agent Roles
 
@@ -233,14 +263,15 @@ In normal product repos:
 - keep lean-spec opt-in through its runtime commands under `.claude/`, `.gemini/`, or `.opencode/`
 - avoid biasing native one-off tasks and quick fixes toward the full spec workflow
 - use the root-guidance example files only for repos where lean-spec is intentionally the default workflow
-- `settings.stop-ui.example.json` shows an optional Stop-hook wiring for UI validation reminders
-- `remind-manual-workflow.sh` injects a concise lifecycle reminder on every human prompt
-- `enforce-manual-workflow.sh` injects targeted ownership and delegation reminders before specialist-agent spawning and file edits
-- `remind-ui-validation-on-stop.sh` is an optional end-of-turn reminder for UI-heavy tasks
 
 This framework is not a Claude plugin.
 To use it in a project, copy the assets into that project's `.claude/` folder and merge `settings.example.json` into the target project's `.claude/settings.json`.
 If you want the extra end-of-turn UI reminder, also merge `settings.stop-ui.example.json`.
+
+Useful hook assets:
+- `remind-manual-workflow.sh` injects a concise lifecycle reminder on every human prompt
+- `enforce-manual-workflow.sh` injects targeted ownership and delegation reminders before specialist-agent spawning and file edits
+- `remind-ui-validation-on-stop.sh` is an optional end-of-turn reminder for UI-heavy tasks
 
 The template source belongs under the target project's hidden Claude config:
 - `.claude/lean-spec/templates/spec.md`
@@ -271,13 +302,3 @@ OpenCode-specific note:
 Recommended Gemini session split:
 - `gemini -m gemini-3-pro-preview` for planning, review, status, resume, and end
 - `gemini -m gemini-3-flash-preview` for implementation
-
-## Typical Flow
-
-1. Run `/lean-spec:start-spec <slug>` to scaffold the feature and have the `architect` role write `spec.md`.
-2. Review the spec manually.
-3. Run `/lean-spec:implement-spec <slug>` to have the `coder` role implement from the approved spec.
-4. Run `/lean-spec:review-spec <slug>` to have the `architect` role review the implementation and write findings.
-5. Run `/lean-spec:spec-status <slug>` or `/lean-spec:resume-spec <slug>` when you need to inspect or rebuild workflow state.
-6. If review findings exist, run `/lean-spec:implement-spec <slug>` again for fixes.
-7. Run `/lean-spec:close-spec <slug>` when review is clean and you want to reconcile the final artifact state and close the feature.
