@@ -232,6 +232,7 @@ In normal product repos:
 - keep root `CLAUDE.md`, `GEMINI.md`, and `AGENTS.md` generic and project-focused
 - keep lean-spec opt-in through its runtime commands under `.claude/`, `.gemini/`, or `.opencode/`
 - avoid biasing native one-off tasks and quick fixes toward the full spec workflow
+- use the root-guidance example files only for repos where lean-spec is intentionally the default workflow
 - `settings.stop-ui.example.json` shows an optional Stop-hook wiring for UI validation reminders
 - `remind-manual-workflow.sh` injects a concise lifecycle reminder on every human prompt
 - `enforce-manual-workflow.sh` injects targeted ownership and delegation reminders before specialist-agent spawning and file edits

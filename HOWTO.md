@@ -44,6 +44,7 @@ Then merge:
 
 Do not make lean-spec the default contents of the target project's root `CLAUDE.md` unless that repo is dedicated to lean-spec-only work.
 In a normal repo, keep `CLAUDE.md` generic and project-focused. The lean-spec runtime should stay opt-in through `.claude/commands/lean-spec/`.
+Use `lean-spec/claude/CLAUDE.example.md` only when you intentionally want lean-spec to be the default workflow for that repo.
 
 Also make sure the project-visible artifact root exists:
 
@@ -74,6 +75,7 @@ Then merge:
 
 Do not make lean-spec the default contents of the target project's root `GEMINI.md` unless that repo is dedicated to lean-spec-only work.
 In a normal repo, keep `GEMINI.md` generic and project-focused. The lean-spec runtime should stay opt-in through `.gemini/commands/lean-spec/`.
+Use `lean-spec/gemini/GEMINI.example.md` only when you intentionally want lean-spec to be the default workflow for that repo.
 
 Also make sure the project-visible artifact root exists:
 
@@ -114,6 +116,7 @@ Also make sure the canonical artifact root exists:
 
 Do not make lean-spec the default contents of the target project's root `AGENTS.md` unless that repo is dedicated to lean-spec-only work.
 In a normal repo, keep `AGENTS.md` generic and project-focused. The lean-spec runtime should stay opt-in through `.opencode/commands/lean-spec/`.
+Use `lean-spec/opencode/AGENTS.example.md` only when you intentionally want lean-spec to be the default workflow for that repo.
 
 If you are running mixed mode:
 - `/lean-spec:implement-spec <slug>`
