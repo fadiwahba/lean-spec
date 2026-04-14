@@ -28,6 +28,7 @@ Session discipline:
 
 The human advances phases explicitly with:
 - `/lean-spec:start-spec <slug>`
+- `/lean-spec:update-spec <slug>`
 - `/lean-spec:implement-spec <slug>`
 - `/lean-spec:review-spec <slug>`
 - `/lean-spec:spec-status <slug>`
@@ -76,6 +77,7 @@ The orchestrator must:
 - scaffold or locate workflow files
 - enforce the intended session role for the current phase
 - route planning and review work to the Architect role
+- route spec revisions and requirement changes to the Architect role
 - route implementation and review-fix work to the Coder role
 - collect completion status from the current session role
 - stop at the end of each phase and wait for the next human command
@@ -83,6 +85,7 @@ The orchestrator must:
 The orchestrator must not:
 - auto-advance to the next phase
 - author the real implementation plan in `spec.md`
+- revise an existing `spec.md` directly when scope, constraints, UX direction, acceptance criteria, or requirements change
 - do the primary implementation work when the human intended a Flash Coder session
 - do the primary formal review when the human intended a Pro Architect session
 - bypass role boundaries during `/lean-spec:implement-spec`, even for "small", "trivial", or one-line fixes
@@ -111,6 +114,19 @@ Expected outcome:
 - scaffold files are copied from `.gemini/lean-spec/templates/`
 - `spec.md` is created or updated by the Architect role
 - `notes.md` and `review.md` exist
+- the phase stops and waits for the human
+
+### `/lean-spec:update-spec <slug>`
+
+Use when:
+- an existing feature's scope changes
+- UX direction, constraints, acceptance criteria, or requirements change after planning
+- the implementation or review uncovered a legitimate need to amend the spec
+
+Expected outcome:
+- the Architect role updates `spec.md`
+- `notes.md` and `review.md` are left intact unless later phases update them
+- `spec.md` status, checklist, and acceptance criteria are reset or amended as needed for the new direction
 - the phase stops and waits for the human
 
 ### `/lean-spec:implement-spec <slug>`
@@ -152,6 +168,7 @@ Expected outcome:
 ## Core Rules
 
 - `spec.md` is authored only by the Architect role
+- spec revisions are authored only by the Architect role via `/lean-spec:update-spec`
 - `notes.md` is authored only by the Coder role
 - `review.md` is authored only by the Architect role
 - the Coder role must not silently change scope
@@ -220,6 +237,7 @@ Required artifact discipline:
 - only the Architect role may reconcile `spec.md` status, checklists, and closure state during review or end
 - the default Gemini session must not edit implementation files directly during `/lean-spec:implement-spec`, even for one-line fixes
 - create `lean-spec/features/<slug>/artifacts/` during scaffold and reuse it for any screenshots, images, audio, PDFs, or other lean-spec evidence files
+- when a feature direction changes mid-flight, route the change through `/lean-spec:update-spec` instead of editing `spec.md` directly from the orchestrator
 
 ## Hook Guidance
 

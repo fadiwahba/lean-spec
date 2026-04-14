@@ -20,7 +20,7 @@ Rules:
 - If the feature folder already exists, do not overwrite files. Reuse the existing folder.
 - Read only the minimum relevant repository context needed to help the Architect plan accurately.
 - Stop after the Architect has written or updated `spec.md`.
-- Do not continue to implementation automatically. The human must explicitly run `/lean-spec:start-spec`, `/lean-spec:implement-spec`, `/lean-spec:review-spec`, `/lean-spec:spec-status`, `/lean-spec:resume-spec`, or `/lean-spec:close-spec` next as needed.
+- Do not continue to implementation automatically. The human must explicitly run `/lean-spec:start-spec`, `/lean-spec:update-spec`, `/lean-spec:implement-spec`, `/lean-spec:review-spec`, `/lean-spec:spec-status`, `/lean-spec:resume-spec`, or `/lean-spec:close-spec` next as needed.
 - Before writing scaffolded artifact files, retrieve the current timestamp from the shell with a command such as `date "+%Y-%m-%d %H:%M %Z"`.
 - Use the shell-fetched timestamp for `Created At`, `Updated At`, and the initial change-log entry.
 - Do not invent, estimate, hardcode, or round timestamps. Placeholder values such as `YYYY-MM-DD HH:MM TZ` or fabricated values such as `00:00 UTC` are invalid.

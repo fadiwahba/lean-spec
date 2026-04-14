@@ -29,3 +29,4 @@ End by reporting:
 - whether files were created or reused
 - whether `spec.md` is ready for review
 - that the next likely manual phase is `/lean-spec:implement-spec $ARGUMENTS`
+- and that future requirement changes should go through `/lean-spec:update-spec $ARGUMENTS`

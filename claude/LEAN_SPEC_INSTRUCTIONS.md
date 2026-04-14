@@ -13,6 +13,7 @@ Roles:
 
 The human advances phases explicitly with:
 - `/lean-spec:start-spec <slug>`
+- `/lean-spec:update-spec <slug>`
 - `/lean-spec:implement-spec <slug>`
 - `/lean-spec:review-spec <slug>`
 - `/lean-spec:spec-status <slug>`
@@ -60,6 +61,7 @@ The orchestrator must:
 - resolve the target feature folder from the slug
 - scaffold or locate workflow files
 - route planning and review work to `architect`
+- route spec revisions and requirement changes to `architect`
 - route implementation and review-fix work to `coder`
 - collect completion status from specialist agents
 - stop at the end of each phase and wait for the next human command
@@ -67,6 +69,7 @@ The orchestrator must:
 The orchestrator must not:
 - auto-advance to the next phase
 - author the real implementation plan in `spec.md`
+- revise an existing `spec.md` directly when scope, constraints, UX direction, acceptance criteria, or requirements change
 - do the primary implementation work when delegation is available
 - do the primary formal review when delegation is available
 - bypass delegation during `/lean-spec:implement-spec`, even for "small", "trivial", or one-line fixes
@@ -95,6 +98,19 @@ Expected outcome:
 - scaffold files are copied from `.claude/lean-spec/templates/`
 - `spec.md` is created or updated by `architect`
 - `notes.md` and `review.md` exist
+- the phase stops and waits for the human
+
+### `/lean-spec:update-spec <slug>`
+
+Use when:
+- an existing feature's scope changes
+- UX direction, constraints, acceptance criteria, or requirements change after planning
+- the implementation or review uncovered a legitimate need to amend the spec
+
+Expected outcome:
+- `architect` updates `spec.md`
+- `notes.md` and `review.md` are left intact unless later phases update them
+- `spec.md` status, checklist, and acceptance criteria are reset or amended as needed for the new direction
 - the phase stops and waits for the human
 
 ### `/lean-spec:implement-spec <slug>`
@@ -136,6 +152,7 @@ Expected outcome:
 ## Core Rules
 
 - `spec.md` is authored only by `architect`
+- spec revisions are authored only by `architect` via `/lean-spec:update-spec`
 - `notes.md` is authored only by `coder`
 - `review.md` is authored only by `architect`
 - `coder` must not silently change scope
@@ -210,6 +227,7 @@ Required artifact discipline:
 - only `architect` may reconcile `spec.md` status, checklists, and closure state during review or end
 - the default session agent must not edit implementation files directly during `/lean-spec:implement-spec`, even for one-line fixes
 - create `lean-spec/features/<slug>/artifacts/` during scaffold and reuse it for any screenshots, images, audio, PDFs, or other lean-spec evidence files
+- when a feature direction changes mid-flight, route the change through `/lean-spec:update-spec` instead of editing `spec.md` directly from the orchestrator
 
 ## Hook Guidance
 

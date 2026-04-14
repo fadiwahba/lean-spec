@@ -20,6 +20,7 @@ metadata:
 
 Use this skill whenever OpenCode is asked to:
 - plan a lean-spec feature
+- update a lean-spec spec after requirements change
 - implement a lean-spec feature
 - review a lean-spec feature
 - end a lean-spec feature
@@ -43,6 +44,7 @@ Use this skill whenever OpenCode is asked to:
 12. Stop and wait for the next human command
 13. Do not bypass the role owner for small or one-line fixes during `implement-spec`; the orchestrator must not edit implementation files directly
 14. If required verification is incomplete, report it and stop instead of offering ad hoc workaround choices inside the phase
+15. If requirements change after planning, route the spec amendment through `update-spec`; the orchestrator must not rewrite `spec.md` directly
 
 ## Hard Rules
 

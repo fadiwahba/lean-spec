@@ -45,7 +45,7 @@ PY
   fi
 fi
 
-if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:spec-status\|/lean-spec:resume-spec\|/lean-spec:start-spec'; then
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:spec-status\|/lean-spec:resume-spec\|/lean-spec:start-spec\|/lean-spec:update-spec'; then
   exit 0
 fi
 

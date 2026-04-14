@@ -13,6 +13,7 @@ Roles:
 
 The human advances phases explicitly with:
 - `/lean-spec:start-spec <slug>`
+- `/lean-spec:update-spec <slug>`
 - `/lean-spec:implement-spec <slug>`
 - `/lean-spec:review-spec <slug>`
 - `/lean-spec:spec-status <slug>`
@@ -69,6 +70,7 @@ The orchestrator owns:
 The orchestrator must not:
 - auto-advance to the next phase
 - take over substantive ownership of `spec.md`, `notes.md`, or `review.md`
+- revise an existing `spec.md` directly when scope, constraints, UX direction, acceptance criteria, or requirements change
 - bypass the Coder during `/lean-spec:implement-spec`, even for "small", "trivial", or one-line fixes
 - present ad hoc workaround options inside a phase when required verification is incomplete; report the incomplete verification and stop
 
@@ -85,6 +87,19 @@ Expected outcome:
 - scaffold files are copied from `.opencode/lean-spec/templates/`
 - `spec.md` is created or updated by the Architect
 - `notes.md` and `review.md` exist
+- the phase stops and waits for the human
+
+### `/lean-spec:update-spec <slug>`
+
+Use when:
+- an existing feature's scope changes
+- UX direction, constraints, acceptance criteria, or requirements change after planning
+- the implementation or review uncovered a legitimate need to amend the spec
+
+Expected outcome:
+- the Architect updates `spec.md`
+- `notes.md` and `review.md` are left intact unless later phases update them
+- `spec.md` status, checklist, and acceptance criteria are reset or amended as needed for the new direction
 - the phase stops and waits for the human
 
 ### `/lean-spec:implement-spec <slug>`
@@ -192,6 +207,7 @@ Required completion discipline:
 
 Required artifact discipline:
 - during `/lean-spec:implement-spec`, the Coder may update `notes.md` and implementation code only
+- spec revisions must go through `/lean-spec:update-spec` and remain Architect-owned
 - during `/lean-spec:implement-spec`, do not edit `spec.md` or `review.md`
 - during `/lean-spec:implement-spec`, do not update `spec.md` status, task checklists, or timestamps
 - only the Architect may reconcile `spec.md` status, checklists, and closure state during review or end

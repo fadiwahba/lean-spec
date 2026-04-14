@@ -27,6 +27,9 @@ case "$PROMPT_LOWER" in
   *"/lean-spec:start-spec "*|"/lean-spec:start-spec")
     COMMAND_HINT="This is the planning phase: scaffold or locate the feature folder, ensure lean-spec/features/<slug>/artifacts exists, delegate spec authoring to architect, and stop when spec.md is ready."
     ;;
+  *"/lean-spec:update-spec "*|"/lean-spec:update-spec")
+    COMMAND_HINT="This is the spec-update phase: delegate spec.md revisions to architect, use it when scope, constraints, UX direction, acceptance criteria, or requirements changed, do not let the orchestrator edit spec.md directly, and stop when the revised spec is ready."
+    ;;
   *"/lean-spec:implement-spec "*|"/lean-spec:implement-spec")
     COMMAND_HINT="This is the implementation phase: delegate code work and notes.md updates to coder, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, never bypass delegation for small or one-line fixes, use Context7 before implementation when library or framework behavior matters, use sequential-thinking before multi-step or risky work, use Playwright for frontend/UI validation before reporting implementation complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, save any captures only under lean-spec/features/<slug>/artifacts, and if required verification is incomplete, report that and stop instead of offering ad hoc workaround choices."
     ;;
@@ -54,12 +57,14 @@ base = (
     "it owns scaffolding, command routing, and concise status reporting. "
     "Do not auto-advance phases. "
     "Delegate planning and review to architect. "
+    "Delegate spec revisions to architect. "
     "Delegate implementation and notes.md ownership to coder. "
     "architect owns spec.md and review.md. "
     "coder owns notes.md and implementation work. "
     "coder must not edit spec.md or review.md during implement. "
     "coder must not update spec.md status, checklist items, or timestamps during implement. "
     "The orchestrator must not bypass delegation during implement-spec, even for small or one-line fixes. "
+    "The orchestrator must not revise spec.md directly when requirements or feature direction change; use update-spec and delegate that work to architect. "
     "Workflow state is derived only from spec.md, notes.md, and review.md; there is no separate active-state file. "
     "Tooling discipline: use Context7 before implementation or review when external APIs, libraries, frameworks, or tool behavior matter. "
     "Use sequential-thinking before multi-step or risky planning, implementation, or review work when the task is ambiguous or materially risky. "

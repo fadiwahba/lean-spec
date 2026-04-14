@@ -9,6 +9,7 @@ Requirements:
 - use `.gemini/lean-spec/templates/` as the template source
 - scaffold `lean-spec/features/<slug>/spec.md`, `notes.md`, and `review.md`
 - ensure `lean-spec/features/<slug>/artifacts/` exists
+- future requirement changes must use `/lean-spec:update-spec <slug>`
 - before writing scaffold files, fetch one shell-backed timestamp with:
   `date "+%Y-%m-%d %H:%M %Z"`
 - this phase must run in the Gemini Pro session for the Architect role

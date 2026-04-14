@@ -20,6 +20,9 @@ case "$PROMPT_LOWER" in
   *"/lean-spec:start-spec "*|"/lean-spec:start-spec")
     COMMAND_HINT="This is the planning phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Use the Architect role, scaffold from .gemini/lean-spec/templates/, ensure lean-spec/features/<slug>/artifacts exists, and stop when spec.md is ready."
     ;;
+  *"/lean-spec:update-spec "*|"/lean-spec:update-spec")
+    COMMAND_HINT="This is the spec-update phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Use the Architect role, revise spec.md for changed scope, constraints, UX direction, acceptance criteria, or requirements, do not let the orchestrator edit spec.md directly, and stop when the revised spec is ready."
+    ;;
   *"/lean-spec:implement-spec "*|"/lean-spec:implement-spec")
     COMMAND_HINT="This is the implementation phase. It must run in the Gemini Flash session. If you are not in the intended Flash session, stop and tell the human to rerun it there. Use the Coder role, update notes.md as needed, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, never bypass the Coder role for small or one-line fixes, use context7 before implementation when library or framework behavior matters, use sequential_thinking before multi-step or risky work, use playwright for frontend/UI validation before reporting implementation complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, save any captures only under lean-spec/features/<slug>/artifacts, stop any local dev server or validation port you started before ending the phase, and if required verification is incomplete, report that and stop instead of offering ad hoc workaround choices."
     ;;
@@ -45,6 +48,7 @@ base = (
     "The default Gemini session is the orchestrator only: it owns scaffolding, command routing, and concise status reporting. "
     "Do not auto-advance phases. "
     "Use Gemini Pro for the Architect role in planning, review, status, resume, and end. "
+    "Use Gemini Pro for update-spec as the Architect role. "
     "Use Gemini Flash for the Coder role in implementation. "
     "Gemini does not provide native lean-spec subagents here; Architect and Coder are session roles. "
     "Architect owns spec.md and review.md. "
@@ -52,6 +56,7 @@ base = (
     "Coder must not edit spec.md or review.md during implement. "
     "Coder must not update spec.md status, checklist items, or timestamps during implement. "
     "The default Gemini session must not bypass the Coder role during implement-spec, even for small or one-line fixes. "
+    "The default Gemini session must not revise spec.md directly when requirements or feature direction change; use update-spec and the Architect role. "
     "Workflow state is derived only from spec.md, notes.md, and review.md; there is no separate active-state file. "
     "Use shell-backed timestamps such as date \"+%Y-%m-%d %H:%M %Z\". "
     "Use context7 before implementation or review when external library or framework behavior matters. "

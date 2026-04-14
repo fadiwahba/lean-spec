@@ -1,0 +1,20 @@
+description = "Amend an existing lean-spec specification."
+
+prompt = """
+Follow the lean-spec manual workflow from GEMINI.md and .gemini/LEAN_SPEC_INSTRUCTIONS.md.
+
+Run the spec-update phase for feature slug: {{args}}
+
+Requirements:
+- read `lean-spec/features/<slug>/spec.md`, `notes.md`, and `review.md`
+- use this phase when scope, constraints, UX direction, acceptance criteria, or requirements changed after planning
+- this phase must run in the Gemini Pro session for the Architect role
+- if this session is not the intended Pro session, stop and tell the human to switch sessions and rerun the command
+- the default Gemini session must not revise `spec.md` directly; the Architect role owns the spec amendment
+- before editing `spec.md`, fetch one shell-backed timestamp with:
+  `date "+%Y-%m-%d %H:%M %Z"`
+- update only `spec.md` in this phase unless later phases need to change other artifacts
+- revise goal, scope, constraints, implementation notes, checklist, acceptance criteria, status, and change log as needed
+- stop after the revised `spec.md` is ready
+- do not implement code in this phase
+"""
