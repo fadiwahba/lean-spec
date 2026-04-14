@@ -1,6 +1,7 @@
 # Lean-Spec OpenCode Workflow
 
-This project uses `lean-spec` in OpenCode.
+Use this only when you intentionally want lean-spec called out in a repo's root `AGENTS.md`.
+For most product repos, keep root `AGENTS.md` generic and let lean-spec remain opt-in through `.opencode/commands/lean-spec/`.
 
 The workflow can be run in two ways:
 
@@ -28,6 +29,7 @@ Canonical feature artifacts live in:
 
 Lean-spec commands:
 - `/lean-spec:start-spec <slug>`
+- `/lean-spec:update-spec <slug>`
 - `/lean-spec:implement-spec <slug>`
 - `/lean-spec:review-spec <slug>`
 - `/lean-spec:spec-status <slug>`

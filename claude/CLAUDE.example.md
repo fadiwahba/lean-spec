@@ -1,6 +1,7 @@
 # Project CLAUDE Example
 
-Use this as a merge example for an existing project's root `CLAUDE.md`.
+Use this only if you intentionally want lean-spec called out in a repo's root `CLAUDE.md`.
+For most product repos, this is not recommended; keep root `CLAUDE.md` generic and let lean-spec remain opt-in through `.claude/commands/lean-spec/`.
 
 ```md
 ## Lean-Spec
@@ -27,6 +28,7 @@ The canonical feature artifacts live in:
 This workflow is human-controlled.
 Advance phases only when the human explicitly runs:
 - `/lean-spec:start-spec <slug>`
+- `/lean-spec:update-spec <slug>`
 - `/lean-spec:implement-spec <slug>`
 - `/lean-spec:review-spec <slug>`
 - `/lean-spec:spec-status <slug>`

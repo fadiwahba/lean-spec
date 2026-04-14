@@ -10,7 +10,6 @@ lean-spec is intentionally manual:
 ## Before You Start
 
 For an active Claude Code project, the meaningful runtime files are:
-- root `CLAUDE.md`
 - `.claude/agents/lean-spec/*.md`
 - `.claude/commands/lean-spec/*.md`
 - `.claude/hooks/lean-spec/*.sh`
@@ -37,16 +36,14 @@ To install it into a target project, copy these files into the target project's 
 - `lean-spec/claude/hooks/lean-spec/*.sh` -> `.claude/hooks/lean-spec/*.sh`
 - `lean-spec/claude/lean-spec/templates/*.md` -> `.claude/lean-spec/templates/*.md`
 - `lean-spec/claude/LEAN_SPEC_INSTRUCTIONS.md` -> `.claude/LEAN_SPEC_INSTRUCTIONS.md`
-- `lean-spec/claude/CLAUDE.example.md` -> use as a merge example for the target project's root `CLAUDE.md`
 
 Then merge:
 
 - `lean-spec/claude/settings.example.json` -> `.claude/settings.json`
 - optional: `lean-spec/claude/settings.stop-ui.example.json` -> `.claude/settings.json`
 
-Then update the target project's root `CLAUDE.md` so it points to:
-
-- `.claude/LEAN_SPEC_INSTRUCTIONS.md`
+Do not make lean-spec the default contents of the target project's root `CLAUDE.md` unless that repo is dedicated to lean-spec-only work.
+In a normal repo, keep `CLAUDE.md` generic and project-focused. The lean-spec runtime should stay opt-in through `.claude/commands/lean-spec/`.
 
 Also make sure the project-visible artifact root exists:
 
@@ -66,7 +63,6 @@ To install lean-spec into a Gemini CLI project, copy these files into the target
 - `lean-spec/gemini/hooks/lean-spec/*.sh` -> `.gemini/hooks/lean-spec/*.sh`
 - `lean-spec/gemini/lean-spec/templates/*.md` -> `.gemini/lean-spec/templates/*.md`
 - `lean-spec/gemini/LEAN_SPEC_INSTRUCTIONS.md` -> `.gemini/LEAN_SPEC_INSTRUCTIONS.md`
-- `lean-spec/gemini/GEMINI.example.md` -> use as a merge example for the target project's root `GEMINI.md`
 
 Then merge:
 
@@ -76,9 +72,8 @@ Then merge:
 - optional: `lean-spec/gemini/settings.flash.example.json`
 - `lean-spec/gemini/geminiignore.example` -> `.geminiignore`
 
-Then update the target project's root `GEMINI.md` so it points to:
-
-- `.gemini/LEAN_SPEC_INSTRUCTIONS.md`
+Do not make lean-spec the default contents of the target project's root `GEMINI.md` unless that repo is dedicated to lean-spec-only work.
+In a normal repo, keep `GEMINI.md` generic and project-focused. The lean-spec runtime should stay opt-in through `.gemini/commands/lean-spec/`.
 
 Also make sure the project-visible artifact root exists:
 
@@ -100,8 +95,6 @@ Use this installation when you want OpenCode to participate in lean-spec, either
 
 Copy these files into the target project:
 
-- `lean-spec/opencode/AGENTS.md` -> root `AGENTS.md` when the project does not already have one
-- `lean-spec/opencode/AGENTS.example.md` -> use as a merge example for the target project's root `AGENTS.md`
 - `lean-spec/opencode/LEAN_SPEC_INSTRUCTIONS.md` -> `.opencode/LEAN_SPEC_INSTRUCTIONS.md`
 - `lean-spec/opencode/opencode.example.json` -> merge into the target project's root `opencode.json`
 - `lean-spec/opencode/agents/lean-spec-architect.md` -> `.opencode/agents/lean-spec-architect.md`
@@ -118,6 +111,9 @@ Copy these files into the target project:
 Also make sure the canonical artifact root exists:
 
 - `lean-spec/features/`
+
+Do not make lean-spec the default contents of the target project's root `AGENTS.md` unless that repo is dedicated to lean-spec-only work.
+In a normal repo, keep `AGENTS.md` generic and project-focused. The lean-spec runtime should stay opt-in through `.opencode/commands/lean-spec/`.
 
 If you are running mixed mode:
 - `/lean-spec:implement-spec <slug>`
@@ -139,11 +135,12 @@ Use this sequence for most work:
 
 1. Run `/lean-spec:start-spec <slug>`
 2. Review `spec.md`
-3. Run `/lean-spec:implement-spec <slug>`
-4. Run `/lean-spec:review-spec <slug>`
-5. Run `/lean-spec:spec-status <slug>` or `/lean-spec:resume-spec <slug>` when you need state inspection or recovery
-6. If review findings remain, run `/lean-spec:implement-spec <slug>` again
-7. Run `/lean-spec:close-spec <slug>` when review is clean and you want the framework to reconcile and close the feature
+3. If requirements change, run `/lean-spec:update-spec <slug>`
+4. Run `/lean-spec:implement-spec <slug>`
+5. Run `/lean-spec:review-spec <slug>`
+6. Run `/lean-spec:spec-status <slug>` or `/lean-spec:resume-spec <slug>` when you need state inspection or recovery
+7. If review findings remain, run `/lean-spec:implement-spec <slug>` again
+8. Run `/lean-spec:close-spec <slug>` when review is clean and you want the framework to reconcile and close the feature
 
 Strict ownership:
 - scaffold and routing -> default session agent
@@ -215,6 +212,19 @@ Expected result:
 - the workflow stops and waits for you
 
 If findings remain, run `/lean-spec:implement-spec <slug>` again to address them.
+
+## Updating A Spec
+
+When requirements, UX direction, constraints, or acceptance criteria change after planning, run:
+
+```text
+/lean-spec:update-spec todo-app-zustand
+```
+
+Expected result:
+- the Architect role updates `spec.md`
+- the orchestrator does not edit `spec.md` directly
+- the workflow stops and waits for the next explicit human command
 
 ## Hook Strategy
 

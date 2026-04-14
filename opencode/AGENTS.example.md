@@ -1,6 +1,7 @@
 # Project AGENTS Example
 
-Use this as a merge example for an existing project's root `AGENTS.md`.
+Use this only if you intentionally want lean-spec called out in a repo's root `AGENTS.md`.
+For most product repos, this is not recommended; keep root `AGENTS.md` generic and let lean-spec remain opt-in through `.opencode/commands/lean-spec/`.
 
 ```md
 # Lean-Spec OpenCode Workflow
@@ -33,6 +34,7 @@ Canonical feature artifacts live in:
 
 Lean-spec commands:
 - `/lean-spec:start-spec <slug>`
+- `/lean-spec:update-spec <slug>`
 - `/lean-spec:implement-spec <slug>`
 - `/lean-spec:review-spec <slug>`
 - `/lean-spec:spec-status <slug>`

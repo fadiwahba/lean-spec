@@ -12,8 +12,8 @@ lean-spec is now a manual, human-controlled workflow built around three roles in
 
 The human explicitly controls phase progression with slash commands:
 
-- Claude Code: `/lean-spec:start-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
-- Gemini CLI: `/lean-spec:start-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
+- Claude Code: `/lean-spec:start-spec <slug>`, `/lean-spec:update-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
+- Gemini CLI: `/lean-spec:start-spec <slug>`, `/lean-spec:update-spec <slug>`, `/lean-spec:implement-spec <slug>`, `/lean-spec:review-spec <slug>`, `/lean-spec:spec-status <slug>`, `/lean-spec:resume-spec <slug>`, `/lean-spec:close-spec <slug>`
 
 There are no automatic gates. The workflow advances only when the human runs the next command.
 
@@ -126,6 +126,7 @@ features/
     spec.md
     notes.md
     review.md
+    artifacts/
 ```
 
 ## Runtime Assets
@@ -135,6 +136,7 @@ Portable Claude assets live in:
 - `lean-spec/claude/agents/lean-spec/architect.md`
 - `lean-spec/claude/agents/lean-spec/coder.md`
 - `lean-spec/claude/commands/lean-spec/start-spec.md`
+- `lean-spec/claude/commands/lean-spec/update-spec.md`
 - `lean-spec/claude/commands/lean-spec/implement-spec.md`
 - `lean-spec/claude/commands/lean-spec/review-spec.md`
 - `lean-spec/claude/commands/lean-spec/spec-status.md`
@@ -163,6 +165,7 @@ Portable Gemini assets live in:
 - `lean-spec/gemini/hooks/lean-spec/enforce-manual-workflow.sh`
 - `lean-spec/gemini/hooks/lean-spec/validate-final-response.sh`
 - `lean-spec/gemini/commands/lean-spec/start-spec.toml`
+- `lean-spec/gemini/commands/lean-spec/update-spec.toml`
 - `lean-spec/gemini/commands/lean-spec/implement-spec.toml`
 - `lean-spec/gemini/commands/lean-spec/review-spec.toml`
 - `lean-spec/gemini/commands/lean-spec/spec-status.toml`
@@ -181,6 +184,7 @@ Portable OpenCode assets live in:
 - `lean-spec/opencode/agents/lean-spec-architect.md`
 - `lean-spec/opencode/agents/lean-spec-coder.md`
 - `lean-spec/opencode/commands/lean-spec/start-spec.md`
+- `lean-spec/opencode/commands/lean-spec/update-spec.md`
 - `lean-spec/opencode/commands/lean-spec/implement-spec.md`
 - `lean-spec/opencode/commands/lean-spec/review-spec.md`
 - `lean-spec/opencode/commands/lean-spec/spec-status.md`
@@ -205,6 +209,7 @@ Portable OpenCode assets live in:
 10. Artifact timestamps must come from a shell-backed runtime source such as `date "+%Y-%m-%d %H:%M %Z"`; fabricated or placeholder timestamps are invalid.
 11. `/lean-spec:close-spec` is a real cleanup phase: when the feature is clean, it should reconcile `spec.md`, refresh artifact timestamps, and close the workflow coherently.
 12. Review passes should keep `spec.md` reconciled as work progresses; `/lean-spec:close-spec` should only finalize closure, not backfill the entire checklist for the first time.
+13. Mid-flight requirement or UX direction changes should go through `/lean-spec:update-spec`, not through direct orchestrator edits to `spec.md`.
 
 ## Hooks
 
@@ -218,6 +223,15 @@ Hooks are the right place to reduce orchestrator drift, but only if they are use
 The provided hook assets follow that model:
 
 - `settings.example.json` shows the project-level hook wiring for `.claude/settings.json`
+
+## Root Guidance Files
+
+Do not make lean-spec the default behavior of the host repo's root guidance files unless that repository is dedicated to lean-spec-only work.
+
+In normal product repos:
+- keep root `CLAUDE.md`, `GEMINI.md`, and `AGENTS.md` generic and project-focused
+- keep lean-spec opt-in through its runtime commands under `.claude/`, `.gemini/`, or `.opencode/`
+- avoid biasing native one-off tasks and quick fixes toward the full spec workflow
 - `settings.stop-ui.example.json` shows an optional Stop-hook wiring for UI validation reminders
 - `remind-manual-workflow.sh` injects a concise lifecycle reminder on every human prompt
 - `enforce-manual-workflow.sh` injects targeted ownership and delegation reminders before specialist-agent spawning and file edits
@@ -236,7 +250,6 @@ Feature artifacts remain project-visible and should be scaffolded into:
 - `lean-spec/features/<slug>/`
 
 Gemini follows the same lifecycle model, but maps onto:
-- `GEMINI.md`
 - `.gemini/settings.json`
 - `.gemini/commands/lean-spec/*.toml`
 - `.gemini/hooks/lean-spec/*.sh`
@@ -250,10 +263,9 @@ Gemini-specific note:
 
 OpenCode-specific note:
 - OpenCode can be used either as a Coder companion or as a full lean-spec host with separate Architect and Coder agents
-- root `AGENTS.md` is the primary instruction surface
 - `opencode.json` can include `.opencode/LEAN_SPEC_INSTRUCTIONS.md` via the `instructions` field
 - OpenCode has native agents and subagents, so the lean-spec Coder maps naturally to a dedicated subagent
-- the workflow here is enforced through `AGENTS.md`, agent prompts, commands, skills, and permissions
+- the workflow here is enforced through `.opencode/LEAN_SPEC_INSTRUCTIONS.md`, agent prompts, commands, skills, and permissions
 
 Recommended Gemini session split:
 - `gemini -m gemini-3-pro-preview` for planning, review, status, resume, and end
