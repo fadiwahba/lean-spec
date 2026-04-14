@@ -19,6 +19,8 @@ Requirements:
 - update `notes.md` with blockers, deviations, and partial completion notes when needed
 - do not rewrite `spec.md` or `review.md`
 - do not update `spec.md` status, checklist items, or timestamps during implementation
+- do not bypass the Coder role for small or one-line fixes; the default session must not edit implementation files directly in this phase
+- if required verification cannot be completed, report the verification as incomplete and stop; do not ask the human to choose ad hoc workaround paths inside this phase
 - stop after the implementation pass
 - in the final report, explicitly state whether `context7`, `sequential_thinking`, and `playwright` were used, or whether any required tool was unavailable
 - do not claim implementation complete unless the required tool usage and artifact ownership rules above were satisfied

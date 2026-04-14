@@ -21,7 +21,7 @@ case "$PROMPT_LOWER" in
     COMMAND_HINT="This is the planning phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Use the Architect role, scaffold from .gemini/lean-spec/templates/, and stop when spec.md is ready."
     ;;
   *"/lean-spec:implement-spec "*|"/lean-spec:implement-spec")
-    COMMAND_HINT="This is the implementation phase. It must run in the Gemini Flash session. If you are not in the intended Flash session, stop and tell the human to rerun it there. Use the Coder role, update notes.md as needed, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, use context7 before implementation when library or framework behavior matters, use sequential_thinking before multi-step or risky work, use playwright for frontend/UI validation before reporting implementation complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, and stop any local dev server or validation port you started before ending the phase."
+    COMMAND_HINT="This is the implementation phase. It must run in the Gemini Flash session. If you are not in the intended Flash session, stop and tell the human to rerun it there. Use the Coder role, update notes.md as needed, never edit spec.md or review.md in this phase, never update spec.md status, checklist items, or timestamps in this phase, never bypass the Coder role for small or one-line fixes, use context7 before implementation when library or framework behavior matters, use sequential_thinking before multi-step or risky work, use playwright for frontend/UI validation before reporting implementation complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, stop any local dev server or validation port you started before ending the phase, and if required verification is incomplete, report that and stop instead of offering ad hoc workaround choices."
     ;;
   *"/lean-spec:review-spec "*|"/lean-spec:review-spec")
     COMMAND_HINT="This is the review phase. It must run in the Gemini Pro session. If you are not in the intended Pro session, stop and tell the human to rerun it there. Use the Architect role, update review.md, reconcile spec.md, use context7 when library or framework behavior matters, use sequential_thinking for multi-step or risky review work, use playwright for frontend/UI review before reporting the review complete unless it is unavailable, close any opened Playwright browser, context, or page before ending the phase, never save Playwright screenshots into the project root, and stop any local dev server or validation port you started before ending the phase."
@@ -51,6 +51,7 @@ base = (
     "Coder owns notes.md and implementation work. "
     "Coder must not edit spec.md or review.md during implement. "
     "Coder must not update spec.md status, checklist items, or timestamps during implement. "
+    "The default Gemini session must not bypass the Coder role during implement-spec, even for small or one-line fixes. "
     "Workflow state is derived only from spec.md, notes.md, and review.md; there is no separate active-state file. "
     "Use shell-backed timestamps such as date \"+%Y-%m-%d %H:%M %Z\". "
     "Use context7 before implementation or review when external library or framework behavior matters. "
@@ -60,6 +61,7 @@ base = (
     "Do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed. "
     "When a phase starts a local dev server or opens a validation port, stop it before ending the phase. "
     "Use a project-approved cleanup command such as `npx kill-port 3000` when port cleanup is needed. "
+    "If required verification is incomplete, report it and stop instead of offering ad hoc workaround choices inside the phase. "
     "Do not claim implementation or review complete unless the required tool usage is satisfied or explicit unavailability is reported. "
     "Review passes must reconcile spec.md progressively. "
     "End should only finalize closure, not backfill the entire checklist for the first time."

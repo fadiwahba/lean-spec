@@ -68,6 +68,8 @@ The orchestrator owns:
 The orchestrator must not:
 - auto-advance to the next phase
 - take over substantive ownership of `spec.md`, `notes.md`, or `review.md`
+- bypass the Coder during `/lean-spec:implement-spec`, even for "small", "trivial", or one-line fixes
+- present ad hoc workaround options inside a phase when required verification is incomplete; report the incomplete verification and stop
 
 ## Command Semantics
 
@@ -191,6 +193,7 @@ Required artifact discipline:
 - during `/lean-spec:implement-spec`, do not edit `spec.md` or `review.md`
 - during `/lean-spec:implement-spec`, do not update `spec.md` status, task checklists, or timestamps
 - only the Architect may reconcile `spec.md` status, checklists, and closure state during review or end
+- the orchestrator must not edit implementation files directly during `/lean-spec:implement-spec`, even for one-line fixes
 
 ## Completion Discipline
 

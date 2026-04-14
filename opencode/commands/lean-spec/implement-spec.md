@@ -26,6 +26,8 @@ Requirements:
 - do not edit `spec.md`
 - do not edit `review.md`
 - do not update `spec.md` status, checklist items, or timestamps during implementation
+- do not bypass the Coder for small or one-line fixes; the orchestrator must not edit implementation files directly in this phase
+- if required verification cannot be completed, report the verification as incomplete and stop; do not ask the human to choose ad hoc workaround paths inside this phase
 - stop after the implementation pass
 
 End by reporting:

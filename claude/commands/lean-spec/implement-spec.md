@@ -22,7 +22,9 @@ Rules:
 - If you start a local dev server or open a validation port, stop it before ending the phase. Use a project-approved cleanup command such as `npx kill-port 3000` when needed.
 - The Coder agent must not rewrite `spec.md` or `review.md`.
 - The Coder agent must not update `spec.md` status, checklist items, or timestamps during implementation.
+- The default session agent must not edit implementation files directly in this phase, even for "small", "trivial", or one-line fixes. Delegate to the Coder agent.
 - If scope is unclear or blocked, record that in `notes.md`.
+- If required verification cannot be completed, report the verification as incomplete and stop. Do not ask the human to choose ad hoc workaround paths inside this phase.
 - Stop when the implementation pass is complete.
 - Do not continue to review automatically. The human must explicitly run `/lean-spec:review-spec`.
 - Do not claim implementation complete unless the required tool usage and artifact ownership rules above were satisfied.

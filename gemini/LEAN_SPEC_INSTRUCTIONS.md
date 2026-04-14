@@ -84,6 +84,8 @@ The orchestrator must not:
 - author the real implementation plan in `spec.md`
 - do the primary implementation work when the human intended a Flash Coder session
 - do the primary formal review when the human intended a Pro Architect session
+- bypass role boundaries during `/lean-spec:implement-spec`, even for "small", "trivial", or one-line fixes
+- present ad hoc workaround options inside a phase when required verification is incomplete; report the incomplete verification and stop
 
 ## Strict Ownership
 
@@ -214,6 +216,7 @@ Required artifact discipline:
 - during `/lean-spec:implement-spec`, do not edit `spec.md` or `review.md`
 - during `/lean-spec:implement-spec`, do not update `spec.md` status, task checklists, or timestamps
 - only the Architect role may reconcile `spec.md` status, checklists, and closure state during review or end
+- the default Gemini session must not edit implementation files directly during `/lean-spec:implement-spec`, even for one-line fixes
 
 ## Hook Guidance
 

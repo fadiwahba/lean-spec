@@ -41,6 +41,8 @@ Use this skill whenever OpenCode is asked to:
 10. When a phase starts a local dev server or opens a validation port, stop it before ending the phase; use a project-approved cleanup command such as `npx kill-port 3000` when needed
 11. Use shell-backed timestamps when editing artifacts
 12. Stop and wait for the next human command
+13. Do not bypass the role owner for small or one-line fixes during `implement-spec`; the orchestrator must not edit implementation files directly
+14. If required verification is incomplete, report it and stop instead of offering ad hoc workaround choices inside the phase
 
 ## Hard Rules
 
