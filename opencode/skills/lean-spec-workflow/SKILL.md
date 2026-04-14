@@ -37,7 +37,7 @@ Use this skill whenever OpenCode is asked to:
 6. Use `sequential_thinking` for multi-step or risky work
 7. Use `playwright` for frontend/UI validation before claiming implementation or review completion unless it is explicitly unavailable
 8. Close any opened Playwright browser, context, or page before ending the phase
-9. Do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed
+9. Do not save Playwright screenshots or captures into the project root; store any screenshots, images, audio, PDFs, or other lean-spec evidence files only under `lean-spec/features/<slug>/artifacts/`
 10. When a phase starts a local dev server or opens a validation port, stop it before ending the phase; use a project-approved cleanup command such as `npx kill-port 3000` when needed
 11. Use shell-backed timestamps when editing artifacts
 12. Stop and wait for the next human command

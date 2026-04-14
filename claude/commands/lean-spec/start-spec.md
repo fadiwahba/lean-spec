@@ -15,6 +15,7 @@ Rules:
   - `spec.md`
   - `notes.md`
   - `review.md`
+  - `artifacts/`
 - Use `.claude/lean-spec/templates/` as the source for scaffolded files.
 - If the feature folder already exists, do not overwrite files. Reuse the existing folder.
 - Read only the minimum relevant repository context needed to help the Architect plan accurately.
@@ -27,15 +28,16 @@ Rules:
 Steps:
 1. Normalize the slug from `$ARGUMENTS`.
 2. Create `lean-spec/features/<slug>/` if needed.
-3. Copy the template files from `.claude/lean-spec/templates/` if they do not already exist.
-4. Retrieve the current timestamp from the shell once for the scaffold pass.
-5. Replace obvious placeholders in `spec.md`:
+3. Ensure `lean-spec/features/<slug>/artifacts/` exists.
+4. Copy the template files from `.claude/lean-spec/templates/` if they do not already exist.
+5. Retrieve the current timestamp from the shell once for the scaffold pass.
+6. Replace obvious placeholders in `spec.md`:
    - feature title
    - slug
    - `Created At`
    - `Updated At`
    - initial change log line
-6. Replace obvious placeholders in `notes.md` and `review.md`:
+7. Replace obvious placeholders in `notes.md` and `review.md`:
    - `Created At`
    - `Updated At`
 7. Delegate planning and spec authoring to `architect`.
@@ -50,6 +52,7 @@ Use these shell commands when appropriate:
 ```bash
 NOW="$(date "+%Y-%m-%d %H:%M %Z")"
 mkdir -p "lean-spec/features/$ARGUMENTS"
+mkdir -p "lean-spec/features/$ARGUMENTS/artifacts"
 cp ".claude/lean-spec/templates/spec.md" "lean-spec/features/$ARGUMENTS/spec.md"
 cp ".claude/lean-spec/templates/notes.md" "lean-spec/features/$ARGUMENTS/notes.md"
 cp ".claude/lean-spec/templates/review.md" "lean-spec/features/$ARGUMENTS/review.md"

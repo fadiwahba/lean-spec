@@ -18,7 +18,7 @@ Rules:
 - If `review.md` contains open findings, the Coder agent should address those findings as part of this phase.
 - For frontend/UI work, use Playwright or equivalent browser validation before reporting implementation complete, unless it is explicitly unavailable.
 - If Playwright is used, close any opened browser, context, or page before ending the phase.
-- Do not save Playwright screenshots into the project root. Use a dedicated artifact folder if captures are needed.
+- Do not save Playwright screenshots into the project root. Save any screenshots or captures only under `lean-spec/features/<slug>/artifacts/`.
 - If you start a local dev server or open a validation port, stop it before ending the phase. Use a project-approved cleanup command such as `npx kill-port 3000` when needed.
 - The Coder agent must not rewrite `spec.md` or `review.md`.
 - The Coder agent must not update `spec.md` status, checklist items, or timestamps during implementation.

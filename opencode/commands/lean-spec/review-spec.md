@@ -19,7 +19,7 @@ Requirements:
 - review against the implementation and the current spec
 - for frontend/UI review, use `playwright` before reporting the review complete, unless it is explicitly unavailable
 - if `playwright` is used, close any opened browser, context, or page before ending the phase
-- do not save Playwright screenshots into the project root; use a dedicated artifact folder if captures are needed
+- do not save Playwright screenshots into the project root; save any screenshots or captures only under `lean-spec/features/$ARGUMENTS/artifacts/`
 - if you start a local dev server or open a validation port, stop it before ending the phase; use a project-approved cleanup command such as `npx kill-port 3000` when needed
 - update `review.md` with concrete findings and dispositions
 - reconcile `spec.md` during review so checklist progress and status match the reviewed implementation

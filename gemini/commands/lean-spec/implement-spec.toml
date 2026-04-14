@@ -14,7 +14,7 @@ Requirements:
 - implement from `spec.md`
 - for frontend/UI work, use `playwright` before reporting implementation complete, unless it is explicitly unavailable
 - if `playwright` is used, close any opened browser, context, or page before ending the phase
-- do not save Playwright screenshots into the project root; use a dedicated artifact folder if captures are needed
+- do not save Playwright screenshots into the project root; save any screenshots or captures only under `lean-spec/features/<slug>/artifacts/`
 - if you start a local dev server or open a validation port, stop it before ending the phase; use a project-approved cleanup command such as `npx kill-port 3000` when needed
 - update `notes.md` with blockers, deviations, and partial completion notes when needed
 - do not rewrite `spec.md` or `review.md`

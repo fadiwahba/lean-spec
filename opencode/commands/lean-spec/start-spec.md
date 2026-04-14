@@ -15,6 +15,7 @@ Requirements:
   - `spec.md`
   - `notes.md`
   - `review.md`
+  - `artifacts/`
 - if files already exist, reuse them and do not overwrite blindly
 - before writing scaffold files, fetch one shell-backed timestamp with:
   - `date "+%Y-%m-%d %H:%M %Z"`

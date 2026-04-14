@@ -28,6 +28,7 @@ For each feature, the canonical artifacts live in:
 - `lean-spec/features/<slug>/spec.md`
 - `lean-spec/features/<slug>/notes.md`
 - `lean-spec/features/<slug>/review.md`
+- `lean-spec/features/<slug>/artifacts/`
 
 Template sources live in:
 
@@ -187,7 +188,8 @@ Playwright hygiene:
 - do not leave long-lived Playwright sessions running across lean-spec phases unless the human explicitly asks
 - if Playwright fails due to connection or stale-session errors, report it explicitly as unavailable for that phase
 - do not save Playwright screenshots or captures into the project root
-- if screenshots or captures are needed, store them in a dedicated artifact folder such as `lean-spec/artifacts/playwright/` or another project-approved artifact path
+- if screenshots or captures are needed, store them only under `lean-spec/features/<slug>/artifacts/`
+- do not create sibling screenshot folders or save screenshots directly under the feature root
 
 Dev server hygiene:
 - when a phase starts a local dev server or opens a validation port, stop it before ending the phase
@@ -207,6 +209,7 @@ Required artifact discipline:
 - during `/lean-spec:implement-spec`, do not update `spec.md` status, task checklists, or timestamps
 - only `architect` may reconcile `spec.md` status, checklists, and closure state during review or end
 - the default session agent must not edit implementation files directly during `/lean-spec:implement-spec`, even for one-line fixes
+- create `lean-spec/features/<slug>/artifacts/` during scaffold and reuse it for any screenshots, images, audio, PDFs, or other lean-spec evidence files
 
 ## Hook Guidance
 

@@ -18,7 +18,7 @@ Rules:
 - The Architect agent must review against `spec.md`, `notes.md`, and the implementation diff.
 - For frontend/UI review, use Playwright or equivalent browser validation before reporting the review complete, unless it is explicitly unavailable.
 - If Playwright is used, close any opened browser, context, or page before ending the phase.
-- Do not save Playwright screenshots into the project root. Use a dedicated artifact folder if captures are needed.
+- Do not save Playwright screenshots into the project root. Save any screenshots or captures only under `lean-spec/features/<slug>/artifacts/`.
 - If you start a local dev server or open a validation port, stop it before ending the phase. Use a project-approved cleanup command such as `npx kill-port 3000` when needed.
 - The Architect agent must write concrete findings, risks, regressions, and missing tests into `review.md`.
 - The Architect agent must also reconcile `spec.md` during review so the checklist and status stay aligned with the reviewed implementation state.
