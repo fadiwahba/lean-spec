@@ -167,6 +167,13 @@ If you are running full OpenCode mode:
 - For frontend/UI work, use `playwright` before declaring implementation or review complete, unless it is explicitly unavailable.
 - Do not perform destructive shell actions unless the human explicitly asked.
 
+Playwright hygiene:
+- when browser validation is used, close any opened browser, context, or page before ending the phase
+- do not leave long-lived Playwright sessions running across lean-spec phases unless the human explicitly asks
+- if `playwright` fails due to connection or stale-session errors, report it explicitly as unavailable for that phase
+- do not save Playwright screenshots or captures into the project root
+- if screenshots or captures are needed, store them in a dedicated artifact folder such as `lean-spec/artifacts/playwright/` or another project-approved artifact path
+
 Required completion discipline:
 - do not report implementation or review complete when `context7` was required but not used, unless it was explicitly unavailable
 - do not report implementation or review complete when `sequential_thinking` was required but not used, unless it was explicitly unavailable

@@ -36,8 +36,10 @@ Use this skill whenever OpenCode is asked to:
 5. Use `context7` when external library or framework behavior matters
 6. Use `sequential_thinking` for multi-step or risky work
 7. Use `playwright` for frontend/UI validation before claiming implementation or review completion unless it is explicitly unavailable
-8. Use shell-backed timestamps when editing artifacts
-9. Stop and wait for the next human command
+8. Close any opened Playwright browser, context, or page before ending the phase
+9. Do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed
+10. Use shell-backed timestamps when editing artifacts
+11. Stop and wait for the next human command
 
 ## Hard Rules
 

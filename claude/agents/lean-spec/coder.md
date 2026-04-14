@@ -43,6 +43,8 @@ Rules:
 - use `Context7` before implementation when external APIs, libraries, frameworks, or tool behavior matter
 - use `sequential-thinking` before multi-step or risky implementation work when the task is ambiguous
 - for frontend/UI work, use Playwright or equivalent browser validation before claiming the implementation is visually complete, unless it is explicitly unavailable
+- if Playwright is used, close any opened browser, context, or page before ending the phase
+- do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed
 - explicitly report whether `Context7`, `sequential-thinking`, and Playwright were used, or that a required tool was unavailable
 - when creating `notes.md`, set both `Created At` and `Updated At`
 - when editing `notes.md`, update `Updated At` and do not change `Created At`

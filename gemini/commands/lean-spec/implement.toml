@@ -13,6 +13,8 @@ Requirements:
 - use `sequential_thinking` before implementation when the work is multi-step, risky, or ambiguous
 - implement from `spec.md`
 - for frontend/UI work, use `playwright` before reporting implementation complete, unless it is explicitly unavailable
+- if `playwright` is used, close any opened browser, context, or page before ending the phase
+- do not save Playwright screenshots into the project root; use a dedicated artifact folder if captures are needed
 - update `notes.md` with blockers, deviations, and partial completion notes when needed
 - do not rewrite `spec.md` or `review.md`
 - do not update `spec.md` status, checklist items, or timestamps during implementation

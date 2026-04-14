@@ -17,6 +17,8 @@ Requirements:
 - implement from `spec.md`
 - if `review.md` contains open findings, address them in this implementation pass
 - for frontend/UI work, use `playwright` before reporting implementation complete, unless it is explicitly unavailable
+- if `playwright` is used, close any opened browser, context, or page before ending the phase
+- do not save Playwright screenshots into the project root; use a dedicated artifact folder if captures are needed
 - update `notes.md` with blockers, deviations, partial completion notes, and implementation-side resolutions
 - before editing `notes.md`, fetch a real shell-backed timestamp with:
   - `date "+%Y-%m-%d %H:%M %Z"`

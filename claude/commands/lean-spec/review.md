@@ -17,6 +17,8 @@ Rules:
 - Use `sequential-thinking` before review when the work is multi-step, risky, or ambiguous.
 - The Architect agent must review against `spec.md`, `notes.md`, and the implementation diff.
 - For frontend/UI review, use Playwright or equivalent browser validation before reporting the review complete, unless it is explicitly unavailable.
+- If Playwright is used, close any opened browser, context, or page before ending the phase.
+- Do not save Playwright screenshots into the project root. Use a dedicated artifact folder if captures are needed.
 - The Architect agent must write concrete findings, risks, regressions, and missing tests into `review.md`.
 - The Architect agent must also reconcile `spec.md` during review so the checklist and status stay aligned with the reviewed implementation state.
 - Non-defect process notes or coverage notes must not remain as open findings. Record them as accepted/deferred dispositions or as neutral notes instead.

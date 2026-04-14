@@ -18,6 +18,8 @@ Requirements:
 - use `sequential_thinking` before review when the work is multi-step, risky, or ambiguous
 - review against the implementation and the current spec
 - for frontend/UI review, use `playwright` before reporting the review complete, unless it is explicitly unavailable
+- if `playwright` is used, close any opened browser, context, or page before ending the phase
+- do not save Playwright screenshots into the project root; use a dedicated artifact folder if captures are needed
 - update `review.md` with concrete findings and dispositions
 - reconcile `spec.md` during review so checklist progress and status match the reviewed implementation
 - do not leave non-defect process notes as open findings

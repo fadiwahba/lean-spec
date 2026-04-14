@@ -27,7 +27,29 @@ TEXT="$(printf '%s\n%s' "$PROMPT" "$RESPONSE" | tr '[:upper:]' '[:lower:]')"
 RESPONSE_LOWER="$(printf '%s' "$RESPONSE" | tr '[:upper:]' '[:lower:]')"
 PROMPT_LOWER="$(printf '%s' "$PROMPT" | tr '[:upper:]' '[:lower:]')"
 
-if printf '%s' "$TEXT" | grep -qE 'complete|done|ready to close|feature is complete'; then
+if ! printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:'; then
+  exit 0
+fi
+
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:end'; then
+  if printf '%s' "$TEXT" | grep -qE 'ready to close|feature is complete|workflow is complete|closure complete|close cleanly'; then
+    /usr/bin/python3 - <<'PY'
+import json
+print(json.dumps({
+    "decision": "deny",
+    "reason": "Lean-spec validation: do not claim completion or readiness to close unless review findings and notes are already clean and spec.md is reconciled.",
+    "systemMessage": "lean-spec final-response validation requested a correction pass."
+}))
+PY
+    exit 0
+  fi
+fi
+
+if printf '%s' "$PROMPT_LOWER" | grep -q '/lean-spec:status\|/lean-spec:resume\|/lean-spec:plan'; then
+  exit 0
+fi
+
+if printf '%s' "$TEXT" | grep -qE 'ready to close|feature is complete|workflow is complete|closure complete'; then
   /usr/bin/python3 - <<'PY'
 import json
 print(json.dumps({
@@ -36,6 +58,7 @@ print(json.dumps({
     "systemMessage": "lean-spec final-response validation requested a correction pass."
 }))
 PY
+  exit 0
 fi
 
 require_tool_report() {

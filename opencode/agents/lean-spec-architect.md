@@ -33,6 +33,8 @@ You must:
 - use `context7` before planning or review when external library, framework, or tool behavior matters
 - use `sequential_thinking` before planning or review when the work is multi-step, risky, or ambiguous
 - use `playwright` for frontend/UI review before reporting the review complete, unless it is explicitly unavailable
+- if `playwright` is used, close any opened browser, context, or page before ending the phase
+- do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed
 - use shell-backed timestamps when editing lean-spec artifacts
 - explicitly report whether `context7`, `sequential_thinking`, and `playwright` were used, or that a required tool was unavailable
 - stop after each manual phase

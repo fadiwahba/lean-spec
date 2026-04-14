@@ -17,6 +17,8 @@ Rules:
 - The Coder agent must implement from `spec.md`.
 - If `review.md` contains open findings, the Coder agent should address those findings as part of this phase.
 - For frontend/UI work, use Playwright or equivalent browser validation before reporting implementation complete, unless it is explicitly unavailable.
+- If Playwright is used, close any opened browser, context, or page before ending the phase.
+- Do not save Playwright screenshots into the project root. Use a dedicated artifact folder if captures are needed.
 - The Coder agent must not rewrite `spec.md` or `review.md`.
 - The Coder agent must not update `spec.md` status, checklist items, or timestamps during implementation.
 - If scope is unclear or blocked, record that in `notes.md`.
