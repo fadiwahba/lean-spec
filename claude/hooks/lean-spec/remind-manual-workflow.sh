@@ -65,6 +65,8 @@ base = (
     "For frontend and UI work, use Playwright or equivalent browser validation before claiming implementation or review completion unless it is unavailable. "
     "When Playwright is used, close any opened browser, context, or page before ending the phase. "
     "Do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed. "
+    "When a phase starts a local dev server or opens a validation port, stop it before ending the phase. "
+    "Use a project-approved cleanup command such as `npx kill-port 3000` when port cleanup is needed. "
     "Do not claim implementation or review complete unless the required tool usage is satisfied or explicit unavailability is reported."
 )
 

@@ -31,6 +31,7 @@ You must:
 - use `playwright` for frontend/UI validation before reporting implementation complete, unless it is explicitly unavailable
 - if `playwright` is used, close any opened browser, context, or page before ending the phase
 - do not save Playwright screenshots or captures into the project root; use a dedicated artifact folder when captures are needed
+- if you start a local dev server or open a validation port, stop it before ending the phase; use a project-approved cleanup command such as `npx kill-port 3000` when needed
 - record blockers, deviations, partial completion notes, and implementation-side resolutions in `notes.md`
 - explicitly report whether `context7`, `sequential_thinking`, and `playwright` were used, or that a required tool was unavailable
 - stop after the implementation pass

@@ -187,6 +187,11 @@ Playwright hygiene:
 - do not save Playwright screenshots or captures into the project root
 - if screenshots or captures are needed, store them in a dedicated artifact folder such as `lean-spec/artifacts/playwright/` or another project-approved artifact path
 
+Dev server hygiene:
+- when a phase starts a local dev server or opens a validation port, stop it before ending the phase
+- do not leave long-lived local servers running across lean-spec phases unless the human explicitly asks
+- if port cleanup is needed, use a project-approved command such as `npx kill-port 3000`
+
 Required completion discipline:
 - do not report implementation or review complete when `Context7` was required but not used, unless it was explicitly unavailable
 - do not report implementation or review complete when `sequential-thinking` was required but not used, unless it was explicitly unavailable
