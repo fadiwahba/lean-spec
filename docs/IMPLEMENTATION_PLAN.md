@@ -188,6 +188,7 @@ Implement the first set of deterministic workflow commands:
 Move feature scaffolding into the CLI so commands can create or repair:
 
 - feature directory
+- `lean-spec init` project bootstrap flow
 - `spec.md`
 - `notes.md`
 - `review.md`
@@ -197,6 +198,7 @@ Move feature scaffolding into the CLI so commands can create or repair:
 ### Expect
 
 - `start-spec` can initialize a clean feature reliably
+- `init` can bootstrap a project for first-time use
 - missing artifacts can be restored safely
 - scaffolding is deterministic and reusable across tools
 
@@ -204,6 +206,7 @@ Move feature scaffolding into the CLI so commands can create or repair:
 
 - keep current artifact naming
 - preserve compatibility with existing lean-spec layout
+- `init` should generate project-local setup such as config, feature root, and wrappers
 
 ## Feature 7: Add Ownership And Write Validation
 
@@ -257,6 +260,12 @@ Refactor Claude, Gemini, and OpenCode command assets so they call the CLI and pr
 - keep wrappers tool-specific only where required by the host
 - keep command UX close to v1 to reduce adoption friction
 - prefer `/lean-spec:run-next` over names like `/lean-spec:auto-run` to avoid implying end-to-end unattended execution in semi-auto mode
+- wrappers should resolve the CLI in this order:
+  1. project-local binary
+  2. `pnpm exec lean-spec` or equivalent package-runner fallback
+  3. global install
+  4. fail with a clear setup message
+- keep resolver logic in wrappers, not in the core CLI
 
 ## Feature 10: Reduce Hooks To Deny-First Guardrails
 

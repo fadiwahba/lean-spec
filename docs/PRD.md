@@ -365,17 +365,48 @@ Example:
 - human approval commands for plan and close
 - CLI-complete support for `semi-auto`
 - project-config-resolved named write aliases
+- local package / local CLI development and project bootstrap via `lean-spec init`
 
 ### Out of Scope for initial v2
 
 - building a sophisticated autonomous planner/reviewer runtime beyond the mode-aware CLI/state model
 - shipping a universal built-in runner across all supported host tools
 - full host-agnostic `auto` execution
+- npm publishing or global distribution as a prerequisite for starting implementation
 - background daemons
 - remote workflow coordination
 - large plugin ecosystem
 - broad schema customization
 - multi-repo or team-level orchestration
+
+## Installation and Distribution
+
+`lean-spec v2` should not use manual copy/paste as the primary installation model.
+
+The staged distribution model is:
+
+1. local package / local CLI first
+2. publish-ready package structure
+3. planned execution modes:
+   - `pnpm exec lean-spec`
+   - `pnpm dlx lean-spec`
+4. optional global install later
+
+This means npm publishing or global distribution is not a prerequisite for starting v2 implementation.
+
+The intended bootstrap entrypoint for users is:
+
+```text
+lean-spec init
+```
+
+`lean-spec init` should generate project-local setup such as:
+
+- `lean-spec.config.json`
+- `lean-spec/features/`
+- host-tool wrapper files
+
+Host-tool wrappers should resolve the CLI flexibly rather than hardcoding a single binary path.
 
 ## Requirements
 
