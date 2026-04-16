@@ -177,9 +177,12 @@ Host-tool slash commands remain useful, but become lightweight wrappers around t
 
 Examples:
 
+- phase commands:
 - `/lean-spec:start-spec foo`
 - `/lean-spec:implement-spec foo`
 - `/lean-spec:review-spec foo`
+- runner command:
+- `/lean-spec:run-next foo`
 
 Each wrapper should:
 
@@ -187,6 +190,14 @@ Each wrapper should:
 2. receive current phase instructions
 3. present a short role contract to the current agent
 4. stop after phase output is complete
+
+`/lean-spec:run-next` is the canonical runner command name for semi-auto execution.
+
+It is preferred over names like `/lean-spec:auto-run` because:
+
+- it is imperative and neutral
+- it works in `semi-auto`, where a human may re-run it after approval gates
+- it also works in future `auto` loops without implying full unattended execution in every context
 
 ### 4. Minimal Hooks
 

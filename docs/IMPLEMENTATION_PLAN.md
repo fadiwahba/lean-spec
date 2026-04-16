@@ -250,11 +250,13 @@ Refactor Claude, Gemini, and OpenCode command assets so they call the CLI and pr
 - host-tool commands become lightweight
 - behavior across tools becomes more consistent
 - orchestration logic lives in one place
+- `/lean-spec:run-next` is the canonical semi-auto runner command name
 
 ### Notes
 
 - keep wrappers tool-specific only where required by the host
 - keep command UX close to v1 to reduce adoption friction
+- prefer `/lean-spec:run-next` over names like `/lean-spec:auto-run` to avoid implying end-to-end unattended execution in semi-auto mode
 
 ## Feature 10: Reduce Hooks To Deny-First Guardrails
 
