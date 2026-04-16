@@ -5,11 +5,10 @@
     ".opencode/LEAN_SPEC_INSTRUCTIONS.md"
   ],
   "permission": {
-    "edit": "allow",
-    "bash": "ask",
-    "webfetch": "allow",
-    "skill": {
-      "*": "allow"
+    "*": "allow",
+    "bash": {
+      "*": "allow",
+      "rm": "ask"
     }
   },
   "mcp": {

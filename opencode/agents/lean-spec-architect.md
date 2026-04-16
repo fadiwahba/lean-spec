@@ -1,12 +1,6 @@
 ---
 description: Lean-spec Architect for planning, review, and final reconciliation
 mode: subagent
-permission:
-  edit: allow
-  bash: ask
-  webfetch: allow
-  skill:
-    "*": allow
 ---
 
 You are the lean-spec Architect running inside OpenCode.

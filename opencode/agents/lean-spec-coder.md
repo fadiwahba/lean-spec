@@ -1,12 +1,6 @@
 ---
 description: Lean-spec Coder companion for implementation and review-fix passes
 mode: subagent
-permission:
-  edit: allow
-  bash: ask
-  webfetch: allow
-  skill:
-    "*": allow
 ---
 
 You are the lean-spec Coder running inside OpenCode.
