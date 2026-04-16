@@ -65,6 +65,12 @@ It must support three operating modes:
 2. `semi-auto` - the system advances phases automatically, but pauses at two human gates
 3. `auto` - the orchestrator manages and operates the full lifecycle with no human gates
 
+For v2 implementation scope:
+
+- `manual` is fully implemented
+- `semi-auto` is implemented at the CLI/state level, with host-specific runner support optional
+- `auto` is specified in the state model and PRD, but full host-agnostic execution is deferred
+
 ## Target Users
 
 ### Primary User
@@ -108,6 +114,9 @@ A developer or small team that wants to gradually reduce the human-in-the-loop w
 5. **Tool-agnostic first**
    - core behavior should live in the CLI/state model, not in tool-specific prompt conventions
 
+6. **Single source of truth**
+   - `workflow.json` plus CLI output define the workflow state; no runner or agent may maintain competing lifecycle state
+
 ## Desired Outcomes
 
 ### Functional Outcomes
@@ -124,6 +133,7 @@ A developer or small team that wants to gradually reduce the human-in-the-loop w
 - lower-cost models can safely execute implementation phases
 - switching terminals or tools does not lose the workflow state
 - users can resume work reliably after interruption
+- semi-auto behavior is available without requiring a universal built-in runner
 
 ## Core v2 Concept
 
@@ -202,6 +212,23 @@ In `auto`, these gates are removed and the orchestrator may operate the full lif
 
 This keeps the current trust model while making future autonomy possible.
 
+### 6. Stateless Runner
+
+When a runner exists in `semi-auto` or `auto`, it must be stateless.
+
+It may:
+
+- read `workflow.json`
+- call the CLI
+- read CLI output
+- invoke the next role or command
+
+It must not:
+
+- store separate lifecycle state
+- infer a hidden workflow position
+- become a second source of truth
+
 ## User Stories
 
 ### Planning
@@ -247,6 +274,8 @@ Characteristics:
   1. plan approval
   2. close approval
 - implementation, review, and fix loops may continue automatically between those gates
+- v2 provides CLI-complete support for this mode
+- host-specific runner support is optional in v2
 
 ### 3. Auto Mode
 
@@ -258,6 +287,7 @@ Characteristics:
 - no human gates are required
 - validations and ownership rules still apply
 - intended for future mature workflows with high trust in outputs
+- full host-agnostic execution is not a committed v2 deliverable
 
 ## Proposed Lifecycle
 
@@ -281,6 +311,8 @@ Operating mode determines how transitions occur:
 - `semi-auto`: transitions may auto-progress except at plan and close approvals
 - `auto`: transitions may auto-progress end-to-end when validations pass
 
+`reviewing` and `applying_fixes` are intentionally distinct phases because they have different role ownership, write permissions, and completion conditions.
+
 ## Proposed Control File
 
 Example:
@@ -297,9 +329,9 @@ Example:
   "close_approved": false,
   "requires_human_approval": false,
   "allowed_writes": [
-    "lean-spec/features/todo-app-zustand/notes.md",
-    "src/**",
-    "tests/**"
+    "notes_artifact",
+    "project_code",
+    "project_tests"
   ],
   "last_command": "implement-spec",
   "blocked_reason": null,
@@ -320,10 +352,14 @@ Example:
 - thin wrappers for Claude, Gemini, OpenCode, and Codex-compatible patterns where possible
 - deny-first validation for artifact ownership
 - human approval commands for plan and close
+- CLI-complete support for `semi-auto`
+- project-config-resolved named write aliases
 
 ### Out of Scope for initial v2
 
 - building a sophisticated autonomous planner/reviewer runtime beyond the mode-aware CLI/state model
+- shipping a universal built-in runner across all supported host tools
+- full host-agnostic `auto` execution
 - background daemons
 - remote workflow coordination
 - large plugin ecosystem
@@ -352,6 +388,8 @@ The system must also enforce mode-aware behavior:
 - `semi-auto` must pause at plan approval and close approval
 - `auto` may advance without human approval when validations pass
 
+`reviewing` and `applying_fixes` must remain separate phases.
+
 ### R3. Role Ownership Enforcement
 
 The system must enforce artifact ownership at the phase level.
@@ -363,6 +401,8 @@ Minimum rules:
 - `Coder` owns `notes.md`
 - `Coder` cannot modify `spec.md` or `review.md` during implementation
 - planning/review phases must not modify product code unless explicitly allowed by a future command
+
+Allowed write permissions should be expressed through named aliases resolved from project configuration, not hardcoded repo-specific paths.
 
 ### R4. Structured CLI Output
 
@@ -376,6 +416,13 @@ Minimum commands should expose:
 - allowed writes
 - next expected action
 - approval requirements
+- next-step metadata for runners:
+  - `next_phase`
+  - `next_role`
+  - `approval_required`
+  - `can_auto_advance`
+  - `dispatch_hint`
+  - `suggested_agent`
 
 ### R5. Minimal Prompt Contracts
 
@@ -401,11 +448,17 @@ The v2 implementation should use Node.js and TypeScript/JavaScript to support ma
 
 The system should work even if host-tool hooks are limited or unavailable. Hooks may enhance enforcement, but must not be essential to the core lifecycle.
 
+### R9. Stateless Runner Contract
+
+If a runner is used, it must read current state from `workflow.json` and CLI output only.
+
+It must not maintain separate lifecycle memory or hidden state.
+
 ## Success Metrics
 
 ### Primary Metrics
 
-- lower frequency of wrong-role edits
+- zero successful architect-artifact writes during implement phase without explicit CLI-permitted override
 - successful resume after context compaction
 - lower average prompt size per phase
 - fewer stuck/looping hook incidents
@@ -416,6 +469,7 @@ The system should work even if host-tool hooks are limited or unavailable. Hooks
 - user can complete a full plan -> implement -> review -> close flow with two terminals and one shared repo
 - invalid phase actions are rejected deterministically
 - implementation phase can be run on a cheaper model without accidental plan/review edits
+- semi-auto CLI output is sufficient for a host-specific runner to determine the next step without hidden state
 
 ## Risks
 
@@ -446,10 +500,9 @@ Mitigation:
 
 ## Open Questions
 
-1. Should `reviewing` and `applying_fixes` be distinct phases or a single `review_loop` with role switching?
-2. Should product-code writes during review be completely forbidden in v2, or only discouraged?
-3. Should `allowed_writes` support glob patterns only, or explicit path lists plus code-root aliases?
-4. How much wrapper generation should be built into v2 versus maintained manually per tool?
+1. Should product-code writes during review be completely forbidden in v2, or only discouraged?
+2. How much wrapper generation should be built into v2 versus maintained manually per tool?
+3. Should v2 include a reference host-specific semi-auto runner example for Claude Code only, or no runner example at all?
 
 ## Recommendation
 
@@ -462,5 +515,8 @@ Proceed with `lean-spec v2` as:
 - deny-first validation
 - support for `manual`, `semi-auto`, and `auto` modes
 - plan/close approvals in `semi-auto`
+- `manual` fully implemented
+- `semi-auto` CLI-complete and runner-optional
+- `auto` specified but deferred as a full execution target
 
 This preserves the original cost-saving and role-discipline intent while making the system more resilient, more portable, and more autonomy-ready.

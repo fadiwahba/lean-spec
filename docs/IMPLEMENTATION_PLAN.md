@@ -21,6 +21,7 @@ All features in this plan must follow these shared conventions.
 - tool-specific slash commands are thin wrappers around the CLI
 - hooks are optional enhancements, not core workflow infrastructure
 - validations must be explicit and deterministic
+- any runner is stateless and reads only `workflow.json` plus CLI output
 
 ### Operating Modes
 
@@ -32,9 +33,12 @@ All features in this plan must follow these shared conventions.
   - pauses at two human gates:
     - approve plan
     - approve close
+  - v2 fully supports this at the CLI/state level
+  - host-specific runner support is optional
 - `auto`
   - workflow runner may advance the full lifecycle automatically
   - no human gates
+  - v2 defines this mode in state and contracts, but does not promise full host-agnostic execution
 
 All features below must preserve one shared lifecycle model while allowing mode-specific transition behavior.
 
@@ -56,6 +60,17 @@ All features below must preserve one shared lifecycle model while allowing mode-
 - `coder` owns implementation files during implement/fix phases
 - the CLI enforces current phase and allowed writes
 
+### Write Scope Conventions
+
+- do not hardcode repo-specific paths like `src/**` as universal defaults
+- use named write aliases resolved from project configuration
+- initial alias examples:
+  - `spec_artifact`
+  - `notes_artifact`
+  - `review_artifact`
+  - `project_code`
+  - `project_tests`
+
 ## Feature 1: Define v2 Workflow Model
 
 ### Build
@@ -68,6 +83,7 @@ Define the v2 lifecycle, operating modes, roles, statuses, phase transitions, ap
 - one clear operating-mode model for v2
 - one agreed role/ownership model
 - one transition table that later CLI commands enforce
+- reviewing and applying_fixes are locked as distinct phases
 
 ### Notes
 
@@ -96,7 +112,29 @@ Add the `workflow.json` file format, including mode, default values, schema vali
 - keep fields stable for future automation
 - default mode should be `manual`
 
-## Feature 3: Build Core CLI Skeleton
+## Feature 3: Add Automated Test Harness
+
+### Build
+
+Create the initial automated test setup for deterministic v2 behavior.
+
+### Expect
+
+- phase transition rules can be tested before command behavior expands
+- ownership validation has automated coverage
+- resume and state-loading behavior can be verified deterministically
+- cross-platform path handling can be tested explicitly
+
+### Notes
+
+- prioritize tests for:
+  - transition rejection
+  - schema loading and validation
+  - alias resolution
+  - ownership enforcement
+  - resume/recovery behavior
+
+## Feature 4: Build Core CLI Skeleton
 
 ### Build
 
@@ -113,7 +151,7 @@ Create the Node CLI entrypoint, command parsing, shared utilities, structured ou
 - keep command names aligned with current lean-spec terminology
 - avoid overengineering plugin systems or schema engines
 
-## Feature 4: Implement Phase Commands
+## Feature 5: Implement Phase Commands
 
 ### Build
 
@@ -141,8 +179,9 @@ Implement the first set of deterministic workflow commands:
 - keep each command narrow
 - status and validate must work without prior chat context
 - auto-advance logic must remain deterministic and explicit
+- command output should be designed to support future runner consumption
 
-## Feature 5: Add Scaffolding And Artifact Bootstrapping
+## Feature 6: Add Scaffolding And Artifact Bootstrapping
 
 ### Build
 
@@ -166,7 +205,7 @@ Move feature scaffolding into the CLI so commands can create or repair:
 - keep current artifact naming
 - preserve compatibility with existing lean-spec layout
 
-## Feature 6: Add Ownership And Write Validation
+## Feature 7: Add Ownership And Write Validation
 
 ### Build
 
@@ -177,13 +216,14 @@ Implement preflight and postflight validation for phase-specific ownership and a
 - implement phase rejects edits to `spec.md` and `review.md`
 - review/planning phases reject unauthorized source-code changes where intended
 - validation messages are short and explicit
+- named aliases resolve to project-specific paths at runtime
 
 ### Notes
 
 - start with the highest-value invariants only
 - prefer explicit checks over heuristic checks
 
-## Feature 7: Generate Minimal Phase Contracts
+## Feature 8: Generate Minimal Phase Contracts
 
 ### Build
 
@@ -199,7 +239,7 @@ Add CLI output that generates concise phase-specific instructions for the active
 - this output is for wrappers and agents
 - avoid repeating full workflow philosophy
 
-## Feature 8: Convert Existing Slash Commands Into Thin Wrappers
+## Feature 9: Convert Existing Slash Commands Into Thin Wrappers
 
 ### Build
 
@@ -216,7 +256,7 @@ Refactor Claude, Gemini, and OpenCode command assets so they call the CLI and pr
 - keep wrappers tool-specific only where required by the host
 - keep command UX close to v1 to reduce adoption friction
 
-## Feature 9: Reduce Hooks To Deny-First Guardrails
+## Feature 10: Reduce Hooks To Deny-First Guardrails
 
 ### Build
 
@@ -237,7 +277,7 @@ Refactor hooks so they only:
 - hooks must not become a second state machine
 - the system should still work if hooks are unavailable
 
-## Feature 10: Add Resume And Recovery Commands
+## Feature 11: Add Resume And Recovery Commands
 
 ### Build
 
@@ -254,8 +294,9 @@ Implement robust `status` and `validate` behavior that reconstructs the current 
 
 - this is a key v2 reliability feature
 - keep output concise but structured
+- resume logic must explicitly handle approval-wait states such as `waiting_plan_approval` and `waiting_close_approval`
 
-## Feature 11: Add Approval Gates
+## Feature 12: Add Approval Gates
 
 ### Build
 
@@ -278,27 +319,29 @@ Implement explicit commands and state transitions for:
 - avoid additional approval categories unless clearly necessary
 - `manual` still uses explicit human-driven commands for every phase, not just approval commands
 
-## Feature 12: Prepare For Future Semi-Autonomous Handoffs
+## Feature 13: Add Mode-Aware Next-Step Output
 
 ### Build
 
-Design the CLI/state model so an orchestrator can support both:
-
-- `semi-auto`: auto-progress between plan and close human gates
-- `auto`: auto-progress through the entire lifecycle
-
-without changing the core lifecycle model.
+Add explicit CLI output fields that support semi-auto runner behavior without making the runner stateful.
 
 ### Expect
 
-- the same state file can support manual, semi-auto, and auto modes
-- worker agents can be invoked from deterministic state
-- human approval remains the only required hard stop in `semi-auto`
+- CLI emits:
+  - `next_phase`
+  - `next_role`
+  - `approval_required`
+  - `can_auto_advance`
+  - `dispatch_hint`
+  - `suggested_agent`
+- semi-auto is CLI-complete even when no built-in runner ships
+- host-specific orchestrators can consume next-step output without hidden state
 
 ### Notes
 
-- do not build full autonomy yet
-- only ensure the architecture does not block it later
+- runner behavior is optional in v2
+- do not build a universal cross-tool runner in v2
+- output must remain tool-agnostic, with host hints kept lightweight
 
 ## Delivery Order
 
@@ -306,16 +349,17 @@ Build in this order:
 
 1. Feature 1: Define v2 Workflow Model
 2. Feature 2: Implement `workflow.json` Schema And Helpers
-3. Feature 3: Build Core CLI Skeleton
-4. Feature 4: Implement Phase Commands
-5. Feature 5: Add Scaffolding And Artifact Bootstrapping
-6. Feature 6: Add Ownership And Write Validation
-7. Feature 7: Generate Minimal Phase Contracts
-8. Feature 10: Add Resume And Recovery Commands
-9. Feature 11: Add Approval Gates
-10. Feature 8: Convert Existing Slash Commands Into Thin Wrappers
-11. Feature 9: Reduce Hooks To Deny-First Guardrails
-12. Feature 12: Prepare For Future Semi-Autonomous Handoffs
+3. Feature 3: Add Automated Test Harness
+4. Feature 4: Build Core CLI Skeleton
+5. Feature 5: Implement Phase Commands
+6. Feature 6: Add Scaffolding And Artifact Bootstrapping
+7. Feature 7: Add Ownership And Write Validation
+8. Feature 8: Generate Minimal Phase Contracts
+9. Feature 11: Add Resume And Recovery Commands
+10. Feature 12: Add Approval Gates
+11. Feature 13: Add Mode-Aware Next-Step Output
+12. Feature 9: Convert Existing Slash Commands Into Thin Wrappers
+13. Feature 10: Reduce Hooks To Deny-First Guardrails
 
 ## Done Criteria
 
@@ -324,9 +368,11 @@ The initial v2 implementation is ready when:
 - `workflow.json` is authoritative for lifecycle and role state
 - `workflow.json` is authoritative for operating mode
 - phase transitions are enforced by CLI logic
+- automated tests cover transition rejection, ownership validation, state loading, and alias resolution
 - current wrappers call the CLI instead of embedding orchestration logic
 - implement phase cannot modify architect-owned artifacts
 - plan approval and close approval exist as explicit gates
 - `manual`, `semi-auto`, and `auto` modes are represented and enforced consistently
+- semi-auto next-step output is sufficient for a stateless host runner to act without hidden state
 - `status` and `validate` can recover the next action from deterministic state
 - hooks are smaller, simpler, and non-essential
