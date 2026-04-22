@@ -1,0 +1,14 @@
+{
+  "name": "lean-spec",
+  "version": "0.1.0",
+  "description": "Spec-driven workflow enforcement for Claude Code — spec → implement → review → close, with hard phase-gate hooks and two-model cost arbitrage.",
+  "author": {
+    "name": "Fady Soliman",
+    "email": "fadi.wahba@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": ["spec", "workflow", "lifecycle", "hooks", "token-efficiency"],
+  "skills": "./skills/",
+  "commands": "./commands/",
+  "agents": "./agents/"
+}
