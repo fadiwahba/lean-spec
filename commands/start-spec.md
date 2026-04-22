@@ -1,36 +1,46 @@
 ---
-description: Create a new feature spec and initialize the lean-spec lifecycle
-argument-hint: <slug>
-allowed-tools: Bash, Read, Write
+description: Create a new feature and dispatch the architect subagent to write spec.md
+argument-hint: <slug> [free-form brief or @path/to/PRD.md]
+allowed-tools: Bash, Read, Task
 ---
 
 # /lean-spec:start-spec
 
-Initialize a new feature spec. Creates `features/<slug>/` with `workflow.json` and `spec.md`.
+Initialize a new feature. Creates `features/<slug>/` with `workflow.json` in the `specifying` phase, then dispatches the **architect subagent** to author `spec.md` from the user's brief.
+
+The orchestrator (you) does NOT write `spec.md` directly. Enforced strong-model tier is the whole point — see PRD §4.2.
 
 ## Pre-flight
 
-1. Check that `$ARGUMENTS` is provided and is a valid slug (lowercase, hyphens only). If not, say: "Usage: /lean-spec:start-spec <slug>". Stop.
+1. Parse arguments. First token = slug; rest = brief (optional).
 ```bash
-SLUG="$ARGUMENTS"
+ARGS="$ARGUMENTS"
+SLUG="${ARGS%% *}"
+BRIEF="${ARGS#"$SLUG"}"
+BRIEF="${BRIEF# }"
+
 if [[ -z "$SLUG" ]]; then
-  echo "Usage: /lean-spec:start-spec <slug>"
+  echo "Usage: /lean-spec:start-spec <slug> [brief or @path/to/PRD.md]"
   exit 1
 fi
 if ! [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
   echo "Invalid slug '$SLUG': use lowercase letters, digits, and hyphens only (e.g. 'add-user-export')"
   exit 1
 fi
+if [ -d "features/$SLUG" ]; then
+  echo "Feature '$SLUG' already exists. Use /lean-spec:update-spec $SLUG to revise."
+  exit 1
+fi
 ```
-2. Check that `features/$ARGUMENTS/` does NOT already exist. If it does, say "Feature '<slug>' already exists. Use /lean-spec:update-spec to modify it." Stop.
+
+2. If the brief references a file (e.g. `@docs/PRD.md`), note the path — the architect subagent will read it. Do not read it here; the subagent needs the fresh context.
 
 ## Steps
 
-1. Create `features/$ARGUMENTS/` directory.
-
-2. Use Bash to create `features/$ARGUMENTS/workflow.json`:
+1. Create `features/$SLUG/` directory and initialize `workflow.json`:
 ```bash
-SLUG="$ARGUMENTS"
+SLUG="${ARGUMENTS%% *}"
+mkdir -p "features/$SLUG"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 cat > "features/$SLUG/workflow.json" <<EOF
 {
@@ -50,37 +60,23 @@ cat > "features/$SLUG/workflow.json" <<EOF
 EOF
 ```
 
-3. Create `features/$ARGUMENTS/spec.md` with this template:
-```markdown
----
-slug: $ARGUMENTS
-phase: specifying
-handoffs:
-  next_command: /lean-spec:submit-implementation
-  blocks_on: []
-  consumed_by: [coder, reviewer]
----
+2. Dispatch the **architect subagent** using the `Task` tool:
+   - `subagent_type`: `architect` (pinned to a strong model via subagent configuration)
+   - `description`: `Author spec.md for <slug>`
+   - `prompt`: use `agents/architect-prompt.md` as the template. Fill in:
+     - `{{SLUG}}` → the slug
+     - `{{SPEC_PATH}}` → `features/<slug>/spec.md`
+     - `{{MODE}}` → `new`
+     - `{{BRIEF}}` → the user's brief (everything after the slug in `$ARGUMENTS`). If empty, pass: `No brief provided — ask the user via status DONE_WITH_CONCERNS to re-invoke with a brief.`
+     - `{{EXISTING_SPEC}}` → empty (new mode)
 
-# Spec: $ARGUMENTS
+3. When the architect subagent returns, confirm `features/$SLUG/spec.md` exists. If it does, tell the user:
 
-## Scope
+   > "Architect drafted `features/$SLUG/spec.md`. Review it. If you want revisions, run `/lean-spec:update-spec $SLUG`. When you're satisfied, run `/lean-spec:submit-implementation $SLUG`."
 
-<!-- What this feature does and why it matters. 2–4 sentences. -->
+4. If the architect returned `NEEDS_CONTEXT` or `BLOCKED`, relay the reason verbatim and do not advance.
 
-## Acceptance Criteria
+## Notes
 
-<!-- Numbered list of verifiable criteria. -->
-1. 
-
-## Out of Scope
-
-<!-- Explicit exclusions to prevent scope creep. -->
-
-## Technical Notes
-
-<!-- Implementation constraints, relevant files, design decisions. Optional. -->
-```
-
-4. Tell the user: "Feature '$ARGUMENTS' created. Fill in `features/$ARGUMENTS/spec.md`, then run `/lean-spec:submit-implementation $ARGUMENTS`."
-
-5. Open `features/$ARGUMENTS/spec.md` for editing (Read it to show the user its content).
+- **Do not invoke the `writing-specs` skill in the orchestrator context.** That skill is the architect subagent's tool, not yours.
+- **Do not write `spec.md` directly**, even as a fallback. If the architect fails, the right recovery is `/lean-spec:update-spec` (which re-dispatches), not the orchestrator ghost-writing.

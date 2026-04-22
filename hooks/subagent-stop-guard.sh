@@ -9,6 +9,10 @@ FEATURES_DIR="$CWD/features"
 [ -d "$FEATURES_DIR" ] || exit 0
 
 case "$AGENT_TYPE" in
+  architect)
+    EXPECTED_ARTIFACT="spec.md"
+    EXPECTED_PHASE="specifying"
+    ;;
   coder)
     EXPECTED_ARTIFACT="notes.md"
     EXPECTED_PHASE="implementing"

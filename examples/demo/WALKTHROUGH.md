@@ -21,11 +21,13 @@ claude --plugin-dir ../..
 
 Run `/lean-spec:spec-status` to see the pre-seeded `hello-world` feature in `specifying` phase.
 
+> **Note on pre-seeding:** this walkthrough uses a pre-seeded `spec.md` to keep the demo under 10 minutes. In normal use you'd start with `/lean-spec:start-spec <slug> <brief>`, which dispatches the **architect subagent** (strong model) to author the spec. See PRD §4.2 for why all three roles — Architect, Coder, Reviewer — run as dispatched subagents with pinned model tiers.
+
 ## Step 2 — Review the spec (1 minute)
 
 Run `/lean-spec:resume-spec hello-world` to load the feature context. Read `features/hello-world/spec.md`.
 
-The spec has 3 acceptance criteria. This is what the coder will implement.
+The spec has 3 acceptance criteria. This is what the coder will implement. If you want to try revisions, run `/lean-spec:update-spec hello-world` — the orchestrator will collect your feedback and re-dispatch the architect subagent.
 
 ## Step 3 — Submit for implementation (3 minutes)
 

@@ -5,7 +5,9 @@ description: Invoke when writing or revising a spec.md — guides the Architect 
 
 ## When to Invoke
 
-Invoke when creating a new `spec.md` or revising an existing one. This skill is owned by the **Architect** role during the `specifying` phase.
+Invoke when creating a new `spec.md` or revising an existing one. This skill is owned by the **Architect subagent** dispatched via `/lean-spec:start-spec` or `/lean-spec:update-spec`.
+
+**Audience:** architect subagent only. The orchestrator never invokes this skill — if you are the orchestrator mediating between the user and the architect, stop and dispatch `/lean-spec:start-spec` or `/lean-spec:update-spec` instead of invoking this skill directly.
 
 Do not invoke during `implementing` or later phases — specs are locked once submitted.
 

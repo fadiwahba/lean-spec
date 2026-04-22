@@ -53,7 +53,8 @@ That single flag loads the entire plugin from the filesystem. Edit a skill, quit
 - `claude` reads `.claude-plugin/plugin.json` for the manifest
 - Auto-discovers `skills/`, `commands/`, and `hooks/hooks.json` from the plugin root
 - `hooks/hooks.json` is loaded automatically — do **not** add a `hooks` field in `plugin.json` or it will error with "Duplicate hooks file detected"
-- The `agents/` directory holds dispatch prompt templates; they are read directly by commands, not registered as Claude Code agents — do **not** add an `agents` field in `plugin.json`
+- The `agents/` directory holds dispatch prompt templates (one per role: `architect-prompt.md`, `coder-prompt.md`, `reviewer-prompt.md`); they are read directly by commands, not registered as Claude Code agents — do **not** add an `agents` field in `plugin.json`
+- **Three-role dispatch model.** The orchestrator session is thin: it routes commands, reads `workflow.json`, and mediates the user's conversation. It does not write `spec.md`, `notes.md`, or `review.md` directly — each artifact is produced by its corresponding subagent (architect, coder, reviewer) with a pinned model tier. This is by design: see PRD §4.2 and Resolved Decision §12.5
 - Commands appear in `/help` under `(plugin:lean-spec)`
 
 ### Verifying the plugin loaded

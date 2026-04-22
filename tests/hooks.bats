@@ -151,6 +151,29 @@ hook_input() {
 
 # ─── subagent-stop-guard.sh ───
 
+@test "subagent-stop-guard: blocks architect when spec.md missing" {
+  # phase is specifying (default setup), spec.md does not exist
+  run bash -c "echo '{\"hook_event_name\":\"SubagentStop\",\"cwd\":\"$TMPDIR\",\"agent_type\":\"architect\"}' | $HOOKS/subagent-stop-guard.sh"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.decision == "block"' > /dev/null
+  [[ "$output" == *"spec.md"* ]]
+}
+
+@test "subagent-stop-guard: allows architect when spec.md present" {
+  touch "$TMPDIR/features/test-feature/spec.md"
+  run bash -c "echo '{\"hook_event_name\":\"SubagentStop\",\"cwd\":\"$TMPDIR\",\"agent_type\":\"architect\"}' | $HOOKS/subagent-stop-guard.sh"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || ! echo "$output" | jq -e '.decision == "block"' > /dev/null
+}
+
+@test "subagent-stop-guard: architect skipped when feature not in specifying phase" {
+  # Move to implementing; architect dispatch would be out of phase, but the hook's phase filter means no block even if spec.md missing
+  echo '{"slug":"test-feature","phase":"implementing","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","history":[],"artifacts":{}}' > "$TMPDIR/features/test-feature/workflow.json"
+  run bash -c "echo '{\"hook_event_name\":\"SubagentStop\",\"cwd\":\"$TMPDIR\",\"agent_type\":\"architect\"}' | $HOOKS/subagent-stop-guard.sh"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ] || ! echo "$output" | jq -e '.decision == "block"' > /dev/null
+}
+
 @test "subagent-stop-guard: blocks coder when notes.md missing" {
   echo '{"slug":"test-feature","phase":"implementing","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","history":[],"artifacts":{}}' > "$TMPDIR/features/test-feature/workflow.json"
   run bash -c "echo '{\"hook_event_name\":\"SubagentStop\",\"cwd\":\"$TMPDIR\",\"agent_type\":\"coder\"}' | $HOOKS/subagent-stop-guard.sh"

@@ -37,11 +37,23 @@ For a feature in `reviewing` phase, determine sub-state by reading `features/<sl
 
 ## Phase Gates Summary
 
-- **specifying**: Spec is being written/refined. No implementation work yet. The Architect owns this phase.
-- **implementing**: Spec is locked. The Implementer builds against the acceptance criteria in `spec.md`. No spec changes allowed.
-- **reviewing (NEEDS_FIXES)**: Reviewer found gaps. The Implementer fixes and resubmits. Do not re-review until fixes are submitted.
+- **specifying**: Spec is being written/refined by the **Architect subagent** (dispatched via `/lean-spec:start-spec` or `/lean-spec:update-spec`). No implementation work yet.
+- **implementing**: Spec is locked. The **Coder subagent** (dispatched via `/lean-spec:submit-implementation`) builds against the acceptance criteria in `spec.md`. No spec changes allowed.
+- **reviewing (NEEDS_FIXES)**: **Reviewer subagent** found gaps. The Coder subagent fixes and resubmits via `/lean-spec:submit-fixes`. Do not re-review until fixes are submitted.
 - **reviewing (APPROVE)**: All criteria passed. Ready to close. No further implementation needed.
 - **closed**: Done. No further action.
+
+## Orchestrator vs Subagents
+
+You (the session running this skill) are the **orchestrator**. You route commands, read `workflow.json`, relay status, and mediate the user's conversation. You do **not** write `spec.md`, code, `notes.md`, or `review.md` directly — those artifacts are produced by dispatched subagents with pinned model tiers:
+
+| Role | Dispatched by | Prompt template | Model tier |
+|---|---|---|---|
+| Architect | `/start-spec`, `/update-spec` | `agents/architect-prompt.md` | Strong |
+| Coder | `/submit-implementation`, `/submit-fixes` | `agents/coder-prompt.md` | Cheap |
+| Reviewer | `/submit-review` | `agents/reviewer-prompt.md` | Strong |
+
+If the user asks you to "just write the spec" or "just edit the AC directly", refuse and re-dispatch via the appropriate slash command. The tier pinning is a runtime guarantee the plugin provides; bypassing it silently defeats the plugin's primary value prop.
 
 ## Status Report Format
 
@@ -65,4 +77,5 @@ Process every discovered feature independently. Report all of them before asking
 - Do not guess the phase from filenames or directory structure — always read `workflow.json`.
 - Do not suggest implementation work if the phase is `specifying`.
 - Do not suggest spec changes if the phase is `implementing` or later.
-- Do not invoke the `writing-specs`, `reviewing-spec-compliance`, or `reviewing-code-quality` skills from here — those are invoked by their respective roles during their phases.
+- Do not invoke the `writing-specs`, `reviewing-spec-compliance`, or `reviewing-code-quality` skills from here — those are invoked by the respective subagents, not by the orchestrator.
+- Do not write `spec.md`, `notes.md`, or `review.md` yourself, even if asked. Dispatch the appropriate slash command so the subagent produces the artifact with the enforced model tier.
