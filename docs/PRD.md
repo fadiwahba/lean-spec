@@ -186,7 +186,7 @@ All events and fields below are verified against the current Claude Code hooks r
 
 ## 6. Slash commands
 
-All commands live under `commands/lean-spec/*.md` and namespace as `/lean-spec:<name>`. (Colons are the verified Claude Code namespace separator; they also work in Gemini CLI.)
+All commands live under `commands/*.md` (flat — no subdirectory) and namespace as `/lean-spec:<name>` because Claude Code uses the plugin `name` field as the namespace prefix. A subdirectory would add a second namespace segment, producing the unintended `/lean-spec:lean-spec:*` form. (Colons are the verified Claude Code namespace separator; they also work in Gemini CLI.)
 
 ### 6.1 Core lifecycle
 
@@ -226,18 +226,17 @@ lean-spec/
 │   ├── writing-specs/SKILL.md
 │   ├── reviewing-spec-compliance/SKILL.md
 │   └── reviewing-code-quality/SKILL.md
-├── commands/
-│   └── lean-spec/
-│       ├── start-spec.md
-│       ├── submit-implementation.md
-│       ├── submit-review.md
-│       ├── submit-fixes.md
-│       ├── close-spec.md
-│       ├── resume-spec.md
-│       ├── spec-status.md
-│       ├── update-spec.md
-│       ├── brainstorm.md
-│       └── decompose-prd.md
+├── commands/                              # Flat — no subdirectory (avoids double namespace)
+│   ├── start-spec.md
+│   ├── submit-implementation.md
+│   ├── submit-review.md
+│   ├── submit-fixes.md
+│   ├── close-spec.md
+│   ├── resume-spec.md
+│   ├── spec-status.md
+│   ├── update-spec.md
+│   ├── brainstorm.md                      # M2+
+│   └── decompose-prd.md                   # M2+
 ├── agents/
 │   ├── coder-prompt.md                # Subagent dispatch template for coder
 │   └── reviewer-prompt.md             # Subagent dispatch template for reviewer
