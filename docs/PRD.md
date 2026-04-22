@@ -89,13 +89,15 @@ Output: `review.md` with verdict `APPROVE | NEEDS_FIXES | BLOCKED`.
 
 **Role enactment (single-session, three dispatches).** lean-spec v3 runs in **one Claude Code terminal**. The main session is a thin **orchestrator** that routes commands, reads `workflow.json`, and advises the user on next steps. Every role — including Architect — runs as a dispatched subagent with its own prompt template and enforced model tier:
 
-| Role | Dispatched from | Prompt template | Required output | Runs during phase |
-|---|---|---|---|---|
-| **Architect** | `/start-spec`, `/update-spec` | `agents/architect-prompt.md` | `spec.md` (handoffs frontmatter + scope + AC + out-of-scope) | `specifying` |
-| **Coder** | `/submit-implementation`, `/submit-fixes` | `agents/coder-prompt.md` | code diff + `notes.md` | `implementing` |
-| **Reviewer** | `/submit-review` | `agents/reviewer-prompt.md` | `review.md` with verdict | `reviewing` |
+| Role | Dispatched from | Subagent definition | Model pin | Required output | Runs during phase |
+|---|---|---|---|---|---|
+| **Architect** | `/start-spec`, `/update-spec` | `agents/architect.md` (`lean-spec:architect`) | `opus` | `spec.md` (handoffs frontmatter + scope + AC + out-of-scope) | `specifying` |
+| **Coder** | `/submit-implementation`, `/submit-fixes` | `agents/coder.md` (`lean-spec:coder`) | `sonnet` | code diff + `notes.md` | `implementing` |
+| **Reviewer** | `/submit-review` | `agents/reviewer.md` (`lean-spec:reviewer`) | `opus` | `review.md` with verdict | `reviewing` |
 
-**Why Architect is a subagent, not the orchestrator:** if the orchestrator session played Architect, the user's choice of main-session model (which may default to a cheap tier like Haiku/Sonnet to save tokens on fluff conversation between commands) would silently determine spec quality. The plugin's primary value prop (§3.1, two-model cost arbitrage) and its distinguishing promise (§2, hard enforcement) both break in that scenario. Dispatching Architect with an explicit strong-model pin (Opus/GPT-5-class) makes the tier enforceable at runtime — not a convention the user is expected to follow.
+**The plugin ships the subagent definitions.** Each `agents/*.md` file is a valid Claude Code subagent definition with frontmatter (`name`, `description`, `tools`, `model`) and a static system prompt as its body. The plugin's commands dispatch via `Task` with the plugin-qualified `subagent_type` (e.g. `"lean-spec:architect"`); Claude Code loads the subagent's system prompt from the definition file automatically, and the command supplies only per-invocation context (slug, paths, mode, brief) as the `Task` prompt. Users do not create or configure these subagents — fresh install works.
+
+**Why Architect is a subagent, not the orchestrator:** if the orchestrator session played Architect, the user's choice of main-session model (which may default to a cheap tier like Haiku/Sonnet to save tokens on fluff conversation between commands) would silently determine spec quality. The plugin's primary value prop (§3.1, two-model cost arbitrage) and its distinguishing promise (§2, hard enforcement) both break in that scenario. Dispatching Architect with `model: opus` pinned in its definition frontmatter makes the tier enforceable at runtime — not a convention the user is expected to follow.
 
 **Interactive refinement still works.** The orchestrator mediates the conversation. User invokes `/start-spec <slug> <brief>` → architect subagent writes draft → control returns to orchestrator → orchestrator shows the draft and asks the user for feedback → user runs `/update-spec <slug>` with revisions → architect subagent dispatched again with prior draft + feedback. Multi-turn spec refinement happens across dispatches, not within one subagent invocation.
 
@@ -251,10 +253,10 @@ lean-spec/
 │   ├── update-spec.md
 │   ├── brainstorm.md                      # M2+
 │   └── decompose-prd.md                   # M2+
-├── agents/
-│   ├── architect-prompt.md            # Subagent dispatch template for architect
-│   ├── coder-prompt.md                # Subagent dispatch template for coder
-│   └── reviewer-prompt.md             # Subagent dispatch template for reviewer
+├── agents/                               # Valid Claude Code subagent definitions (frontmatter + system prompt), auto-discovered
+│   ├── architect.md                      # name=architect, model=opus
+│   ├── coder.md                          # name=coder, model=sonnet
+│   └── reviewer.md                       # name=reviewer, model=opus
 ├── hooks/
 │   ├── hooks.json                     # Event → script mapping
 │   ├── session-start.sh               # Re-inject lifecycle + phase
@@ -289,11 +291,26 @@ lean-spec/
 
 ## 8. Cross-provider strategy
 
-**Phase 1 (Claude Code only):** Full hook fabric, full enforcement.
+**Phase 1 (Claude Code only):** Full hook fabric, full enforcement, three shipped subagent definitions (`agents/architect.md`, `coder.md`, `reviewer.md`) with pinned model tiers.
 
 **Phase 2+ (Gemini CLI, OpenCode, Codex):** Same markdown artifacts, same `workflow.json`, same slash-command names where the host allows. Enforcement fidelity degrades gracefully per host — hosts without hooks get advisory skills instead of hard gates. No MCP bridge in v1; **two-terminal usage** (one terminal per tool) is the supported cross-provider pattern.
 
 The cross-provider promise is "the **artifacts** work anywhere" — not "every enforcement guarantee holds everywhere."
+
+### 8.1 Agent shipping per host
+
+Role dispatch and model-tier pinning are Claude-Code-native concepts. Other hosts have different primitives; each port must ship its own equivalents so users never have to hand-configure agents.
+
+| Host | Role dispatch primitive | Model pinning primitive | What we ship |
+|---|---|---|---|
+| **Claude Code (M1)** | `Task` tool with `subagent_type` + plugin-provided `agents/*.md` | `model:` frontmatter field on the subagent definition | `agents/architect.md`, `coder.md`, `reviewer.md` |
+| **Gemini CLI (M3)** | Extensions support "personas" / custom contexts, but no native subagent dispatch — we'll emulate via dedicated command-scoped contexts | Model selection is a CLI flag (`--model`) or Gemini profile, not per-dispatch | `.gemini/agents/*.toml` (or equivalent) shipped as part of the extension, plus wrapper commands that invoke the right model. If Gemini lacks dispatch entirely, the commands fall back to advisory mode: orchestrator prints "run this as architect" and reminds the user to switch models |
+| **OpenCode (M3+)** | TBD — verify what OpenCode exposes for role-scoped contexts | TBD | Manual-install `.opencode/INSTALL.md` will document whichever mechanism OpenCode provides; we ship the equivalent config files, not instructions for the user to write them |
+| **Codex (M3+)** | Codex is a single-context tool — no subagent dispatch at all | No per-role model selection | Degrade to advisory mode only: skills + slash commands work, but tier enforcement is impossible. The PLUGIN_DEV_GUIDE will state this limitation explicitly |
+
+**Invariant across hosts:** if a host cannot enforce the model tier, the port must *say so visibly* in its install docs. The user should never think they're getting tier enforcement when they aren't.
+
+M3 features (F13–F15) explicitly include "ship host-native agent definitions" as scope, not "document how users should configure agents."
 
 ---
 
@@ -337,7 +354,7 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 | F1 | **Plugin skeleton** | `.claude-plugin/plugin.json`, empty skills/commands/agents/hooks dirs, README | `claude --plugin-dir .` loads with no errors; `/help` shows plugin namespace |
 | F2 | **workflow.json contract + helper lib** | Bash helpers for `read-phase`, `set-phase`, `append-history`, `validate-transition`. Pure jq + bash. | Unit tests (bats) for all transitions including illegal ones |
 | F3 | **Core slash commands (manual)** | `/start-spec`, `/submit-implementation`, `/submit-review`, `/submit-fixes`, `/close-spec`, `/spec-status`, `/resume-spec`, `/update-spec` | Each command runs end-to-end in a demo project; artifacts produced match templates |
-| F4 | **Architect + coder + reviewer agent prompts** | `agents/architect-prompt.md`, `agents/coder-prompt.md`, `agents/reviewer-prompt.md`. Architect prompt invokes `writing-specs` skill. Reviewer prompt invokes both review skills in sequence. | Subagent dispatched from `/start-spec` produces `spec.md`; `/submit-implementation` produces `notes.md`; `/submit-review` produces `review.md` with structured verdict |
+| F4 | **Architect + coder + reviewer subagent definitions** | `agents/architect.md` (model=opus), `agents/coder.md` (model=sonnet), `agents/reviewer.md` (model=opus). Each is a valid Claude Code subagent definition (frontmatter + system prompt); plugin auto-discovers them. Architect invokes `writing-specs` skill; reviewer invokes both review skills in sequence. | Subagent dispatched from `/start-spec` produces `spec.md` on the pinned architect model; `/submit-implementation` produces `notes.md` on the pinned coder model; `/submit-review` produces `review.md` with structured verdict on the pinned reviewer model. `SubagentStop` hook blocks stops when the expected artifact is missing |
 | F5 | **Hook fabric** | All 6 hooks from §5, plus `hooks/hooks.json`. Includes bats tests for each hook's allow/block paths. | Illegal phase transition blocked by UserPromptSubmit; hand-edit of `workflow.json` blocked by PreToolUse; SessionStart re-primes phase after compaction |
 | F6 | **using-lean-spec meta-skill** | 1%-rule-style SKILL.md that auto-invokes on every session and tells the agent how to navigate the lifecycle | Fresh agent with no prior context correctly identifies current phase from `workflow.json` and proposes correct next command |
 | F7 | **Plugin dev guide (done)** | `docs/PLUGIN_DEV_GUIDE.md` | ✅ Complete |
@@ -358,10 +375,10 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 
 | # | Feature | Scope |
 |---|---|---|
-| F13 | **Gemini CLI extension** | `gemini-extension.json`, TOML command mirrors under `.gemini/commands/lean-spec/`, best-effort hook parity |
-| F14 | **OpenCode install path** | `.opencode/INSTALL.md` + curl-installable layout |
-| F15 | **Codex install path** | `.codex/INSTALL.md` + curl-installable layout |
-| F16 | **Cross-provider artifact compatibility test** | Same `workflow.json` progressed across two hosts works correctly |
+| F13 | **Gemini CLI extension** | `gemini-extension.json`, TOML command mirrors under `.gemini/commands/lean-spec/`, best-effort hook parity, **host-native agent definitions** under `.gemini/agents/` (or the host's equivalent) with per-role model configuration |
+| F14 | **OpenCode install path** | `.opencode/INSTALL.md` + curl-installable layout + **host-native agent definitions** shipped in whatever form OpenCode consumes |
+| F15 | **Codex install path** | `.codex/INSTALL.md` + curl-installable layout. Codex has no subagent dispatch — install docs must state tier enforcement is unavailable |
+| F16 | **Cross-provider artifact compatibility test** | Same `workflow.json` progressed across two hosts works correctly. Separate check: verify each host's shipped agent definitions load without user configuration |
 
 ### Milestone M4 — Auto mode
 
@@ -380,6 +397,8 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 3. **`resume-spec` vs automatic resume:** explicit `/lean-spec:resume-spec` required in M1 for predictability. Auto-resume on `SessionStart` is a candidate for M4 once the manual path is proven.
 4. **Telemetry (F19):** opt-in, local-only. No network calls, no aggregation. A `~/.lean-spec/telemetry.jsonl` per-feature token log the user explicitly enables. Purpose is to let skeptical users verify the token-arbitrage claim empirically on their own machine.
 5. **All three roles run as dispatched subagents with pinned model tiers (M1).** Architect, Coder, and Reviewer are all invoked via `Task`/Agent dispatch from the orchestrator. The orchestrator session is deliberately thin — it routes commands, reads `workflow.json`, mediates the human conversation, and never writes artifacts itself. **Why:** if the orchestrator played Architect, the user's choice of main-session model (which may default to a cheap tier for fluff conversation between commands) would silently determine spec quality. Dispatching Architect with an explicit strong-model pin enforces the two-model cost arbitrage (§3.1) at runtime rather than relying on user hygiene. **Interactive refinement** is preserved across dispatches: the orchestrator shows the draft and collects feedback, then re-dispatches via `/update-spec`. Multi-turn spec iteration happens *between* subagent invocations, not inside one.
+
+6. **The plugin ships subagent definitions; users do not configure them.** `agents/architect.md`, `agents/coder.md`, and `agents/reviewer.md` are valid Claude Code subagent definitions (frontmatter with `name`, `description`, `tools`, `model`; body is the static system prompt). Claude Code auto-discovers them at plugin load and registers them as `lean-spec:architect`, `lean-spec:coder`, `lean-spec:reviewer`. **Why:** if users had to define their own agents, tier enforcement would be a user-configurable default (easily broken), and the install would stop being "one flag"; the plugin's whole pitch is "markdown + bash, no prerequisite setup." This also means per-invocation context (slug, paths, mode, brief) is passed as the `Task` tool's `prompt` field at dispatch time — the subagent definition body itself is static and contains only the role's system prompt, not template variables. **Cross-provider implication (M3+):** every host port must ship its own host-native agent definitions — never rely on user configuration. See §8.1.
 
 ---
 

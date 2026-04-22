@@ -1,7 +1,7 @@
 ---
 description: Advance to reviewing phase and dispatch the reviewer subagent (two-skill sequence)
 argument-hint: <slug>
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, Task
 ---
 
 # /lean-spec:submit-review
@@ -32,11 +32,20 @@ jq --arg p "reviewing" --arg now "$NOW" \
   "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
-2. Read `features/$SLUG/spec.md` and `features/$SLUG/notes.md`.
+2. Determine a diff reference for the reviewer. Prefer an explicit git range (e.g. `git log --oneline -n 10` to find the last pre-implementation commit), or fall back to "list files modified since the `implementing` phase began" via `git status`/`git diff --name-only`.
 
-3. Dispatch the reviewer subagent using `agents/reviewer-prompt.md` as the prompt template. The reviewer runs two skills in sequence:
-   - `lean-spec:reviewing-spec-compliance`
-   - `lean-spec:reviewing-code-quality`
-   Expected output: `features/$SLUG/review.md` with verdict `APPROVE | NEEDS_FIXES | BLOCKED`.
+3. Dispatch the **reviewer subagent** using the `Task` tool:
+
+   - `subagent_type`: `"lean-spec:reviewer"` — the plugin-provided reviewer (see `agents/reviewer.md`). Its frontmatter pins `model: opus`; do not override.
+   - `description`: `"Review <slug>"`
+   - `prompt`: build a fresh invocation payload like this (the reviewer's system prompt comes from `agents/reviewer.md`; do not include it yourself):
+
+     ```
+     Slug: <slug>
+     Spec path: features/<slug>/spec.md
+     Notes path: features/<slug>/notes.md
+     Review path: features/<slug>/review.md
+     Diff reference: <git range or list of modified files from step 2>
+     ```
 
 4. Tell the user: "Dispatching reviewer subagent for '$ARGUMENTS'. Expected output: features/$ARGUMENTS/review.md with verdict APPROVE | NEEDS_FIXES | BLOCKED."

@@ -47,11 +47,11 @@ For a feature in `reviewing` phase, determine sub-state by reading `features/<sl
 
 You (the session running this skill) are the **orchestrator**. You route commands, read `workflow.json`, relay status, and mediate the user's conversation. You do **not** write `spec.md`, code, `notes.md`, or `review.md` directly — those artifacts are produced by dispatched subagents with pinned model tiers:
 
-| Role | Dispatched by | Prompt template | Model tier |
-|---|---|---|---|
-| Architect | `/start-spec`, `/update-spec` | `agents/architect-prompt.md` | Strong |
-| Coder | `/submit-implementation`, `/submit-fixes` | `agents/coder-prompt.md` | Cheap |
-| Reviewer | `/submit-review` | `agents/reviewer-prompt.md` | Strong |
+| Role | Dispatched by | subagent_type | Plugin definition | Model pin |
+|---|---|---|---|---|
+| Architect | `/start-spec`, `/update-spec` | `lean-spec:architect` | `agents/architect.md` | `opus` |
+| Coder | `/submit-implementation`, `/submit-fixes` | `lean-spec:coder` | `agents/coder.md` | `sonnet` |
+| Reviewer | `/submit-review` | `lean-spec:reviewer` | `agents/reviewer.md` | `opus` |
 
 If the user asks you to "just write the spec" or "just edit the AC directly", refuse and re-dispatch via the appropriate slash command. The tier pinning is a runtime guarantee the plugin provides; bypassing it silently defeats the plugin's primary value prop.
 

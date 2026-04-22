@@ -1,7 +1,7 @@
 ---
 description: Advance to implementing phase and dispatch the coder subagent
 argument-hint: <slug>
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, Task
 ---
 
 # /lean-spec:submit-implementation
@@ -31,11 +31,19 @@ jq --arg p "implementing" --arg now "$NOW" \
   "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
-2. Read `features/$SLUG/spec.md` to load the spec.
+2. Dispatch the **coder subagent** using the `Task` tool:
 
-3. Dispatch the coder subagent using `agents/coder-prompt.md` as the prompt template. Pass:
-   - The full content of `features/$SLUG/spec.md`
-   - The feature slug
-   - The expected output: `features/$SLUG/notes.md`
+   - `subagent_type`: `"lean-spec:coder"` — the plugin-provided coder (see `agents/coder.md`). Its frontmatter pins `model: sonnet`; do not override.
+   - `description`: `"Implement <slug>"`
+   - `prompt`: build a fresh invocation payload like this (the coder's system prompt comes from `agents/coder.md`; do not include it yourself):
 
-4. Tell the user: "Dispatching coder subagent for '$ARGUMENTS'. Expected output: features/$ARGUMENTS/notes.md. Once notes.md is produced, run /lean-spec:submit-review $ARGUMENTS."
+     ```
+     Slug: <slug>
+     Spec path: features/<slug>/spec.md
+     Notes path: features/<slug>/notes.md
+     Mode: initial
+
+     (The coder should read spec.md with its own Read tool. No review.md exists in initial mode.)
+     ```
+
+3. Tell the user: "Dispatching coder subagent for '$ARGUMENTS'. Expected output: features/$ARGUMENTS/notes.md. Once notes.md is produced, run /lean-spec:submit-review $ARGUMENTS."

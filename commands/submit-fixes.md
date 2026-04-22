@@ -1,7 +1,7 @@
 ---
 description: Re-dispatch coder with spec + review feedback, then re-enter reviewing
 argument-hint: <slug>
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, Task
 ---
 
 # /lean-spec:submit-fixes
@@ -12,7 +12,7 @@ When review verdict is `NEEDS_FIXES`, re-dispatch the coder with `spec.md + revi
 
 1. Check `$ARGUMENTS` provided.
 2. Verify `features/$ARGUMENTS/workflow.json` exists.
-3. Source lib/workflow.sh, verify current phase is `reviewing`. If not, say: "Phase gate: expected 'reviewing', got '<phase>'."
+3. Read `features/$ARGUMENTS/workflow.json` and verify current phase is `reviewing`. If not, say: "Phase gate: expected 'reviewing', got '<phase>'."
 4. Read `features/$ARGUMENTS/review.md`. Verify it contains `NEEDS_FIXES`. If verdict is `APPROVE`, say: "Verdict is APPROVE — run /lean-spec:close-spec $ARGUMENTS instead." If `BLOCKED`, say: "Verdict is BLOCKED — human intervention required before fixes can proceed."
 
 ## Steps
@@ -28,14 +28,23 @@ jq --arg p "implementing" --arg now "$NOW" \
   "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
-2. Read `features/$SLUG/spec.md` and `features/$SLUG/review.md`.
+2. Dispatch the **coder subagent** using the `Task` tool:
 
-3. Dispatch the coder subagent. Pass:
-   - Full content of `features/$SLUG/spec.md`
-   - Full content of `features/$SLUG/review.md` (the review feedback)
-   - Expected output: the coder makes code changes in the target project AND overwrites `features/$SLUG/notes.md` with updated implementation notes.
+   - `subagent_type`: `"lean-spec:coder"`
+   - `description`: `"Apply review fixes for <slug>"`
+   - `prompt`: build a fresh invocation payload like this (the coder's system prompt comes from `agents/coder.md`; do not include it yourself):
 
-4. After coder completes, advance phase to `reviewing`:
+     ```
+     Slug: <slug>
+     Spec path: features/<slug>/spec.md
+     Notes path: features/<slug>/notes.md
+     Review path: features/<slug>/review.md
+     Mode: fixes
+
+     (The coder should read spec.md and review.md with its own Read tool, address every finding in review.md, then overwrite notes.md to enumerate what was fixed per reviewer item.)
+     ```
+
+3. After coder completes, advance phase to `reviewing`:
 ```bash
 SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
@@ -46,4 +55,4 @@ jq --arg p "reviewing" --arg now "$NOW" \
   "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
-5. Tell the user: "Fix cycle complete. Run /lean-spec:submit-review $ARGUMENTS to re-review."
+4. Tell the user: "Fix cycle complete. Run /lean-spec:submit-review $ARGUMENTS to re-review."

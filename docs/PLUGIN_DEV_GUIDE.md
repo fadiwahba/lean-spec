@@ -53,8 +53,27 @@ That single flag loads the entire plugin from the filesystem. Edit a skill, quit
 - `claude` reads `.claude-plugin/plugin.json` for the manifest
 - Auto-discovers `skills/`, `commands/`, and `hooks/hooks.json` from the plugin root
 - `hooks/hooks.json` is loaded automatically — do **not** add a `hooks` field in `plugin.json` or it will error with "Duplicate hooks file detected"
-- The `agents/` directory holds dispatch prompt templates (one per role: `architect-prompt.md`, `coder-prompt.md`, `reviewer-prompt.md`); they are read directly by commands, not registered as Claude Code agents — do **not** add an `agents` field in `plugin.json`
-- **Three-role dispatch model.** The orchestrator session is thin: it routes commands, reads `workflow.json`, and mediates the user's conversation. It does not write `spec.md`, `notes.md`, or `review.md` directly — each artifact is produced by its corresponding subagent (architect, coder, reviewer) with a pinned model tier. This is by design: see PRD §4.2 and Resolved Decision §12.5
+- The `agents/` directory holds **valid Claude Code subagent definitions** (one per role: `architect.md`, `coder.md`, `reviewer.md`). Each file has YAML frontmatter (`name`, `description`, `tools`, `model`) and a Markdown body that serves as the subagent's static system prompt. Claude Code auto-discovers them and registers each as `lean-spec:<name>` — do **not** add an `agents` field in `plugin.json` (that's for agent *files* in non-standard locations and will error with "Invalid input" for a directory of agent definitions)
+- **Three-role dispatch model.** The orchestrator session is thin: it routes commands, reads `workflow.json`, and mediates the user's conversation. It does not write `spec.md`, `notes.md`, or `review.md` directly — each artifact is produced by its corresponding subagent (architect, coder, reviewer) with a model tier pinned in its definition frontmatter. This is by design: see PRD §4.2 and Resolved Decisions §12.5, §12.6
+
+### Subagent definitions — the schema we use
+
+Every file in `agents/` must be a valid Claude Code subagent definition. Minimum frontmatter:
+
+```yaml
+---
+name: architect                          # required; becomes lean-spec:architect
+description: <when Claude should invoke>  # required; drives auto-invocation heuristics
+tools: Read, Write, Bash, Glob, Grep, Skill   # optional; comma-separated list of allowed tools
+model: opus                               # optional but CRITICAL for tier enforcement — opus | sonnet | haiku
+---
+
+<static system prompt — no {{template variables}}; per-invocation context is passed via the Task tool's prompt field at dispatch time>
+```
+
+**Do not put `{{SLUG}}`-style placeholders in these files** — they are the subagent's system prompt, loaded once at registration, not filled in per call. Dynamic context belongs in the `Task.prompt` the dispatching command builds.
+
+**Plugin ships definitions — users do not.** A user who loads this plugin must not need to run `/agents`, create files in `.claude/agents/`, or configure models manually. If install requires user action beyond `--plugin-dir` / `/plugin install`, we've broken the plugin's primary promise.
 - Commands appear in `/help` under `(plugin:lean-spec)`
 
 ### Verifying the plugin loaded
@@ -206,7 +225,8 @@ Users point their tool at the raw URL, following the same pattern Superpowers us
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Plugin doesn't appear in `/help` | Missing `.claude-plugin/plugin.json` or invalid `name` | Manifest must exist with a `name` field in kebab-case |
-| `agents: Invalid input` on load | `agents` field in `plugin.json` points to a directory of template files, not CC agent definitions | Remove `agents` from `plugin.json` — commands read templates directly |
+| `agents: Invalid input` on load | `agents` field in `plugin.json` pointed to a directory, OR `agents/*.md` files lacked valid subagent frontmatter | Remove `agents` field from `plugin.json` (directory is auto-discovered). Ensure each `agents/*.md` has `name:` + `description:` frontmatter — those are the required fields |
+| Subagent runs on the wrong model | Subagent definition lacks `model:` frontmatter — Claude Code falls back to the main-session model | Add `model: opus` / `model: sonnet` / `model: haiku` to the subagent's frontmatter. Without it, tier enforcement is silently broken |
 | `Duplicate hooks file detected` | `hooks` field in `plugin.json` references `hooks/hooks.json`, which is already auto-loaded | Remove `hooks` from `plugin.json` entirely |
 | Hook doesn't fire | Hook matcher doesn't match event or `hooks.json` malformed | Validate `hooks/hooks.json`, check `SessionStart` uses `matcher: "startup\|clear\|compact"` |
 | Command runs but skill content not loaded | Skill is supposed to be invoked via `Skill` tool, not read | Slash command should instruct agent to use `Skill` tool, not `Read` |

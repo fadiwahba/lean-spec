@@ -6,13 +6,13 @@ allowed-tools: Bash, Read, Task
 
 # /lean-spec:start-spec
 
-Initialize a new feature. Creates `features/<slug>/` with `workflow.json` in the `specifying` phase, then dispatches the **architect subagent** to author `spec.md` from the user's brief.
+Initialize a new feature. Creates `features/<slug>/` with `workflow.json` in the `specifying` phase, then dispatches the **architect subagent** (plugin-provided, pinned to a strong model via its frontmatter) to author `spec.md` from the user's brief.
 
-The orchestrator (you) does NOT write `spec.md` directly. Enforced strong-model tier is the whole point — see PRD §4.2.
+The orchestrator (you) does NOT write `spec.md` directly. Tier enforcement is the whole point — see PRD §4.2.
 
 ## Pre-flight
 
-1. Parse arguments. First token = slug; rest = brief (optional).
+Parse arguments. First token = slug; rest = brief (optional):
 ```bash
 ARGS="$ARGUMENTS"
 SLUG="${ARGS%% *}"
@@ -32,8 +32,6 @@ if [ -d "features/$SLUG" ]; then
   exit 1
 fi
 ```
-
-2. If the brief references a file (e.g. `@docs/PRD.md`), note the path — the architect subagent will read it. Do not read it here; the subagent needs the fresh context.
 
 ## Steps
 
@@ -61,14 +59,25 @@ EOF
 ```
 
 2. Dispatch the **architect subagent** using the `Task` tool:
-   - `subagent_type`: `architect` (pinned to a strong model via subagent configuration)
-   - `description`: `Author spec.md for <slug>`
-   - `prompt`: use `agents/architect-prompt.md` as the template. Fill in:
-     - `{{SLUG}}` → the slug
-     - `{{SPEC_PATH}}` → `features/<slug>/spec.md`
-     - `{{MODE}}` → `new`
-     - `{{BRIEF}}` → the user's brief (everything after the slug in `$ARGUMENTS`). If empty, pass: `No brief provided — ask the user via status DONE_WITH_CONCERNS to re-invoke with a brief.`
-     - `{{EXISTING_SPEC}}` → empty (new mode)
+
+   - `subagent_type`: `"lean-spec:architect"` — the plugin-provided architect (see `agents/architect.md`). The subagent's frontmatter pins `model: opus`; do not override.
+   - `description`: `"Author spec.md for <slug>"`
+   - `prompt`: build a fresh invocation payload like this (do NOT send the `agents/architect.md` body yourself — Claude Code loads it automatically as the subagent's system prompt):
+
+     ```
+     Slug: <slug>
+     Spec path: features/<slug>/spec.md
+     Mode: new
+
+     Brief:
+     <user's full brief, verbatim — everything after the slug in $ARGUMENTS>
+
+     Existing spec:
+     (none — this is a new feature)
+     ```
+
+   If the brief references a file (e.g. `@docs/PRD.md`), include that reference verbatim in the `Brief:` section; the architect will read it with its own tools.
+   If the brief is empty, send `Brief: (none provided — report DONE_WITH_CONCERNS and ask the user to re-invoke with a brief)`.
 
 3. When the architect subagent returns, confirm `features/$SLUG/spec.md` exists. If it does, tell the user:
 
@@ -78,5 +87,6 @@ EOF
 
 ## Notes
 
-- **Do not invoke the `writing-specs` skill in the orchestrator context.** That skill is the architect subagent's tool, not yours.
+- **The architect is a plugin-provided subagent** with its system prompt in `agents/architect.md` and its model pinned in frontmatter. Your only job is to construct the per-invocation prompt (slug, spec path, mode, brief).
+- **Do not invoke the `writing-specs` skill in the orchestrator context.** That skill is the architect subagent's tool.
 - **Do not write `spec.md` directly**, even as a fallback. If the architect fails, the right recovery is `/lean-spec:update-spec` (which re-dispatches), not the orchestrator ghost-writing.
