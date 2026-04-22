@@ -87,6 +87,18 @@ Review is not a role — it is a two-skill sequence within `/submit-review`:
 
 Output: `review.md` with verdict `APPROVE | NEEDS_FIXES | BLOCKED`.
 
+**Role enactment (single-session model).** lean-spec v3 runs in **one Claude Code terminal**. Roles are enacted within that single session as follows:
+
+| Role | Runs where | Why |
+|---|---|---|
+| **Architect** | Orchestrator's main session | Spec writing is interactive — user ↔ architect Q&A, iterative `/update-spec`. A subagent's one-shot context doesn't support the back-and-forth needed to refine scope |
+| **Coder** | Dispatched subagent (`agents/coder-prompt.md`) inside `/submit-implementation` and `/submit-fixes` | Mechanical — `spec.md` is the full input; no Q&A needed. Fresh context = cheap tokens + isolation |
+| **Reviewer** | Dispatched subagent (`agents/reviewer-prompt.md`) inside `/submit-review` | Mechanical — reads `spec.md` + diff, runs two skills, emits `review.md`. Fresh context prevents reviewer contamination by implementer's reasoning |
+
+**Model-tier enforcement in M1.** The plugin does **not** enforce the architect's model tier — users must launch Claude Code on a strong model (Opus/GPT-5-class) to realize the two-model cost arbitrage for the spec/review side. Coder subagents can be pinned to a cheaper model via subagent dispatch settings. An optional dispatched-architect variant (e.g. for PRD-driven spec generation where no user Q&A is needed) is considered for M2+ — see `/decompose-prd` in §6.3 and Resolved Decisions §12.
+
+**Two-terminal usage is NOT the model for a single provider.** The `two-terminal` language in §8 refers only to running lean-spec artifacts across *different* hosts (Claude Code + Gemini CLI). Within one host, one terminal is the supported setup.
+
 ### 4.3 `workflow.json` — minimal deterministic state
 
 One file per feature at `features/<slug>/workflow.json`:
@@ -364,6 +376,7 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 2. **Two-stage review:** one subagent with two skills (`reviewing-spec-compliance` + `reviewing-code-quality` invoked in sequence inside a single `/submit-review` dispatch). Cheaper, and good enough. Revisit only if reviewer contamination is observed in practice.
 3. **`resume-spec` vs automatic resume:** explicit `/lean-spec:resume-spec` required in M1 for predictability. Auto-resume on `SessionStart` is a candidate for M4 once the manual path is proven.
 4. **Telemetry (F19):** opt-in, local-only. No network calls, no aggregation. A `~/.lean-spec/telemetry.jsonl` per-feature token log the user explicitly enables. Purpose is to let skeptical users verify the token-arbitrage claim empirically on their own machine.
+5. **Architect runs in the orchestrator session, not as a subagent (M1).** Interactive spec refinement — user ↔ architect Q&A and iterative `/update-spec` — is the primary UX for the spec phase; dispatched subagents don't support that conversational loop well. Cost of this choice: the plugin cannot enforce the architect's model tier, so users must launch Claude Code on a strong model themselves to realize the two-model arbitrage. **M2+ adds a dispatched-architect path** via `/lean-spec:decompose-prd` (PRD-driven, one-shot, no Q&A needed) where enforced tier matters more than interactivity.
 
 ---
 
