@@ -10,5 +10,6 @@
   "keywords": ["spec", "workflow", "lifecycle", "hooks", "token-efficiency"],
   "skills": "./skills/",
   "commands": "./commands/",
-  "agents": "./agents/"
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json"
 }
