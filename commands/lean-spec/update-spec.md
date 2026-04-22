@@ -12,7 +12,7 @@ Revise the spec for an existing feature. Phase stays `specifying`.
 
 1. Check `$ARGUMENTS` provided. Usage: `/lean-spec:update-spec <slug>`.
 2. Verify `features/$ARGUMENTS/workflow.json` exists.
-3. Source lib/workflow.sh and check current phase is `specifying`. If not, say: "Feature is in phase '<phase>' — only revise spec while in 'specifying'."
+3. Read `features/$ARGUMENTS/workflow.json` and check current phase is `specifying`. If not, say: "Feature is in phase '<phase>' — only revise spec while in 'specifying'."
 
 ## Steps
 

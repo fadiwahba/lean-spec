@@ -20,10 +20,12 @@ When review verdict is `NEEDS_FIXES`, re-dispatch the coder with `spec.md + revi
 1. Advance phase back to `implementing`:
 ```bash
 SLUG="$ARGUMENTS"
-PLUGIN_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Error: must run from within a git repository" >&2; exit 1; }
-cd "$PLUGIN_ROOT" 2>/dev/null || true
-source "$PLUGIN_ROOT/lib/workflow.sh"
-set_phase "features/$SLUG/workflow.json" "implementing"
+WF="features/$SLUG/workflow.json"
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tmp=$(mktemp "${WF}.tmp.XXXXXX")
+jq --arg p "implementing" --arg now "$NOW" \
+  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
+  "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
 2. Read `features/$SLUG/spec.md` and `features/$SLUG/review.md`.
@@ -36,10 +38,12 @@ set_phase "features/$SLUG/workflow.json" "implementing"
 4. After coder completes, advance phase to `reviewing`:
 ```bash
 SLUG="$ARGUMENTS"
-PLUGIN_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Error: must run from within a git repository" >&2; exit 1; }
-cd "$PLUGIN_ROOT" 2>/dev/null || true
-source "$PLUGIN_ROOT/lib/workflow.sh"
-set_phase "features/$SLUG/workflow.json" "reviewing"
+WF="features/$SLUG/workflow.json"
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tmp=$(mktemp "${WF}.tmp.XXXXXX")
+jq --arg p "reviewing" --arg now "$NOW" \
+  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
+  "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
 5. Tell the user: "Fix cycle complete. Run /lean-spec:submit-review $ARGUMENTS to re-review."

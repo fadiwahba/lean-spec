@@ -12,17 +12,23 @@ Advance a feature from `specifying` to `implementing` and dispatch the coder sub
 
 1. Check `$ARGUMENTS` provided.
 2. Verify `features/$ARGUMENTS/workflow.json` exists.
-3. Source lib/workflow.sh, verify current phase is `specifying`. If not, say: "Phase gate: expected 'specifying', got '<phase>'. Run /lean-spec:resume-spec $ARGUMENTS if you need to re-enter the current phase."
+3. Read `features/$ARGUMENTS/workflow.json` and verify current phase is `specifying`. If not, say: "Phase gate: expected 'specifying', got '<phase>'. Run /lean-spec:resume-spec $ARGUMENTS if you need to re-enter the current phase."
 
 ## Steps
 
 1. Advance phase to `implementing`:
 ```bash
 SLUG="$ARGUMENTS"
-PLUGIN_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "Error: must run from within a git repository" >&2; exit 1; }
-cd "$PLUGIN_ROOT" 2>/dev/null || true
-source "$PLUGIN_ROOT/lib/workflow.sh"
-set_phase "features/$SLUG/workflow.json" "implementing"
+WF="features/$SLUG/workflow.json"
+CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$CURRENT" != "specifying" ]; then
+  echo "Phase gate: expected 'specifying', got '$CURRENT'" >&2; exit 1
+fi
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tmp=$(mktemp "${WF}.tmp.XXXXXX")
+jq --arg p "implementing" --arg now "$NOW" \
+  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
+  "$WF" > "$tmp" && mv "$tmp" "$WF"
 ```
 
 2. Read `features/$SLUG/spec.md` to load the spec.
