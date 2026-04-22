@@ -51,8 +51,9 @@ That single flag loads the entire plugin from the filesystem. Edit a skill, quit
 ### What happens under the hood
 
 - `claude` reads `.claude-plugin/plugin.json` for the manifest
-- Auto-discovers everything in `skills/`, `commands/`, `agents/`, `hooks/`
-- Merges `hooks/hooks.json` into the session's hook configuration (parallel with any user hooks)
+- Auto-discovers `skills/`, `commands/`, and `hooks/hooks.json` from the plugin root
+- `hooks/hooks.json` is loaded automatically — do **not** add a `hooks` field in `plugin.json` or it will error with "Duplicate hooks file detected"
+- The `agents/` directory holds dispatch prompt templates; they are read directly by commands, not registered as Claude Code agents — do **not** add an `agents` field in `plugin.json`
 - Commands appear in `/help` under `(plugin:lean-spec)`
 
 ### Verifying the plugin loaded
@@ -204,6 +205,8 @@ Users point their tool at the raw URL, following the same pattern Superpowers us
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Plugin doesn't appear in `/help` | Missing `.claude-plugin/plugin.json` or invalid `name` | Manifest must exist with a `name` field in kebab-case |
+| `agents: Invalid input` on load | `agents` field in `plugin.json` points to a directory of template files, not CC agent definitions | Remove `agents` from `plugin.json` — commands read templates directly |
+| `Duplicate hooks file detected` | `hooks` field in `plugin.json` references `hooks/hooks.json`, which is already auto-loaded | Remove `hooks` from `plugin.json` entirely |
 | Hook doesn't fire | Hook matcher doesn't match event or `hooks.json` malformed | Validate `hooks/hooks.json`, check `SessionStart` uses `matcher: "startup\|clear\|compact"` |
 | Command runs but skill content not loaded | Skill is supposed to be invoked via `Skill` tool, not read | Slash command should instruct agent to use `Skill` tool, not `Read` |
 | `--plugin-dir` path doesn't work | Relative path passed or directory lacks `.claude-plugin/` | Use absolute paths; verify plugin root has the manifest directory |
