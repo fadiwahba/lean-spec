@@ -62,14 +62,19 @@ Every file in `agents/` must be a valid Claude Code subagent definition. Minimum
 
 ```yaml
 ---
-name: architect                          # required; becomes lean-spec:architect
-description: <when Claude should invoke>  # required; drives auto-invocation heuristics
-tools: Read, Write, Bash, Glob, Grep, Skill   # optional; comma-separated list of allowed tools
-model: opus                               # optional but CRITICAL for tier enforcement — opus | sonnet | haiku
+name: architect                                    # required; becomes lean-spec:architect
+description: <when Claude should invoke>           # required; drives auto-invocation heuristics
+tools: ["Read", "Write", "Bash", "Glob", "Grep", "Skill"]   # optional; YAML ARRAY (NOT comma-separated)
+model: opus                                        # required for tier enforcement — opus | sonnet | haiku | inherit
+color: purple                                      # required; one of red | blue | green | yellow | purple | orange | pink | cyan
 ---
 
 <static system prompt — no {{template variables}}; per-invocation context is passed via the Task tool's prompt field at dispatch time>
 ```
+
+**Format gotchas:**
+- `tools:` for **agents** must be a YAML array (`["Read", "Grep"]`). Comma-separated string (`Read, Grep`) parses but silently drops some tool names (notably `Glob` and `Grep`) — the `/agents` UI flags them as `Unrecognized`. **Do not** use the comma-separated format that `commands/*.md` uses for `allowed-tools:` — those are different fields with different parsers.
+- `color:` runtime palette is `red | blue | green | yellow | purple | orange | pink | cyan`. The plugin-validator skill (in the official `plugin-dev` plugin) lists a stricter palette including `magenta` instead of `purple`/`orange`/`pink` — that list is wrong / outdated relative to the runtime. Trust what `/agents` accepts: `purple` and `pink` work; `magenta` and `indigo` do not.
 
 **Do not put `{{SLUG}}`-style placeholders in these files** — they are the subagent's system prompt, loaded once at registration, not filled in per call. Dynamic context belongs in the `Task.prompt` the dispatching command builds.
 

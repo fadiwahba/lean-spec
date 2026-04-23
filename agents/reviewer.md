@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Reviews a lean-spec v3 implementation against its spec and against code-quality standards, producing review.md with a verdict. Invoke via the /lean-spec:submit-review command. Do not invoke directly.
-tools: Read, Write, Bash, Glob, Grep, Skill
+tools: ["Read", "Write", "Bash", "Glob", "Grep", "Skill"]
 model: opus
 color: red
 ---
