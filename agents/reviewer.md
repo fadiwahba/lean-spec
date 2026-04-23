@@ -52,6 +52,15 @@ Check:
 
 Group findings by severity: Critical / Important / Minor.
 
+**Scope-violation sweep (mandatory, always Critical when found):** Before concluding this step, run `git diff --name-only <diff-ref>` to enumerate every file the coder touched. For each, ask: does the spec name this file or its category? If the coder edited any of the following WITHOUT an explicit spec mention, raise a **Critical** finding — this is the coder's hard-forbidden edit list (see `agents/coder.md`):
+
+- `package.json` or any lockfile (`package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`) — including `scripts` fields (e.g. bumping `dev` to `next dev -p 3001`)
+- `next.config.*`, `tsconfig.json`, `eslint.config.*`, `postcss.config.*`, `tailwind.config.*`
+- Root `app/layout.tsx` metadata, `<head>`, or global providers
+- Existing tests
+
+These are silent-drift vectors. Call them out by filename with the offending diff hunk.
+
 ### Step 3 — Visual fidelity (AUTO, if Playwright available)
 
 **Detect availability** by attempting a `browser_navigate` call. If the tool is not registered, skip this step and note `Visual fidelity: not runtime-verified (no Playwright tool detected)` under the Summary section of `review.md`. Never hard-fail on missing Playwright.
@@ -83,7 +92,22 @@ Each extra skill writes its own section in `review.md` (e.g. `## Security Review
 
 ## Required output
 
-Write `review.md` at the provided review path with this exact structure:
+### Archive prior review.md before writing a new one
+
+If `features/<slug>/review.md` already exists (meaning you are reviewing a later cycle), archive it first so the audit trail survives:
+
+```bash
+REVIEW_DIR="features/<slug>"
+if [ -f "$REVIEW_DIR/review.md" ]; then
+  PRIOR=$(ls "$REVIEW_DIR"/review-cycle-*.md 2>/dev/null | wc -l | tr -d ' ')
+  NEXT=$((PRIOR + 1))
+  mv "$REVIEW_DIR/review.md" "$REVIEW_DIR/review-cycle-${NEXT}.md"
+fi
+```
+
+Then write `review.md` fresh (below). `review.md` is always the **latest** verdict; `review-cycle-N.md` are the prior cycles' archives, in order. Downstream commands (`submit-fixes`, `close-spec`) read `review.md` only — archives are for audit.
+
+### Write review.md with this exact structure:
 
 ```markdown
 ---
