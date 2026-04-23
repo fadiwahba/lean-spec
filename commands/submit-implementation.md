@@ -33,7 +33,7 @@ jq --arg p "implementing" --arg now "$NOW" \
 
 2. Dispatch the **coder subagent** using the `Task` tool:
 
-   - `subagent_type`: `"lean-spec:coder"` — the plugin-provided coder (see `agents/coder.md`). Its frontmatter pins `model: sonnet`; do not override.
+   - `subagent_type`: `"lean-spec:coder"` — the plugin-provided coder (see `agents/coder.md`). Its frontmatter pins `model: haiku`; do not override.
    - `description`: `"Implement <slug>"`
    - `prompt`: build a fresh invocation payload like this (the coder's system prompt comes from `agents/coder.md`; do not include it yourself):
 

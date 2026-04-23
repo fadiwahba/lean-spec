@@ -50,7 +50,7 @@ You (the session running this skill) are the **orchestrator**. You route command
 | Role | Dispatched by | subagent_type | Plugin definition | Model pin | Color |
 |---|---|---|---|---|---|
 | Architect | `/start-spec`, `/update-spec` | `lean-spec:architect` | `agents/architect.md` | `opus` | magenta |
-| Coder | `/submit-implementation`, `/submit-fixes` | `lean-spec:coder` | `agents/coder.md` | `sonnet` | yellow |
+| Coder | `/submit-implementation`, `/submit-fixes` | `lean-spec:coder` | `agents/coder.md` | `haiku` | yellow |
 | Reviewer | `/submit-review` | `lean-spec:reviewer` | `agents/reviewer.md` | `opus` | red |
 
 If the user asks you to "just write the spec" or "just edit the AC directly", refuse and re-dispatch via the appropriate slash command. The tier pinning is a runtime guarantee the plugin provides; bypassing it silently defeats the plugin's primary value prop.

@@ -92,7 +92,7 @@ Output: `review.md` with verdict `APPROVE | NEEDS_FIXES | BLOCKED`.
 | Role | Dispatched from | Subagent definition | Model pin | Required output | Runs during phase |
 |---|---|---|---|---|---|
 | **Architect** | `/start-spec`, `/update-spec` | `agents/architect.md` (`lean-spec:architect`) | `opus` | `spec.md` (handoffs frontmatter + scope + AC + out-of-scope) | `specifying` |
-| **Coder** | `/submit-implementation`, `/submit-fixes` | `agents/coder.md` (`lean-spec:coder`) | `sonnet` | code diff + `notes.md` | `implementing` |
+| **Coder** | `/submit-implementation`, `/submit-fixes` | `agents/coder.md` (`lean-spec:coder`) | `haiku` | code diff + `notes.md` | `implementing` |
 | **Reviewer** | `/submit-review` | `agents/reviewer.md` (`lean-spec:reviewer`) | `opus` | `review.md` with verdict | `reviewing` |
 
 **The plugin ships the subagent definitions.** Each `agents/*.md` file is a valid Claude Code subagent definition with frontmatter (`name`, `description`, `tools`, `model`) and a static system prompt as its body. The plugin's commands dispatch via `Task` with the plugin-qualified `subagent_type` (e.g. `"lean-spec:architect"`); Claude Code loads the subagent's system prompt from the definition file automatically, and the command supplies only per-invocation context (slug, paths, mode, brief) as the `Task` prompt. Users do not create or configure these subagents — fresh install works.
@@ -255,7 +255,7 @@ lean-spec/
 │   └── decompose-prd.md                   # M2+
 ├── agents/                               # Valid Claude Code subagent definitions (frontmatter + system prompt), auto-discovered
 │   ├── architect.md                      # name=architect, model=opus
-│   ├── coder.md                          # name=coder, model=sonnet
+│   ├── coder.md                          # name=coder, model=haiku
 │   └── reviewer.md                       # name=reviewer, model=opus
 ├── hooks/
 │   ├── hooks.json                     # Event → script mapping
@@ -354,7 +354,7 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 | F1 | **Plugin skeleton** | `.claude-plugin/plugin.json`, empty skills/commands/agents/hooks dirs, README | `claude --plugin-dir .` loads with no errors; `/help` shows plugin namespace |
 | F2 | **workflow.json contract + helper lib** | Bash helpers for `read-phase`, `set-phase`, `append-history`, `validate-transition`. Pure jq + bash. | Unit tests (bats) for all transitions including illegal ones |
 | F3 | **Core slash commands (manual)** | `/start-spec`, `/submit-implementation`, `/submit-review`, `/submit-fixes`, `/close-spec`, `/spec-status`, `/resume-spec`, `/update-spec` | Each command runs end-to-end in a demo project; artifacts produced match templates |
-| F4 | **Architect + coder + reviewer subagent definitions** | `agents/architect.md` (model=opus), `agents/coder.md` (model=sonnet), `agents/reviewer.md` (model=opus). Each is a valid Claude Code subagent definition (frontmatter + system prompt); plugin auto-discovers them. Architect invokes `writing-specs` skill; reviewer invokes both review skills in sequence. | Subagent dispatched from `/start-spec` produces `spec.md` on the pinned architect model; `/submit-implementation` produces `notes.md` on the pinned coder model; `/submit-review` produces `review.md` with structured verdict on the pinned reviewer model. `SubagentStop` hook blocks stops when the expected artifact is missing |
+| F4 | **Architect + coder + reviewer subagent definitions** | `agents/architect.md` (model=opus), `agents/coder.md` (model=haiku), `agents/reviewer.md` (model=opus). Each is a valid Claude Code subagent definition (frontmatter + system prompt); plugin auto-discovers them. Architect invokes `writing-specs` skill; reviewer invokes both review skills in sequence. | Subagent dispatched from `/start-spec` produces `spec.md` on the pinned architect model; `/submit-implementation` produces `notes.md` on the pinned coder model; `/submit-review` produces `review.md` with structured verdict on the pinned reviewer model. `SubagentStop` hook blocks stops when the expected artifact is missing |
 | F5 | **Hook fabric** | All 6 hooks from §5, plus `hooks/hooks.json`. Includes bats tests for each hook's allow/block paths. | Illegal phase transition blocked by UserPromptSubmit; hand-edit of `workflow.json` blocked by PreToolUse; SessionStart re-primes phase after compaction |
 | F6 | **using-lean-spec meta-skill** | 1%-rule-style SKILL.md that auto-invokes on every session and tells the agent how to navigate the lifecycle | Fresh agent with no prior context correctly identifies current phase from `workflow.json` and proposes correct next command |
 | F7 | **Plugin dev guide (done)** | `docs/PLUGIN_DEV_GUIDE.md` | ✅ Complete |

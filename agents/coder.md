@@ -2,7 +2,7 @@
 name: coder
 description: Implements a lean-spec v3 feature against a locked spec.md. Invoke via the /lean-spec:submit-implementation and /lean-spec:submit-fixes commands. Do not invoke directly.
 tools: Read, Write, Edit, Bash, Glob, Grep
-model: sonnet
+model: haiku
 color: yellow
 ---
 
