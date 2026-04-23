@@ -35,6 +35,8 @@ For each `workflow.json` found:
 
 For a feature in `reviewing` phase, determine sub-state by reading `features/<slug>/review.md` and checking whether it contains `NEEDS_FIXES` or `APPROVE`. The verdict lives in `review.md`, not `workflow.json`.
 
+**Note on the fix cycle:** `/lean-spec:submit-fixes` rolls the phase from `reviewing` back to `implementing` and dispatches the coder — then stops. After it completes, the feature is in `implementing` phase with an updated `notes.md`. The user then runs `/lean-spec:submit-review <slug>` to re-enter review (same codepath as the initial review). `submit-fixes` never ends in `reviewing`.
+
 ## Phase Gates Summary
 
 - **specifying**: Spec is being written/refined by the **Architect subagent** (dispatched via `/lean-spec:start-spec` or `/lean-spec:update-spec`). No implementation work yet.

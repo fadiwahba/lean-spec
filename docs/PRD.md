@@ -212,7 +212,7 @@ All commands live under `commands/*.md` (flat — no subdirectory) and namespace
 | `/lean-spec:update-spec <slug>` | Architect (subagent) | Collect user feedback, dispatch architect subagent with existing `spec.md` + feedback to produce revised `spec.md` (phase stays `specifying`) |
 | `/lean-spec:submit-implementation <slug>` | Coder (subagent) | Advance to `implementing`, dispatch coder subagent with `spec.md`, produce diff + `notes.md` |
 | `/lean-spec:submit-review <slug>` | Reviewer (subagent, two skills) | Advance to `reviewing`, dispatch reviewer subagent, produce `review.md` with verdict |
-| `/lean-spec:submit-fixes <slug>` | Coder (subagent) | When review is `NEEDS_FIXES`, re-dispatch coder with `spec.md + review.md`, re-enter `reviewing` |
+| `/lean-spec:submit-fixes <slug>` | Coder (subagent) | When review is `NEEDS_FIXES`, roll phase back to `implementing` and re-dispatch coder with `spec.md + review.md`. Ends in `implementing` — user then runs `/submit-review` to re-enter reviewing (same codepath as initial review) |
 | `/lean-spec:close-spec <slug>` | Orchestrator (no dispatch) | Verify `APPROVE` verdict in `review.md`, advance phase → `closed`. This is the only lifecycle command the orchestrator executes directly — no role needed |
 
 ### 6.2 Navigation
