@@ -13,3 +13,6 @@ test-results/
 # Stray Playwright screenshots saved to repo root (should be in .playwright-mcp/)
 /pomodoro-*.png
 /.claude/scheduled_tasks.lock
+
+# Locally-installed test tooling (bats-core etc.)
+/.tools/

@@ -271,12 +271,129 @@ Users point their tool at the raw URL, following the same pattern Superpowers us
 | `--plugin-dir` path doesn't work | Relative path passed or directory lacks `.claude-plugin/` | Use absolute paths; verify plugin root has the manifest directory |
 | Commands show wrong namespace | File is in `commands/` root instead of `commands/lean-spec/` | Slash command namespacing follows directory path; `commands/<subdir>/foo.md` → `/<subdir>:foo` |
 | Hook hangs startup | Hook script has infinite loop or blocks on stdin | Use `async: false` sparingly; most hooks should not block session startup |
+| Coder edits `package.json` `dev` script to change port | Coder bypassed the dev-server PID-file pattern (agents/coder.md §Playwright smoke-test) and tried to "fix" port config permanently | Reviewer's scope-violation sweep flags this as Critical. Coder's "Hard-forbidden edits" list names `package.json` scripts explicitly — see agents/coder.md §Implementation rules |
+| `review.md` from a prior fix cycle is gone | Correct: reviewer archives prior reviews as `review-cycle-N.md` before writing a new one (see §9) — check `features/<slug>/review-cycle-*.md` | — |
+| Sonnet architect writes prose AC4 and visual drift passes review | Missing V1–V8 numbered-table enforcement | Upgrade to latest `skills/writing-specs/SKILL.md` (has the enforcement rule). Validated by experiment B2 — fix took visible-ring-color drift to zero |
+| Zombie `next-server` / `vite` processes across sessions | Coder or reviewer started a dev server without using the portable PGID cleanup pattern | Use the `ps -o pgid=` → `kill -TERM -$PGID` pattern in agents/{coder,reviewer}.md §Playwright. Never `setsid` (Linux-only, broken on macOS) |
 
 ---
 
-## 8. References
+## 8. Post-experiment hardening (v3.0.1+ patches)
+
+After running four end-to-end experiments (see README → "Real cost data") we added a handful of rules and workflows to the plugin. These are load-bearing — removing them causes the regressions experiments A/B/C surfaced to come back.
+
+### 8.1 Coder's "Hard-forbidden edits" list
+
+`agents/coder.md` §Implementation rules enumerates files the coder must never modify unless the spec explicitly names them:
+
+- `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` — **including `scripts` fields**
+- `next.config.*`, `tsconfig.json`, `eslint.config.*`, `postcss.config.*`, `tailwind.config.*`
+- Root `app/layout.tsx` metadata, `<head>`, global providers
+- Existing tests
+
+**Why:** experiments B and B2 surfaced silent drift where coders edited `package.json dev` to pin a port, turning session-only hacks into permanent project changes. This list gives the reviewer a concrete rule to enforce.
+
+### 8.2 Reviewer's scope-violation sweep
+
+`agents/reviewer.md` Step 2 mandates a `git diff --name-only` pass cross-checked against the forbidden list. Any unexpected file → **Critical** finding.
+
+### 8.3 `review.md` archival across fix cycles
+
+Before each new review, the reviewer runs:
+
+```bash
+N=$(ls features/<slug>/review-cycle-*.md 2>/dev/null | wc -l)
+[ -f features/<slug>/review.md ] && mv features/<slug>/review.md features/<slug>/review-cycle-$((N+1)).md
+```
+
+`review.md` is always the **latest** verdict. Prior cycles live as `review-cycle-1.md`, `review-cycle-2.md`, etc. — audit trail only; downstream commands still read `review.md`.
+
+### 8.4 `notes.md` append-per-cycle
+
+In `fixes` mode the coder appends `## Cycle N fixes` to the existing `notes.md` rather than rewriting it. The "What was built" from the initial implementation stays intact; each cycle adds its own findings→fix→file:line table.
+
+### 8.5 Dev-server lifecycle (portable)
+
+Coder and reviewer must never leave zombie dev servers. Canonical pattern (macOS + Linux):
+
+```bash
+# detect existing
+if curl -sf http://localhost:3001 >/dev/null; then
+  SERVER_URL="http://localhost:3001"  # someone else's — don't touch
+else
+  pnpm dev > /tmp/lean-spec-<slug>-dev.log 2>&1 &
+  echo $! > /tmp/lean-spec-<slug>-dev.pid
+fi
+
+# before exit (only if you started it)
+if [ -f /tmp/lean-spec-<slug>-dev.pid ]; then
+  PID=$(cat /tmp/lean-spec-<slug>-dev.pid)
+  PGID=$(ps -o pgid= -p "$PID" 2>/dev/null | tr -d ' ')
+  [ -n "$PGID" ] && kill -TERM "-$PGID"
+  rm -f /tmp/lean-spec-<slug>-dev.pid
+fi
+```
+
+`setsid` is Linux-only and **does not work on macOS** — don't use it.
+
+### 8.6 Writing-specs visual-AC rule
+
+For any UI feature with a binding visual contract (`docs/ux-design.png` in a PRD), AC4 **must** be a one-liner deferring to a numbered Visual Checklist table (V1, V2, ...) in Technical Notes. Prose AC4 is rejected by the skill's own self-check.
+
+Validated by experiment B2: swapping prose→table dropped review cycles from 3→1 and fixed the white-ring visual drift.
+
+---
+
+## 9. Testing
+
+The plugin ships a bats-core test suite covering:
+
+- `tests/workflow.bats` — `lib/workflow.sh` phase-transition logic (read/validate/set)
+- `tests/hooks.bats` — hook script outputs and phase-gate enforcement
+- `tests/plugin-structure.bats` — frontmatter validation, model-pin enforcement, review-archive presence, forbidden-edits list presence
+- `tests/experiment-report.bats` — `scripts/experiment-report.sh` aggregation + error handling
+
+### Install bats-core locally (no sudo)
+
+```bash
+git clone --depth=1 https://github.com/bats-core/bats-core.git /tmp/bats-core
+/tmp/bats-core/install.sh .tools
+```
+
+`.tools/` is in `.gitignore`.
+
+### Run
+
+```bash
+.tools/bin/bats tests/                          # full suite
+.tools/bin/bats tests/plugin-structure.bats     # one file
+.tools/bin/bats tests/ -f "phase"               # filter by test name substring
+```
+
+### What's not covered (by design)
+
+Subagent dispatch is not unit-tested — that requires spawning `claude --print` subprocesses, which cost real money and time. Subagent behavior is validated by the end-to-end Pomodoro experiments (see README → "Real cost data" and the locked branches in `/Users/fady/sandbox/todo-demo`).
+
+### Adding a test
+
+```bash
+# Drop a new tests/foo.bats file. setup/teardown pattern:
+setup() {
+  PLUGIN_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/.." && pwd)"
+  TMP=$(mktemp -d)
+}
+teardown() { rm -rf "$TMP"; }
+@test "my new check" { run ...; [ "$status" -eq 0 ]; }
+```
+
+The existing suite already fails on subtle drift (e.g. changing a canonical model pin, removing the scope-violation sweep). Keep new tests that narrow — don't test LLM output, test the shell and schema scaffolding around it.
+
+---
+
+## 10. References
 
 - [Claude Code plugin reference](https://docs.claude.com/en/docs/claude-code/plugins) — official plugin docs
 - [Claude Code hooks reference](https://docs.claude.com/en/docs/claude-code/hooks) — full hook event list
 - [Gemini CLI custom commands](https://geminicli.com/docs/cli/custom-commands) — TOML command format
+- [bats-core](https://github.com/bats-core/bats-core) — test framework used by the suite
 - [Superpowers plugin.json example](https://github.com/obra/superpowers/blob/main/.claude-plugin/plugin.json) — minimal reference manifest

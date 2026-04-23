@@ -1,18 +1,103 @@
 # lean-spec v3
 
-A thin Claude Code plugin that enforces a spec-driven development lifecycle — spec → implement → review → close — with hard phase-gate hooks and two-model cost arbitrage.
+A thin Claude Code plugin that enforces a **spec-driven development lifecycle** — *spec → implement → review → close* — with hard phase-gate hooks and two-model cost arbitrage.
 
-## Quick Install
+The main session is the orchestrator (thin router). The heavy lifting runs in dispatched subagents with model tiers pinned per role: **Opus for architect and reviewer, Haiku for coder** (the canonical default — every tier is configurable, but this is the cost-optimal baseline).
+
+## Why
+
+Treating every turn as "ask the biggest model everything" is the default on most AI coding tools and it's the wrong economic shape. Specs are cheap to get right with a strong model; implementation is mechanical and can run on a cheap model *if* the spec is precise; review is high-stakes and should never be the cheap tier. This plugin enforces that split with runtime hooks so cost arbitrage is structural, not a guideline someone can drift away from.
+
+## Quick install (Claude Code)
+
+From any project you want lean-spec to run in:
 
 ```bash
 claude --plugin-dir /path/to/lean-spec
 ```
 
+That's the whole install — no marketplace, no copying files, no `npm install`. Exit Claude Code and the plugin is gone.
+
+## Five-minute quickstart
+
+In a project that has a `docs/PRD.md` (or any one-paragraph feature brief):
+
+```text
+/lean-spec:start-spec my-feature @docs/PRD.md
+
+    → Opus architect writes features/my-feature/spec.md
+
+/lean-spec:submit-implementation my-feature
+
+    → Haiku coder implements, writes notes.md
+
+/lean-spec:submit-review my-feature
+
+    → Opus reviewer writes review.md with verdict: APPROVE | NEEDS_FIXES | BLOCKED
+
+/lean-spec:submit-fixes my-feature        (only if NEEDS_FIXES)
+
+    → Coder addresses each finding, appends "## Cycle N fixes" to notes.md
+
+/lean-spec:close-spec my-feature           (on APPROVE)
+
+    → phase = closed, feature shipped
+```
+
+At any point: `/lean-spec:spec-status my-feature` shows current phase + next command. If you get lost: `/lean-spec:resume-spec my-feature`.
+
+## What's under the hood
+
+- **3 subagents** with pinned model tiers (`agents/{architect,coder,reviewer}.md`)
+- **8 slash commands** for phase-gated lifecycle transitions (`commands/*.md`)
+- **6 hook scripts** that enforce the lifecycle (block hand-editing of `workflow.json`, validate phase gates, guard subagent outputs)
+- **6 skills** guiding each role (`skills/{writing-specs, reviewing-*, using-lean-spec}/SKILL.md`)
+- **Optional MCP integrations** that degrade gracefully when not installed:
+  - Playwright → coder smoke-test + reviewer visual-fidelity check
+  - Context7 → current library docs
+  - Sequential-thinking → structured reasoning for complex features
+- **Review extras via `$ARGUMENTS`**: `/lean-spec:submit-review my-feature security performance` (or `full`) adds OWASP-lite and render-performance checks on demand
+
+## Real cost data
+
+Numbers from 4 end-to-end experiments on a Pomodoro timer against a binding visual contract (`docs/ux-design.png`). All on Pro-tier pricing. See `/Users/fady/sandbox/todo-demo` experiment branches for raw JSON.
+
+| Architect | Coder | Fix cycles | Total cost | Time |
+|---|---|---|---|---|
+| Opus | Sonnet | 1 | $6.33 | 17 min |
+| Sonnet | Sonnet (unpatched) | 2 | $7.64 | 26 min |
+| Opus | Haiku | 1 | $6.97 | 23 min |
+| **Sonnet** | **Sonnet (patched)** | **0** | **$3.07** | **12 min** |
+
+The patched all-Sonnet run is cheapest and fastest. Key insight: **the writing-specs skill enforces spec structure; model tier becomes secondary.** With a V1–V8 numbered visual-checklist table in AC4, the Sonnet reviewer can verify tokens one-by-one. Without it (prose AC4), the reviewer has no teeth and visual drift goes unpunished.
+
+## Testing
+
+```bash
+# one-time: install bats-core locally (no sudo)
+git clone --depth=1 https://github.com/bats-core/bats-core.git /tmp/bats-core
+/tmp/bats-core/install.sh .tools
+
+# run the suite
+.tools/bin/bats tests/
+```
+
+Current coverage: **78 tests across 4 files** — workflow transitions, hook outputs, plugin structure/frontmatter, and experiment-report script behavior.
+
 ## Documentation
 
-- **Full specification:** see [`docs/PRD.md`](docs/PRD.md)
-- **Plugin developer guide:** see [`docs/PLUGIN_DEV_GUIDE.md`](docs/PLUGIN_DEV_GUIDE.md)
+- **Full PRD / architecture** — [`docs/PRD.md`](docs/PRD.md)
+- **Plugin developer guide** (install, uninstall, escape hatches, pitfalls) — [`docs/PLUGIN_DEV_GUIDE.md`](docs/PLUGIN_DEV_GUIDE.md)
+- **PRD skeleton template** for greenfield projects — [`templates/PRD.md`](templates/PRD.md)
+- **Changelog** — [`CHANGELOG.md`](CHANGELOG.md)
+
+## Cross-host support (roadmap)
+
+- **Claude Code** — first class, current
+- **Gemini CLI** — Phase 2 via `gemini-extension.json` + TOML command mirrors (see `.gemini/`)
+- **OpenCode** — Phase 3, manual install path
+- **Codex** — Phase 3, manual install path. Codex has no subagent dispatch — tier enforcement will be unavailable there.
 
 ## License
 
-MIT
+MIT — see the manifest at `.claude-plugin/plugin.json`.
