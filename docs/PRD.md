@@ -91,9 +91,11 @@ Output: `review.md` with verdict `APPROVE | NEEDS_FIXES | BLOCKED`.
 
 | Role | Dispatched from | Subagent definition | Model pin | Required output | Runs during phase |
 |---|---|---|---|---|---|
-| **Architect** | `/start-spec`, `/update-spec` | `agents/architect.md` (`lean-spec:architect`) | `opus` | `spec.md` (handoffs frontmatter + scope + AC + out-of-scope) | `specifying` |
-| **Coder** | `/submit-implementation`, `/submit-fixes` | `agents/coder.md` (`lean-spec:coder`) | `haiku` | code diff + `notes.md` | `implementing` |
-| **Reviewer** | `/submit-review` | `agents/reviewer.md` (`lean-spec:reviewer`) | `opus` | `review.md` with verdict | `reviewing` |
+| **Architect** | `/start-spec`, `/update-spec` | `agents/architect.md` (`lean-spec:architect`) | `opus` | `spec.md` (handoffs frontmatter + scope + AC + out-of-scope + coder guardrails) | `specifying` |
+| **Coder** | `/submit-implementation`, `/submit-fixes` | `agents/coder.md` (`lean-spec:coder`) | `haiku` | code diff + `notes.md`. Optional Playwright smoke-test if the MCP is available (compile + render + no console errors; max 1 self-fix retry else `BLOCKED`). | `implementing` |
+| **Reviewer** | `/submit-review` | `agents/reviewer.md` (`lean-spec:reviewer`) | `opus` | `review.md` with verdict. Default skills: `spec-compliance` + `code-quality` (+ `visual-fidelity` if Playwright MCP available). Optional skills via `$ARGUMENTS`: `security`, `performance`, `full`. | `reviewing` |
+
+**Optional tool integrations (graceful degradation).** All MCP-based enhancements are optional. The agents detect availability by attempting the call once; if the tool is not registered in the session, they log "tool unavailable, proceeding without it" and continue with the reduced capability set — never hard-fail. This keeps the plugin's "thin" promise intact: fresh install works with nothing but markdown + bash + jq; installing Playwright / context7 / sequential-thinking MCP servers unlocks progressively richer behaviour.
 
 **The plugin ships the subagent definitions.** Each `agents/*.md` file is a valid Claude Code subagent definition with frontmatter (`name`, `description`, `tools`, `model`) and a static system prompt as its body. The plugin's commands dispatch via `Task` with the plugin-qualified `subagent_type` (e.g. `"lean-spec:architect"`); Claude Code loads the subagent's system prompt from the definition file automatically, and the command supplies only per-invocation context (slug, paths, mode, brief) as the `Task` prompt. Users do not create or configure these subagents — fresh install works.
 
@@ -211,7 +213,7 @@ All commands live under `commands/*.md` (flat — no subdirectory) and namespace
 | `/lean-spec:start-spec <slug> [brief]` | Architect (subagent) | Create `features/<slug>/` + `workflow.json` (phase → `specifying`), then dispatch architect subagent with brief/PRD ref to author `spec.md` |
 | `/lean-spec:update-spec <slug>` | Architect (subagent) | Collect user feedback, dispatch architect subagent with existing `spec.md` + feedback to produce revised `spec.md` (phase stays `specifying`) |
 | `/lean-spec:submit-implementation <slug>` | Coder (subagent) | Advance to `implementing`, dispatch coder subagent with `spec.md`, produce diff + `notes.md` |
-| `/lean-spec:submit-review <slug>` | Reviewer (subagent, two skills) | Advance to `reviewing`, dispatch reviewer subagent, produce `review.md` with verdict |
+| `/lean-spec:submit-review <slug> [extras...]` | Reviewer (subagent) | Advance to `reviewing`, dispatch reviewer subagent. Default: spec-compliance + code-quality + (auto) visual-fidelity. Optional extras: `security`, `performance`, `full`. Produces `review.md` with verdict. |
 | `/lean-spec:submit-fixes <slug>` | Coder (subagent) | When review is `NEEDS_FIXES`, roll phase back to `implementing` and re-dispatch coder with `spec.md + review.md`. Ends in `implementing` — user then runs `/submit-review` to re-enter reviewing (same codepath as initial review) |
 | `/lean-spec:close-spec <slug>` | Orchestrator (no dispatch) | Verify `APPROVE` verdict in `review.md`, advance phase → `closed`. This is the only lifecycle command the orchestrator executes directly — no role needed |
 
@@ -238,10 +240,12 @@ lean-spec/
 ├── .claude-plugin/
 │   └── plugin.json                    # Claude Code manifest (name, version, desc)
 ├── skills/
-│   ├── using-lean-spec/SKILL.md       # Meta-skill (1%-rule style)
-│   ├── writing-specs/SKILL.md
-│   ├── reviewing-spec-compliance/SKILL.md
-│   └── reviewing-code-quality/SKILL.md
+│   ├── using-lean-spec/SKILL.md                   # Meta-skill (1%-rule style)
+│   ├── writing-specs/SKILL.md                     # Architect skill — spec structure, AC rules, coder guardrails
+│   ├── reviewing-spec-compliance/SKILL.md         # Reviewer — default skill #1
+│   ├── reviewing-code-quality/SKILL.md            # Reviewer — default skill #2
+│   ├── reviewing-security/SKILL.md                # Reviewer — optional (via $ARGUMENTS: security)
+│   └── reviewing-performance/SKILL.md             # Reviewer — optional (via $ARGUMENTS: performance)
 ├── commands/                              # Flat — no subdirectory (avoids double namespace)
 │   ├── start-spec.md
 │   ├── submit-implementation.md
@@ -399,6 +403,10 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 5. **All three roles run as dispatched subagents with pinned model tiers (M1).** Architect, Coder, and Reviewer are all invoked via `Task`/Agent dispatch from the orchestrator. The orchestrator session is deliberately thin — it routes commands, reads `workflow.json`, mediates the human conversation, and never writes artifacts itself. **Why:** if the orchestrator played Architect, the user's choice of main-session model (which may default to a cheap tier for fluff conversation between commands) would silently determine spec quality. Dispatching Architect with an explicit strong-model pin enforces the two-model cost arbitrage (§3.1) at runtime rather than relying on user hygiene. **Interactive refinement** is preserved across dispatches: the orchestrator shows the draft and collects feedback, then re-dispatches via `/update-spec`. Multi-turn spec iteration happens *between* subagent invocations, not inside one.
 
 6. **The plugin ships subagent definitions; users do not configure them.** `agents/architect.md`, `agents/coder.md`, and `agents/reviewer.md` are valid Claude Code subagent definitions (frontmatter with `name`, `description`, `tools`, `model`; body is the static system prompt). Claude Code auto-discovers them at plugin load and registers them as `lean-spec:architect`, `lean-spec:coder`, `lean-spec:reviewer`. **Why:** if users had to define their own agents, tier enforcement would be a user-configurable default (easily broken), and the install would stop being "one flag"; the plugin's whole pitch is "markdown + bash, no prerequisite setup." This also means per-invocation context (slug, paths, mode, brief) is passed as the `Task` tool's `prompt` field at dispatch time — the subagent definition body itself is static and contains only the role's system prompt, not template variables. **Cross-provider implication (M3+):** every host port must ship its own host-native agent definitions — never rely on user configuration. See §8.1.
+
+7. **Optional MCP tools degrade gracefully; nothing is required.** Coder (Playwright smoke-test), Reviewer (Playwright visual-fidelity), plus any reasoning aids like context7 or sequential-thinking, are all optional runtime enhancements. Agents detect availability by attempting a single call; if the tool is not registered, they log "tool unavailable, proceeding without it" and continue with the reduced capability set. **Why:** the plugin's "thin" promise (§2) means a fresh install must work with nothing but markdown + bash + jq. Installing MCP servers unlocks progressively richer behaviour (runtime smoke-tests, visual review, live docs lookup) without any of it becoming a prerequisite. This is also the cross-provider fallback strategy — hosts without MCP equivalents simply get the default capability set.
+
+8. **Review extras are opt-in via `$ARGUMENTS`, not default.** `security` and `performance` review skills run only when explicitly named in the dispatch args (e.g. `/lean-spec:submit-review <slug> security performance`). `full` is a shortcut that runs every available `reviewing-<name>` skill in the plugin. **Why:** trivial changes shouldn't pay the cost of a full-spectrum audit on every review; non-trivial changes explicitly opt in. Adding new review dimensions later is zero-churn — drop a `skills/reviewing-<name>/SKILL.md`, update the reviewer's extras table, done.
 
 ---
 

@@ -81,6 +81,39 @@ color: purple                                      # required; one of red | blue
 **Plugin ships definitions — users do not.** A user who loads this plugin must not need to run `/agents`, create files in `.claude/agents/`, or configure models manually. If install requires user action beyond `--plugin-dir` / `/plugin install`, we've broken the plugin's primary promise.
 - Commands appear in `/help` under `(plugin:lean-spec)`
 
+### Optional MCP tools — graceful-degradation pattern
+
+Coder and Reviewer agents can use optional MCP tools (Playwright, context7, sequential-thinking, etc.) when those servers are loaded in the user's session. They must never hard-fail when a tool is missing.
+
+**Detection pattern (used in agent system prompts):**
+
+```
+Detect availability by attempting the call once.
+If the tool is not registered, log "tool unavailable, proceeding without it" and skip.
+Never hard-fail on a missing optional tool.
+```
+
+**`tools: ["*"]`** is used on Coder and Reviewer to let them call any registered MCP tool without enumerating each by name (MCP tool names vary by user setup — `mcp__playwright__*` vs `mcp__plugin_*_playwright__*` etc.).
+
+**Documenting an optional tool to a user**: explain what installing it unlocks (e.g. "install Playwright MCP → coder runs a smoke-test before review; reviewer adds visual-fidelity to its default skills"), but never list it as a prerequisite.
+
+### Review extras convention
+
+`/lean-spec:submit-review <slug>` accepts trailing positional args that name extra review skills:
+
+| Arg | Skill loaded | Owner |
+|---|---|---|
+| `security` | `skills/reviewing-security/SKILL.md` | Reviewer |
+| `performance` | `skills/reviewing-performance/SKILL.md` | Reviewer |
+| `full` | all available `reviewing-*` extras | Reviewer (shortcut) |
+
+To add a new extra:
+1. Create `skills/reviewing-<name>/SKILL.md` following the same structure as security/performance
+2. Add a row to the table in `agents/reviewer.md` (Step 4 — Extras section) mapping the arg name to the skill
+3. Update this guide's table
+
+The reviewer treats unknown extras as "not recognised — skipped" with a note in `review.md` summary; never fails dispatch.
+
 ### Verifying the plugin loaded
 
 Inside Claude Code:

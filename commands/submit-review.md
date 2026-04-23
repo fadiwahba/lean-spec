@@ -1,6 +1,6 @@
 ---
-description: Advance to reviewing phase and dispatch the reviewer subagent (two-skill sequence)
-argument-hint: <slug>
+description: Advance to reviewing phase and dispatch the reviewer subagent. Optional extra skills via trailing args (e.g. security, performance, full).
+argument-hint: <slug> [extra-skills...]
 allowed-tools: Bash, Read, Task
 ---
 
@@ -8,19 +8,40 @@ allowed-tools: Bash, Read, Task
 
 Advance a feature from `implementing` to `reviewing` and dispatch the reviewer subagent.
 
+**Default review runs:** `spec-compliance` + `code-quality` (always) + `visual-fidelity` (auto, IF Playwright MCP is available in this session).
+
+**Optional extras** via trailing arguments — reviewer runs additional review skills:
+
+```
+/lean-spec:submit-review <slug>                           # default only
+/lean-spec:submit-review <slug> security                  # + security
+/lean-spec:submit-review <slug> security performance      # + both
+/lean-spec:submit-review <slug> full                      # all available extras
+```
+
+Extras map to `skills/reviewing-<name>/SKILL.md`. Unknown extras are noted in `review.md` summary and skipped; they never fail the dispatch.
+
 ## Pre-flight
 
-1. Check `$ARGUMENTS` provided.
-2. Verify `features/$ARGUMENTS/workflow.json` exists.
-3. Read `features/$ARGUMENTS/workflow.json` and verify current phase is `implementing`. If not, say: "Phase gate: expected 'implementing', got '<phase>'."
-4. Verify `features/$ARGUMENTS/notes.md` exists. If not, say: "notes.md not found. The coder subagent must produce notes.md before review can proceed."
+Parse `$ARGUMENTS`. First token = slug; remaining tokens = extras list (may be empty).
+
+```bash
+ARGS="$ARGUMENTS"
+SLUG="${ARGS%% *}"
+EXTRAS="${ARGS#$SLUG}"
+EXTRAS="${EXTRAS# }"   # trim leading space
+```
+
+1. Check `$SLUG` provided and non-empty.
+2. Verify `features/$SLUG/workflow.json` exists.
+3. Read `features/$SLUG/workflow.json` and verify current phase is `implementing`. If not, say: "Phase gate: expected 'implementing', got '<phase>'."
+4. Verify `features/$SLUG/notes.md` exists. If not, say: "notes.md not found. The coder subagent must produce notes.md before review can proceed."
 
 ## Steps
 
 1. Advance phase to `reviewing`. **If this block exits non-zero, STOP — do not dispatch the subagent. Report the error verbatim to the user.**
 ```bash
 set -e
-SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
 CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
 if [ "$CURRENT" != "implementing" ]; then
@@ -46,7 +67,7 @@ echo "phase advanced: implementing → reviewing"
 
    - `subagent_type`: `"lean-spec:reviewer"` — the plugin-provided reviewer (see `agents/reviewer.md`). Its frontmatter pins `model: opus`; do not override.
    - `description`: `"Review <slug>"`
-   - `prompt`: build a fresh invocation payload like this (the reviewer's system prompt comes from `agents/reviewer.md`; do not include it yourself):
+   - `prompt`: build a fresh invocation payload like this (the reviewer's system prompt comes from `agents/reviewer.md`; do not include it yourself). Include the `Extras:` line ONLY if `$EXTRAS` is non-empty:
 
      ```
      Slug: <slug>
@@ -54,6 +75,7 @@ echo "phase advanced: implementing → reviewing"
      Notes path: features/<slug>/notes.md
      Review path: features/<slug>/review.md
      Diff reference: <git range or list of modified files from step 2>
+     Extras: <contents of $EXTRAS — e.g. "security performance" or "full">
      ```
 
-4. Tell the user: "Dispatching reviewer subagent for '$ARGUMENTS'. Expected output: features/$ARGUMENTS/review.md with verdict APPROVE | NEEDS_FIXES | BLOCKED."
+4. Tell the user: "Dispatching reviewer subagent for '$SLUG'. Extras: `<extras or 'none'>`. Expected output: features/$SLUG/review.md with verdict APPROVE | NEEDS_FIXES | BLOCKED."
