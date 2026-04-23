@@ -4,3 +4,8 @@
 *.swo
 .idea/
 .vscode/
+
+# Playwright MCP runtime artifacts (console logs, screenshots, traces)
+.playwright-mcp/
+playwright-report/
+test-results/
