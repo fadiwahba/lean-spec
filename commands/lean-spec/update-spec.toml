@@ -1,0 +1,39 @@
+description = "Revise an existing spec.md (feature must be in specifying phase)"
+
+prompt = """
+Arguments: `{{args}}`  (first token = slug; rest = what to change)
+
+!{
+ARGS='{{args}}'
+SLUG="${ARGS%% *}"
+BRIEF="${ARGS#"$SLUG"}"
+BRIEF="${BRIEF# }"
+
+if [[ -z "$SLUG" ]]; then
+  echo "Usage: /lean-spec:update-spec <slug> [what to change]"
+  exit 1
+fi
+WF="features/$SLUG/workflow.json"
+if [ ! -f "$WF" ]; then
+  echo "Feature '$SLUG' not found. Run /lean-spec:start-spec $SLUG first."
+  exit 1
+fi
+PHASE=$(jq -r '.phase' "$WF")
+if [ "$PHASE" != "specifying" ]; then
+  echo "/lean-spec:update-spec only works in 'specifying' phase. Current: '$PHASE'."
+  echo "(Once implementation has started, the spec is frozen. Close + re-open if you need a new direction.)"
+  exit 1
+fi
+
+echo "Existing spec:"
+echo "---"
+cat "features/$SLUG/spec.md" 2>/dev/null || echo "(spec.md missing)"
+echo "---"
+echo ""
+echo "Change request: $BRIEF"
+}
+
+Act as the architect (no subagent in Gemini mode). Revise `features/<slug>/spec.md` per the change request above. Preserve the shape and cap (~80 lines) defined in `skills/writing-specs/SKILL.md`. If the change would break an AC, negotiate with the user before silently removing it.
+
+After writing, tell the user: "Spec updated. Review and run `/lean-spec:submit-implementation <slug>` when ready."
+"""

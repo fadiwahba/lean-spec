@@ -1,0 +1,33 @@
+description = "Re-prime conversation context for an in-progress feature (read spec/notes/review)"
+
+prompt = """
+Arguments: `{{args}}`  (the feature slug)
+
+!{
+SLUG='{{args}}'
+if [ -z "$SLUG" ]; then
+  echo "Usage: /lean-spec:resume-spec <slug>"
+  exit 1
+fi
+PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+WF="$PROJ/features/$SLUG/workflow.json"
+if [ ! -f "$WF" ]; then
+  echo "Feature '$SLUG' not found. /lean-spec:spec-status for available features."
+  exit 1
+fi
+echo "=== workflow.json ==="
+cat "$WF" | jq .
+for f in spec.md notes.md review.md; do
+  if [ -f "$PROJ/features/$SLUG/$f" ]; then
+    echo ""
+    echo "=== $f ==="
+    cat "$PROJ/features/$SLUG/$f"
+  fi
+done
+}
+
+After reading the above, tell the user:
+- Current phase
+- A one-sentence summary of where we are (e.g. "spec drafted, coder hasn't started" or "review cycle 2 flagged NEEDS_FIXES — fix the 2 Important findings")
+- The exact next command to run (same mapping as `/lean-spec:spec-status`)
+"""

@@ -1,0 +1,38 @@
+description = "Close a feature after APPROVE verdict — phase goes reviewing → closed"
+
+prompt = """
+Arguments: `{{args}}`  (the feature slug)
+
+!{
+SLUG='{{args}}'
+WF="features/$SLUG/workflow.json"
+
+if [ ! -f "$WF" ]; then
+  echo "Feature '$SLUG' not found."; exit 1
+fi
+CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$CURRENT" != "reviewing" ]; then
+  echo "Phase gate: expected 'reviewing', got '$CURRENT'"; exit 1
+fi
+if [ ! -f "features/$SLUG/review.md" ]; then
+  echo "review.md not found."; exit 1
+fi
+
+VERDICT=$(awk '/^verdict:/ { gsub(/[[:space:]]/, "", $0); sub(/^verdict:/, "", $0); print; exit }' "features/$SLUG/review.md")
+if [ "$VERDICT" != "APPROVE" ]; then
+  echo "Verdict is '$VERDICT' — close-spec only succeeds on APPROVE."
+  exit 1
+fi
+
+set -e
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tmp=$(mktemp "${WF}.tmp.XXXXXX")
+jq --arg p "closed" --arg now "$NOW" \\
+  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
+  "$WF" > "$tmp"
+mv -f "$tmp" "$WF"
+echo "phase advanced: reviewing → closed. Feature $SLUG is complete."
+}
+
+Tell the user: "Feature closed. Artifacts archived at `features/<slug>/`."
+"""

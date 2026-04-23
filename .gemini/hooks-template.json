@@ -1,0 +1,19 @@
+{
+  "//": "Merge the 'hooks' block below into ~/.gemini/settings.json under a top-level 'hooks' key. If you already have 'hooks.BeforeTool', append this array entry rather than overwriting. See .gemini/INSTALL.md for rationale and event-name mapping vs the Claude Code plugin.",
+  "hooks": {
+    "BeforeTool": [
+      {
+        "matcher": "write_file|replace",
+        "hooks": [
+          {
+            "name": "lean-spec-workflow-guard",
+            "description": "Blocks direct Write/Edit on features/*/workflow.json to prevent hand-edits that bypass phase-gate commands.",
+            "type": "command",
+            "command": "bash ${GEMINI_EXTENSION_DIR}/hooks/pre-tool-use-workflow.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ]
+  }
+}

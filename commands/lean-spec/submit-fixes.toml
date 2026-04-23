@@ -1,0 +1,67 @@
+description = "Roll reviewing feature back to implementing and address reviewer findings"
+
+prompt = """
+You are acting as the Coder for a lean-spec v3 feature. In Gemini mode there is no subagent dispatch.
+
+Arguments: `{{args}}`  (the feature slug)
+
+## Step 1 — Validate phase + roll back
+
+!{
+SLUG='{{args}}'
+WF="features/$SLUG/workflow.json"
+
+if [ ! -f "$WF" ]; then
+  echo "Feature '$SLUG' not found."; exit 1
+fi
+CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$CURRENT" != "reviewing" ]; then
+  echo "Phase gate: expected 'reviewing', got '$CURRENT'"; exit 1
+fi
+if [ ! -f "features/$SLUG/review.md" ]; then
+  echo "review.md not found. Run /lean-spec:submit-review $SLUG first."; exit 1
+fi
+
+VERDICT=$(awk '/^verdict:/ { gsub(/[[:space:]]/, "", $0); sub(/^verdict:/, "", $0); print; exit }' "features/$SLUG/review.md")
+if [ "$VERDICT" != "NEEDS_FIXES" ]; then
+  echo "Verdict is '$VERDICT' — submit-fixes is only valid when review.md verdict is NEEDS_FIXES."
+  exit 1
+fi
+
+set -e
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tmp=$(mktemp "${WF}.tmp.XXXXXX")
+jq --arg p "implementing" --arg now "$NOW" \\
+  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
+  "$WF" > "$tmp"
+mv -f "$tmp" "$WF"
+echo "phase rolled back: reviewing → implementing"
+}
+
+## Step 2 — Apply fixes
+
+Read `features/<slug>/review.md` — every Critical and Important finding must be addressed. Read `features/<slug>/notes.md` (existing implementation notes) but DO NOT replace it.
+
+Honor the hard-forbidden edits list (same as submit-implementation).
+
+## Step 3 — APPEND to notes.md (don't rewrite — post-experiment fix #80)
+
+Count existing `## Cycle \\d+ fixes` headings in `notes.md`. Compute `N = count + 1`. Append:
+
+```markdown
+
+## Cycle <N> fixes
+
+### Addressing review.md findings
+
+| Finding | Severity | Fix | File:line |
+|---|---|---|---|
+| <paraphrase of reviewer finding 1> | Critical/Important/Minor | <one-line fix summary> | `path/to/file.ts:L-L` |
+
+### Other notes (if any)
+```
+
+## Step 4 — Hand off
+
+Tell the user: "Fixes applied. Run `/lean-spec:submit-review <slug>` to re-review."
+"""

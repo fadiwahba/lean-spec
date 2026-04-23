@@ -1,0 +1,56 @@
+description = "Create a feature and draft spec.md (Gemini mode — main session drafts; no subagent dispatch)"
+
+prompt = """
+You are acting as the Architect for a new lean-spec v3 feature. In Gemini mode there is no subagent dispatch — you are the main session AND the architect.
+
+Arguments: `{{args}}`  (first token = slug; rest = brief or `@path/to/PRD.md`)
+
+## Step 1 — Create the feature directory and workflow.json
+
+!{
+ARGS='{{args}}'
+SLUG="${ARGS%% *}"
+BRIEF="${ARGS#"$SLUG"}"
+BRIEF="${BRIEF# }"
+
+if [[ -z "$SLUG" ]]; then
+  echo 'Usage: /lean-spec:start-spec <slug> [brief or @path/to/PRD.md]'
+  exit 1
+fi
+if ! [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  echo "Invalid slug '$SLUG': lowercase letters, digits, and hyphens only"
+  exit 1
+fi
+if [ -d "features/$SLUG" ]; then
+  echo "Feature '$SLUG' already exists. Use /lean-spec:update-spec $SLUG to revise."
+  exit 1
+fi
+
+mkdir -p "features/$SLUG"
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+cat > "features/$SLUG/workflow.json" <<EOF
+{
+  "slug": "$SLUG",
+  "phase": "specifying",
+  "created_at": "$NOW",
+  "updated_at": "$NOW",
+  "history": [{ "phase": "specifying", "entered_at": "$NOW" }],
+  "artifacts": { "spec": "spec.md", "notes": "notes.md", "review": "review.md" }
+}
+EOF
+echo "Created features/$SLUG/ (phase=specifying) — brief: $BRIEF"
+}
+
+## Step 2 — Draft spec.md
+
+Now produce `features/<slug>/spec.md` following the guidance in `skills/writing-specs/SKILL.md` (read that file first if it's in your context window). The spec must have: Scope, Acceptance Criteria, Out of Scope, Technical Notes (optional), Coder Guardrails. Cap at ~80 lines.
+
+If the brief references `@path/to/PRD.md` (or similar), read that file for context.
+
+For UI features with a binding visual contract, the AC for visuals MUST be a numbered V1/V2/... table, not prose (the writing-specs skill enforces this — see its "Visual Acceptance Criteria" section).
+
+## Step 3 — Hand off
+
+When done, tell the user:
+> "Spec drafted at `features/<slug>/spec.md`. Review it. For revisions: `/lean-spec:update-spec <slug>`. When satisfied: `/lean-spec:submit-implementation <slug>`."
+"""

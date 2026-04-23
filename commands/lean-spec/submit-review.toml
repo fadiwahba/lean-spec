@@ -1,0 +1,102 @@
+description = "Advance to reviewing and produce review.md with APPROVE | NEEDS_FIXES | BLOCKED verdict"
+
+prompt = """
+You are acting as the Reviewer for a lean-spec v3 feature. In Gemini mode there is no subagent dispatch — you are the main session AND the reviewer.
+
+Arguments: `{{args}}`  (first token = slug; rest = optional extras like `security performance` or `full`)
+
+## Step 1 — Parse args, validate phase, advance
+
+!{
+ARGS='{{args}}'
+SLUG="${ARGS%% *}"
+EXTRAS="${ARGS#"$SLUG"}"
+EXTRAS="${EXTRAS# }"
+
+WF="features/$SLUG/workflow.json"
+
+if [ ! -f "$WF" ]; then
+  echo "Feature '$SLUG' not found."; exit 1
+fi
+CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$CURRENT" != "implementing" ]; then
+  echo "Phase gate: expected 'implementing', got '$CURRENT'"; exit 1
+fi
+if [ ! -f "features/$SLUG/notes.md" ]; then
+  echo "notes.md not found. Run /lean-spec:submit-implementation $SLUG first."; exit 1
+fi
+
+# Archive prior review.md if present (post-experiment fix #81)
+REVIEW_DIR="features/$SLUG"
+if [ -f "$REVIEW_DIR/review.md" ]; then
+  PRIOR=$(ls "$REVIEW_DIR"/review-cycle-*.md 2>/dev/null | wc -l | tr -d ' ')
+  NEXT=$((PRIOR + 1))
+  mv -f "$REVIEW_DIR/review.md" "$REVIEW_DIR/review-cycle-${NEXT}.md"
+fi
+
+set -e
+NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+tmp=$(mktemp "${WF}.tmp.XXXXXX")
+jq --arg p "reviewing" --arg now "$NOW" \\
+  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
+  "$WF" > "$tmp"
+mv -f "$tmp" "$WF"
+echo "phase advanced: implementing → reviewing (extras: ${EXTRAS:-none})"
+}
+
+## Step 2 — Run review pipeline
+
+**Default skills (always run):**
+1. `skills/reviewing-spec-compliance/SKILL.md` — for each AC in the spec, is it fully satisfied? missing? over-implemented? Cite code `file:line`.
+2. `skills/reviewing-code-quality/SKILL.md` — conventions, bugs, security, error handling, complexity. Group findings Critical / Important / Minor.
+
+**Scope-violation sweep (mandatory, Critical when found):** Run `git diff --name-only <base>` and check each touched file against the coder's hard-forbidden list (`package.json`, lockfiles, framework configs, root `layout.tsx`, existing tests). Any unexpected edit is a Critical finding.
+
+**Visual fidelity (AUTO if Playwright MCP available):** navigate the dev server, screenshot to `.playwright-mcp/<name>.png`, spot-check tokens via `getComputedStyle`, zero tolerance on console errors.
+
+**Extras (opt-in via the args):**
+- `security` → load `skills/reviewing-security/SKILL.md`, produce `## Security Review` section
+- `performance` → load `skills/reviewing-performance/SKILL.md`, produce `## Performance Review` section
+- `full` → all available `reviewing-*` extras
+
+## Step 3 — Write review.md
+
+```markdown
+---
+slug: <slug>
+phase: reviewing
+handoffs:
+  next_command: /lean-spec:close-spec <slug>  # or submit-fixes if NEEDS_FIXES
+  blocks_on: []
+  consumed_by: [architect]
+verdict: APPROVE | NEEDS_FIXES | BLOCKED
+---
+
+# Review: <slug>
+
+## Verdict: APPROVE | NEEDS_FIXES | BLOCKED
+
+## Spec Compliance
+| Criterion | Status | Notes |
+
+## Code Quality
+### Critical
+### Important
+### Minor
+
+## Visual Review   (IFF Playwright was available)
+
+## Security Review | Performance Review   (IFF extras requested)
+
+## Summary
+```
+
+Update `handoffs.next_command` per verdict:
+- `APPROVE` → `/lean-spec:close-spec <slug>`
+- `NEEDS_FIXES` → `/lean-spec:submit-fixes <slug>`
+- `BLOCKED` → leave blank; human decision required
+
+## Step 4 — Hand off
+
+Tell the user the verdict and the next command.
+"""

@@ -1,0 +1,57 @@
+description = "Print current phase, last activity, and the next command for one or all features"
+
+prompt = """
+Arguments: `{{args}}`  (optional — a slug, or empty for all features)
+
+!{
+SLUG='{{args}}'
+PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+
+if [ -n "$SLUG" ]; then
+  WF="$PROJ/features/$SLUG/workflow.json"
+  if [ ! -f "$WF" ]; then
+    echo "Feature '$SLUG' not found."
+    exit 1
+  fi
+  echo "Slug:    $(jq -r '.slug' "$WF")"
+  echo "Phase:   $(jq -r '.phase' "$WF")"
+  echo "Updated: $(jq -r '.updated_at' "$WF")"
+  echo ""
+  echo "History:"
+  jq -r '.history[] | "  - \\(.phase)  (entered \\(.entered_at))"' "$WF"
+  echo ""
+  PHASE=$(jq -r '.phase' "$WF")
+  case "$PHASE" in
+    specifying) echo "Next: /lean-spec:submit-implementation $SLUG" ;;
+    implementing) echo "Next: /lean-spec:submit-review $SLUG" ;;
+    reviewing)
+      REVIEW="$PROJ/features/$SLUG/review.md"
+      if [ -f "$REVIEW" ]; then
+        V=$(awk '/^verdict:/ { gsub(/[[:space:]]/, ""); sub(/^verdict:/, ""); print; exit }' "$REVIEW")
+        case "$V" in
+          APPROVE)     echo "Next: /lean-spec:close-spec $SLUG" ;;
+          NEEDS_FIXES) echo "Next: /lean-spec:submit-fixes $SLUG" ;;
+          BLOCKED)     echo "Next: # BLOCKED — human intervention required" ;;
+          *)           echo "Next: # Reviewer's verdict unclear. Inspect review.md." ;;
+        esac
+      else
+        echo "Next: /lean-spec:submit-review $SLUG  # review.md not yet produced"
+      fi
+      ;;
+    closed) echo "No next step — feature is closed." ;;
+    *) echo "Unknown phase '$PHASE'." ;;
+  esac
+else
+  find "$PROJ/features" -name "workflow.json" 2>/dev/null | sort | while read wf; do
+    S=$(jq -r '.slug' "$wf")
+    P=$(jq -r '.phase' "$wf")
+    U=$(jq -r '.updated_at' "$wf")
+    echo "$S  [$P]  last updated: $U"
+  done
+  # If nothing found:
+  if [ -z "$(find "$PROJ/features" -name "workflow.json" 2>/dev/null)" ]; then
+    echo "No features found. Run /lean-spec:start-spec <slug> to begin."
+  fi
+fi
+}
+"""

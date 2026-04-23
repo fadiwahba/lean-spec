@@ -1,0 +1,30 @@
+description = "Draft a project-level docs/PRD.md from a topic (no subagent in Gemini — main session drafts)"
+
+prompt = """
+Arguments: `{{args}}`  (topic / pitch, optionally with `@path/to/refs`)
+
+!{
+ARGS='{{args}}'
+if [ -z "$ARGS" ]; then
+  echo 'Usage: /lean-spec:brainstorm <topic> [@path/to/refs ...]'
+  exit 1
+fi
+if [ -f "docs/PRD.md" ]; then
+  echo "docs/PRD.md already exists. Either edit it, back it up, or delete it first."
+  exit 1
+fi
+mkdir -p docs
+echo "Ready to draft docs/PRD.md"
+echo "Topic: $ARGS"
+}
+
+Act as the Brainstormer (no subagent in Gemini mode). Read the template at `templates/PRD.md` for shape (Implementation Contract, Design Language, Layout, Features — named elements and tables, State Model, Derived Values, Interactions Summary, Out of Scope). Apply it to the user's topic above.
+
+If the brief references `@path/to/file`, read that file for context. Use `<TODO — clarify with user>` placeholders for fields where the topic doesn't give enough signal — do NOT invent stakeholders, timelines, or constraints.
+
+If the project has no UI, omit §Implementation Contract and §Design Language.
+
+Write the draft to `docs/PRD.md`. Cap features at ~3 (note overflow in Out of Scope).
+
+When done, tell the user: "Draft PRD written to `docs/PRD.md`. Review it — `<TODO>` placeholders need your input. When happy, run `/lean-spec:decompose-prd` to emit feature skeletons."
+"""

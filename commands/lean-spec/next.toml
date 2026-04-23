@@ -1,0 +1,62 @@
+description = "Resolve the next lifecycle command for the most-recently-updated open feature"
+
+prompt = """
+Arguments: `{{args}}`  (optional — specific slug, or empty to auto-pick the active feature)
+
+!{
+SLUG='{{args}}'
+PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+
+pick_active() {
+  local best="" best_time=""
+  while IFS= read -r wf; do
+    local phase updated
+    phase=$(jq -r '.phase // ""' "$wf" 2>/dev/null)
+    updated=$(jq -r '.updated_at // ""' "$wf" 2>/dev/null)
+    [ "$phase" = "closed" ] && continue
+    [ -z "$phase" ] && continue
+    if [ -z "$best_time" ] || [[ "$updated" > "$best_time" ]]; then
+      best="$wf"; best_time="$updated"
+    fi
+  done < <(find "$PROJ/features" -name "workflow.json" 2>/dev/null)
+  echo "$best"
+}
+
+if [ -z "$SLUG" ]; then
+  WF=$(pick_active)
+  if [ -z "$WF" ]; then
+    echo "No in-progress features. Run /lean-spec:start-spec <slug> to begin."
+    exit 0
+  fi
+  SLUG=$(jq -r '.slug' "$WF")
+else
+  WF="$PROJ/features/$SLUG/workflow.json"
+  [ -f "$WF" ] || { echo "Feature '$SLUG' not found."; exit 1; }
+fi
+
+PHASE=$(jq -r '.phase' "$WF")
+echo "Feature: $SLUG"
+echo "Phase:   $PHASE"
+echo ""
+
+case "$PHASE" in
+  specifying)   echo "Next: /lean-spec:submit-implementation $SLUG" ;;
+  implementing) echo "Next: /lean-spec:submit-review $SLUG" ;;
+  reviewing)
+    REVIEW="$PROJ/features/$SLUG/review.md"
+    if [ -f "$REVIEW" ]; then
+      V=$(awk '/^verdict:/ { gsub(/[[:space:]]/, ""); sub(/^verdict:/, ""); print; exit }' "$REVIEW")
+      case "$V" in
+        APPROVE)     echo "Next: /lean-spec:close-spec $SLUG" ;;
+        NEEDS_FIXES) echo "Next: /lean-spec:submit-fixes $SLUG" ;;
+        BLOCKED)     echo "Next: # BLOCKED — human intervention required" ;;
+        *)           echo "Next: /lean-spec:spec-status $SLUG  # verdict unclear" ;;
+      esac
+    else
+      echo "Next: /lean-spec:spec-status $SLUG  # awaiting reviewer output"
+    fi
+    ;;
+  closed) echo "No next step — feature is closed." ;;
+esac
+}
+"""
