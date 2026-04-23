@@ -273,6 +273,8 @@ lean-spec/
 ├── .opencode/                         # OpenCode manual-install (Phase 3)
 ├── .codex/                            # Codex manual-install (Phase 3)
 ├── gemini-extension.json              # Gemini CLI manifest (Phase 2)
+├── templates/
+│   └── PRD.md                        # Project-level PRD skeleton — canonical shape consumed by /brainstorm + /decompose-prd (M2), usable standalone today (see §12.9)
 ├── docs/
 │   ├── PRD.md                         # This file
 │   └── PLUGIN_DEV_GUIDE.md            # Install/uninstall/escape hatches
@@ -371,7 +373,7 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 | # | Feature | Scope |
 |---|---|---|
 | F9  | **Semi-auto driver** | Agent proposes next command; hook intercepts and shows single-keystroke confirm UX |
-| F10 | **/brainstorm + /decompose-prd** | Upstream greenfield commands producing `idea.md` and N feature skeletons |
+| F10 | **/brainstorm + /decompose-prd** | Upstream greenfield commands producing `idea.md`, a project-level `docs/PRD.md` (from `templates/PRD.md` — see §12.9), and N feature skeletons |
 | F11 | **Optional rules.yaml enforcement** | `.lean-spec/rules.yaml` parsed by hooks; violations block phase advance with a visible reason |
 | F12 | **Marketplace publish** | Create `lean-spec-marketplace` repo; write public install docs |
 
@@ -407,6 +409,8 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 7. **Optional MCP tools degrade gracefully; nothing is required.** Coder (Playwright smoke-test), Reviewer (Playwright visual-fidelity), plus any reasoning aids like context7 or sequential-thinking, are all optional runtime enhancements. Agents detect availability by attempting a single call; if the tool is not registered, they log "tool unavailable, proceeding without it" and continue with the reduced capability set. **Why:** the plugin's "thin" promise (§2) means a fresh install must work with nothing but markdown + bash + jq. Installing MCP servers unlocks progressively richer behaviour (runtime smoke-tests, visual review, live docs lookup) without any of it becoming a prerequisite. This is also the cross-provider fallback strategy — hosts without MCP equivalents simply get the default capability set.
 
 8. **Review extras are opt-in via `$ARGUMENTS`, not default.** `security` and `performance` review skills run only when explicitly named in the dispatch args (e.g. `/lean-spec:submit-review <slug> security performance`). `full` is a shortcut that runs every available `reviewing-<name>` skill in the plugin. **Why:** trivial changes shouldn't pay the cost of a full-spectrum audit on every review; non-trivial changes explicitly opt in. Adding new review dimensions later is zero-churn — drop a `skills/reviewing-<name>/SKILL.md`, update the reviewer's extras table, done.
+
+9. **Canonical project-level PRD shape lives in `templates/PRD.md`.** Validated in the wild by the todo-demo and pomodoro-demo PRDs: Implementation Contract (binding visual), Design Language (exact tokens + typography), Layout, Features (named elements, tables over prose), State Model, Derived Values, Interactions Summary, Out of Scope. **Why:** the shape is the interface between "product thinking" and "spec thinking." Named elements + exact tokens make the visual contract reviewable by the Reviewer subagent (with or without Playwright); tables make feature ACs directly extractable into per-feature spec.md files. `/brainstorm` (M2) drafts from this template; `/decompose-prd` (M2) reads it to enumerate feature skeletons. Today users can copy `templates/PRD.md` manually — the M2 commands just automate that copy and pre-fill.
 
 ---
 
