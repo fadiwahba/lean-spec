@@ -4,9 +4,28 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-24
+
+M2 lands — three of its four features shipped. F12 (marketplace publish) is deferred.
+
 ### Added
 
-- **M2 progress (in flight)** — `.lean-spec/rules.yaml` enforcement (F11), semi-auto next-command driver (F9), `/brainstorm` + `/decompose-prd` greenfield commands (F10).
+- **F11 — `.lean-spec/rules.yaml` enforcement.** Four rules: `required_sections`, `max_tokens`, `required_verdict`, `require_line_references`. Enforced in `hooks/user-prompt-submit.sh` via `lib/rules.sh`. Opt-in — no rules.yaml means no enforcement. Example at `examples/rules.yaml`. 26 new tests (21 in `tests/rules.bats` + 5 in `tests/hooks.bats`).
+- **F9 — Semi-auto driver.** `SessionStart` hook now surfaces phase-appropriate next commands per in-progress feature. New `/lean-spec:next` command resolves "what should I run now?" for the most-recently-updated open feature and prints a copy-pasteable line. Auto-dispatch (single-keystroke confirm) is future work — blocked on a Claude Code primitive that doesn't exist yet. Resolver is factored to `lib/next-command.sh` for reuse. 16 new tests.
+- **F10 — `/brainstorm` + `/decompose-prd` greenfield commands.** `/brainstorm` dispatches a new opus-pinned `brainstormer` subagent that drafts `docs/PRD.md` from `templates/PRD.md` + user's topic. `/decompose-prd` is deterministic bash — parses the PRD's Features section and emits `features/<slug>/{workflow.json, spec.md skeleton}` per sub-heading. Idempotent. 17 new tests.
+- **`lib/prd-parser.sh`**: extracts feature slugs + scope paragraphs from a PRD.md. Slugifies `"4.1 Add Task Input"` → `"add-task-input"`.
+- **`lib/next-command.sh`**: shared resolver for "what's next" given `(phase, verdict)`.
+
+### Changed
+
+- **`hooks/session-start.sh`**: feature summary now includes `— next: /lean-spec:<cmd> <slug>` per feature, plus a footer pointing at `/lean-spec:next`.
+- **`docs/PRD.md`**: F9, F10, F11 roadmap entries marked ✅ with implementation notes.
+- **`docs/PLUGIN_DEV_GUIDE.md`**: new §8.7 (semi-auto driver) and §8.8 (rules.yaml).
+
+### Deferred
+
+- **F12 — Marketplace publish.** Requires a separate `lean-spec-marketplace` repo; not blocking anything on this project. Process documented in `docs/PLUGIN_DEV_GUIDE.md` §3.
+
 
 ## [0.1.1] — 2026-04-24
 

@@ -44,14 +44,20 @@ In a project that has a `docs/PRD.md` (or any one-paragraph feature brief):
     → phase = closed, feature shipped
 ```
 
-At any point: `/lean-spec:spec-status my-feature` shows current phase + next command. If you get lost: `/lean-spec:resume-spec my-feature`.
+At any point: `/lean-spec:spec-status my-feature` shows current phase + next command. `/lean-spec:next` resolves "what should I run now?" for the most-recently-updated feature. If you get lost: `/lean-spec:resume-spec my-feature`.
+
+**Starting greenfield?** Run `/lean-spec:brainstorm <one-line topic>` to draft a project-level `docs/PRD.md` (opus-tier), then `/lean-spec:decompose-prd` to emit one feature skeleton per section for the architect to fill.
 
 ## What's under the hood
 
-- **3 subagents** with pinned model tiers (`agents/{architect,coder,reviewer}.md`)
-- **8 slash commands** for phase-gated lifecycle transitions (`commands/*.md`)
-- **6 hook scripts** that enforce the lifecycle (block hand-editing of `workflow.json`, validate phase gates, guard subagent outputs)
+- **4 subagents** with pinned model tiers (`agents/{architect, coder, reviewer, brainstormer}.md`)
+- **10 slash commands** (`commands/*.md`):
+  - **Lifecycle**: `/start-spec`, `/submit-implementation`, `/submit-review`, `/submit-fixes`, `/close-spec`
+  - **Navigation**: `/spec-status`, `/next`, `/resume-spec`, `/update-spec`
+  - **Greenfield**: `/brainstorm`, `/decompose-prd`
+- **6 hook scripts** that enforce the lifecycle (block hand-editing of `workflow.json`, validate phase gates, guard subagent outputs, surface next commands)
 - **6 skills** guiding each role (`skills/{writing-specs, reviewing-*, using-lean-spec}/SKILL.md`)
+- **Optional per-project rules** at `.lean-spec/rules.yaml` — `required_sections`, `max_tokens`, `required_verdict`, `require_line_references`. Enforced at phase advance. See `examples/rules.yaml`.
 - **Optional MCP integrations** that degrade gracefully when not installed:
   - Playwright → coder smoke-test + reviewer visual-fidelity check
   - Context7 → current library docs
@@ -82,7 +88,7 @@ git clone --depth=1 https://github.com/bats-core/bats-core.git /tmp/bats-core
 .tools/bin/bats tests/
 ```
 
-Current coverage: **78 tests across 4 files** — workflow transitions, hook outputs, plugin structure/frontmatter, and experiment-report script behavior.
+Current coverage: **137 tests across 8 files** — workflow transitions, hook outputs, plugin structure, experiment-report, rules.yaml enforcement, next-command resolver, PRD parser, and decompose-prd integration.
 
 ## Documentation
 
