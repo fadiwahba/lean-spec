@@ -5,6 +5,16 @@ INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
 
 FEATURES_DIR="$CWD/features"
+
+# F19 telemetry sync (opt-in; no-ops if disabled). Runs BEFORE the artifact
+# guard so even blocked stops still flush completed phase transitions.
+TELE_LIB="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}/lib/telemetry.sh"
+if [ -f "$TELE_LIB" ]; then
+  # shellcheck disable=SC1090
+  source "$TELE_LIB"
+  telemetry_sync_all "$CWD" 2>/dev/null || true
+fi
+
 [ -d "$FEATURES_DIR" ] || exit 0
 
 MISSING=""
