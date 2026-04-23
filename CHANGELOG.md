@@ -4,6 +4,42 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+- F12 Marketplace publish (deferred by user direction — zero-refactor step whenever distribution becomes useful).
+
+## [0.3.0] — 2026-04-24
+
+M3 (cross-provider) and M4 (auto + telemetry) land together.
+
+### Added
+
+**M3 — Cross-provider (Gemini, OpenCode, Codex):**
+
+- **F13 — Gemini CLI extension.** `gemini-extension.json` manifest + `GEMINI.md` context file + 11 TOML command ports at `commands/lean-spec/*.toml` + `.gemini/INSTALL.md` + `.gemini/hooks-template.json`. Degraded mode — Gemini CLI has no subagent dispatch, so tier enforcement is unavailable there (clearly documented). `scripts/verify-gemini-commands.sh` enforces 1:1 drift protection in CI.
+- **F14 — OpenCode install path.** `.opencode/agents/*.md` (4 agents with `mode:subagent` + `model:provider/id` pinning — tier enforcement WORKS here) + `.opencode/commands/lean-spec/*.md` (11) + `.opencode/INSTALL.md` with global-symlink install flow.
+- **F15 — Codex install path.** `.codex/AGENTS.md` (project context) + `.codex/prompts/*.md` (11 self-contained paste-in templates) + `.codex/INSTALL.md`. Most degraded of the three hosts — no slash commands, no subagents. Lifecycle bash (phase gate + workflow.json mutation + review archival) preserved; tier enforcement unavailable.
+- **F16 — Cross-provider compatibility test.** `tests/cross-provider.bats` — 9 tests verifying same `workflow.json` progressed across simulated host handoffs preserves history; each host ships exactly 11 entry points standalone; each host documents its degraded-mode caveat.
+
+**M4 — Auto mode + telemetry:**
+
+- **F17 — `/lean-spec:auto <slug>`.** Drives the full lifecycle using `lib/next-command.sh` as the resolver. Iterates up to 5 phases (configurable via `--max-cycles`) using the `SlashCommand` tool to dispatch each phase command. Hard-stops on `BLOCKED` verdict.
+- **F18 — Human-intervention checkpoints** (integrated in auto.md). Default pauses at each phase boundary for `[yes/no]` confirmation. `--unattended` skips for CI-style runs.
+- **F19 — Opt-in local telemetry.** `lib/telemetry.sh` + `commands/telemetry.md`. Opt-in via `LEAN_SPEC_TELEMETRY=1` env var or `~/.lean-spec/telemetry=on` marker file. Local-only (no network, no identity). Writes JSONL phase transitions to `~/.lean-spec/telemetry.jsonl`. Sync is idempotent via the `Stop` hook. Token counts are NOT tracked (would require wrapping the `claude` CLI — out of scope).
+
+### Changed
+
+- **`hooks/stop-guard.sh`**: sources `lib/telemetry.sh` and calls `telemetry_sync_all` on every Stop (no-op when telemetry disabled).
+- **`docs/PRD.md`**: F13–F19 roadmap entries marked ✅ with implementation summaries.
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.2.0 → 0.3.0.
+
+### Test suite
+
+Grew from 137 → 188 tests. New files:
+- `tests/gemini-commands.bats` (12)
+- `tests/opencode-commands.bats` (10)
+- `tests/codex-install.bats` (9)
+- `tests/cross-provider.bats` (9)
+- `tests/telemetry.bats` (11)
+
 ## [0.2.0] — 2026-04-24
 
 M2 lands — three of its four features shipped. F12 (marketplace publish) is deferred.

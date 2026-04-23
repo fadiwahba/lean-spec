@@ -381,18 +381,18 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 
 | # | Feature | Scope |
 |---|---|---|
-| F13 | **Gemini CLI extension** | `gemini-extension.json`, TOML command mirrors under `.gemini/commands/lean-spec/`, best-effort hook parity, **host-native agent definitions** under `.gemini/agents/` (or the host's equivalent) with per-role model configuration |
-| F14 | **OpenCode install path** | `.opencode/INSTALL.md` + curl-installable layout + **host-native agent definitions** shipped in whatever form OpenCode consumes |
-| F15 | **Codex install path** | `.codex/INSTALL.md` + curl-installable layout. Codex has no subagent dispatch — install docs must state tier enforcement is unavailable |
-| F16 | **Cross-provider artifact compatibility test** | Same `workflow.json` progressed across two hosts works correctly. Separate check: verify each host's shipped agent definitions load without user configuration |
+| F13 | **Gemini CLI extension** ✅ | `gemini-extension.json` manifest + `commands/lean-spec/*.toml` (11 mirrors, coexist with Claude's `.md`) + `GEMINI.md` context file + `.gemini/INSTALL.md` + `.gemini/hooks-template.json`. Degraded mode — no subagent dispatch in Gemini, so tier enforcement is unavailable (documented). `scripts/verify-gemini-commands.sh` drift check in CI |
+| F14 | **OpenCode install path** ✅ | `.opencode/agents/*.md` (4 agents with `mode:subagent` + `model:provider/id` pinning) + `.opencode/commands/lean-spec/*.md` (11) + `.opencode/INSTALL.md`. **Tier enforcement works here** — OpenCode supports per-agent model pinning. Phase-gate hook parity is best-effort inline (no native `UserPromptSubmit` hook to chain into) |
+| F15 | **Codex install path** ✅ | `.codex/AGENTS.md` (project context) + `.codex/prompts/*.md` (11 self-contained paste-in templates) + `.codex/INSTALL.md`. Most degraded of the three — no slash commands, no subagent dispatch. User pastes prompts into `codex` manually. Lifecycle bash (phase gate + workflow.json mutation) preserved; tier enforcement unavailable |
+| F16 | **Cross-provider artifact compatibility test** ✅ | `tests/cross-provider.bats` — 9 tests. Verifies same `workflow.json` progressed across simulated Claude/Gemini/OpenCode handoffs preserves chronological history; each host ships EXACTLY 11 entry points standalone; each host documents its degraded-mode caveat |
 
 ### Milestone M4 — Auto mode
 
 | # | Feature | Scope |
 |---|---|---|
-| F17 | **Auto driver** | Agent drives all transitions except close-out |
-| F18 | **Human-intervention checkpoints** | User can interrupt at any phase boundary; auto mode degrades gracefully to manual |
-| F19 | **Telemetry hooks (optional)** | Per-feature token accounting so users can verify the cost-arbitrage claim empirically |
+| F17 | **Auto driver** ✅ | `/lean-spec:auto <slug>` drives the full lifecycle using `lib/next-command.sh` as the resolver. Iterates up to 5 phases (configurable via `--max-cycles`) via the `SlashCommand` tool. Hard-stops on `BLOCKED` verdict |
+| F18 | **Human-intervention checkpoints** ✅ | Integrated into `/lean-spec:auto` — default behavior pauses at each phase boundary for user confirmation. `--unattended` flag bypasses for CI-style runs. User can interrupt mid-lifecycle; `workflow.json` always stays in a valid state |
+| F19 | **Telemetry hooks (optional, local)** ✅ | `lib/telemetry.sh` + `commands/telemetry.md`. Opt-in via `LEAN_SPEC_TELEMETRY=1` env var or `~/.lean-spec/telemetry=on` marker file. Local-only, no network. Writes phase transitions to `~/.lean-spec/telemetry.jsonl`. Sync is idempotent via the `Stop` hook. Token counts are NOT tracked (would require wrapping the `claude` CLI, out of scope) |
 
 ---
 

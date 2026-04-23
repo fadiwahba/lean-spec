@@ -51,10 +51,11 @@ At any point: `/lean-spec:spec-status my-feature` shows current phase + next com
 ## What's under the hood
 
 - **4 subagents** with pinned model tiers (`agents/{architect, coder, reviewer, brainstormer}.md`)
-- **10 slash commands** (`commands/*.md`):
+- **13 slash commands** (`commands/*.md`):
   - **Lifecycle**: `/start-spec`, `/submit-implementation`, `/submit-review`, `/submit-fixes`, `/close-spec`
   - **Navigation**: `/spec-status`, `/next`, `/resume-spec`, `/update-spec`
   - **Greenfield**: `/brainstorm`, `/decompose-prd`
+  - **Drive/observe**: `/auto` (full lifecycle with optional checkpoints), `/telemetry` (opt-in phase-duration report)
 - **6 hook scripts** that enforce the lifecycle (block hand-editing of `workflow.json`, validate phase gates, guard subagent outputs, surface next commands)
 - **6 skills** guiding each role (`skills/{writing-specs, reviewing-*, using-lean-spec}/SKILL.md`)
 - **Optional per-project rules** at `.lean-spec/rules.yaml` — `required_sections`, `max_tokens`, `required_verdict`, `require_line_references`. Enforced at phase advance. See `examples/rules.yaml`.
@@ -88,7 +89,7 @@ git clone --depth=1 https://github.com/bats-core/bats-core.git /tmp/bats-core
 .tools/bin/bats tests/
 ```
 
-Current coverage: **137 tests across 8 files** — workflow transitions, hook outputs, plugin structure, experiment-report, rules.yaml enforcement, next-command resolver, PRD parser, and decompose-prd integration.
+Current coverage: **188 tests across 13 files** — workflow transitions, hook outputs, plugin structure, experiment-report, rules.yaml enforcement, next-command resolver, PRD parser, decompose-prd integration, Gemini command drift, OpenCode frontmatter, Codex prompts, cross-provider compatibility, and telemetry.
 
 ## Documentation
 
@@ -97,12 +98,16 @@ Current coverage: **137 tests across 8 files** — workflow transitions, hook ou
 - **PRD skeleton template** for greenfield projects — [`templates/PRD.md`](templates/PRD.md)
 - **Changelog** — [`CHANGELOG.md`](CHANGELOG.md)
 
-## Cross-host support (roadmap)
+## Cross-host support
 
-- **Claude Code** — first class, current
-- **Gemini CLI** — Phase 2 via `gemini-extension.json` + TOML command mirrors (see `.gemini/`)
-- **OpenCode** — Phase 3, manual install path
-- **Codex** — Phase 3, manual install path. Codex has no subagent dispatch — tier enforcement will be unavailable there.
+| Host | Status | Tier enforcement | Install guide |
+|---|---|---|---|
+| **Claude Code** | first class | ✅ | `docs/PLUGIN_DEV_GUIDE.md` |
+| **OpenCode** | shipped | ✅ (per-agent model pinning via `mode:subagent`) | `.opencode/INSTALL.md` |
+| **Gemini CLI** | shipped (degraded) | ❌ (no subagent dispatch) | `.gemini/INSTALL.md` |
+| **Codex CLI** | shipped (lightest) | ❌ (no slash commands, no subagents) | `.codex/INSTALL.md` |
+
+The lifecycle bash and artifact shape are identical across all four. The degraded modes clearly label what's unavailable.
 
 ## License
 
