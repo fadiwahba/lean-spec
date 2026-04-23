@@ -46,7 +46,7 @@ SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
-jq --arg now "$NOW" '.updated_at = $now' "$WF" > "$tmp" && mv "$tmp" "$WF"
+jq --arg now "$NOW" '.updated_at = $now' "$WF" > "$tmp" && mv -f "$tmp" "$WF"
 ```
 
 5. Confirm to the user:

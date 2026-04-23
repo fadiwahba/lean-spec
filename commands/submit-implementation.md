@@ -28,7 +28,7 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
 jq --arg p "implementing" --arg now "$NOW" \
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp" && mv "$tmp" "$WF"
+  "$WF" > "$tmp" && mv -f "$tmp" "$WF"
 ```
 
 2. Dispatch the **coder subagent** using the `Task` tool:

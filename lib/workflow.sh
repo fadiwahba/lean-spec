@@ -107,7 +107,7 @@ append_history() {
     return 1
   fi
 
-  mv "$tmp" "$path"
+  mv -f "$tmp" "$path"
 }
 
 # set_phase <workflow_json_path> <new_phase>
@@ -155,5 +155,5 @@ set_phase() {
     return 1
   fi
 
-  mv "$tmp" "$path"
+  mv -f "$tmp" "$path"
 }

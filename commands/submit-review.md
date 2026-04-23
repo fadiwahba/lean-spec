@@ -29,7 +29,7 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
 jq --arg p "reviewing" --arg now "$NOW" \
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp" && mv "$tmp" "$WF"
+  "$WF" > "$tmp" && mv -f "$tmp" "$WF"
 ```
 
 2. Determine a diff reference for the reviewer. Prefer an explicit git range (e.g. `git log --oneline -n 10` to find the last pre-implementation commit), or fall back to "list files modified since the `implementing` phase began" via `git status`/`git diff --name-only`.

@@ -25,7 +25,7 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
 jq --arg p "closed" --arg now "$NOW" \
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp" && mv "$tmp" "$WF"
+  "$WF" > "$tmp" && mv -f "$tmp" "$WF"
 ```
 
 2. Confirm to the user:
