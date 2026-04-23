@@ -38,7 +38,12 @@ The plugin supports optional MCP integrations. **Detect availability by attempti
 If a Playwright tool is available (typically `mcp__playwright__browser_*` or `mcp__plugin_*_playwright__browser_*`), run a smoke-test as the last implementation step:
 
 1. Determine the dev server URL — read `spec.md` Technical Notes (look for "dev server" / "localhost"); default to `http://localhost:3000` if not specified.
-2. Verify the dev server is running. If not, attempt to start it via the project's standard script (`pnpm dev`, `npm run dev`, etc.) in the background. If that also fails, skip the smoke-test and note it in `notes.md` under "Known limitations".
+2. Verify the dev server is running (`curl -sf <url> >/dev/null`). **If it is already running, do NOT start another one** — use the existing instance. If it is not running, start it via the project's standard script (`pnpm dev`, `npm run dev`, etc.) in the background **using `setsid` (or equivalent) so it gets its own process group**, and record the PGID to `/tmp/lean-spec-<slug>-dev.pgid`. Example:
+   ```bash
+   setsid pnpm dev > /tmp/lean-spec-<slug>-dev.log 2>&1 &
+   echo $! > /tmp/lean-spec-<slug>-dev.pgid   # $! is the PGID because setsid made it a group leader
+   ```
+   If startup fails, skip the smoke-test and note it in `notes.md` under "Known limitations".
 3. Navigate to the URL.
 4. Capture: page title, top-level snapshot, console errors/warnings.
 5. Pass criteria:
@@ -47,6 +52,7 @@ If a Playwright tool is available (typically `mcp__playwright__browser_*` or `mc
    - Top-level snapshot contains the spec's named UI elements (for UI specs) — quick sanity check, not visual fidelity
 6. **If the smoke-test fails**: attempt ONE self-fix retry. If still failing after the retry, report status `BLOCKED` with the specific failure (stack trace / console error / missing element) and do not proceed.
 7. Add a one-line summary to `notes.md` under "What was built": `Smoke-test: passed (<URL>) — N console errors, M warnings.`
+8. **If you started the dev server yourself** (step 2 created the `.pgid` file), kill its whole process group before exiting: `kill -TERM -- -$(cat /tmp/lean-spec-<slug>-dev.pgid)` then `rm /tmp/lean-spec-<slug>-dev.pgid`. This prevents zombie `next-server` / `vite` / `dev-server` processes from accumulating across dispatches. **If the server was already running when you arrived, leave it running** — it's the user's. Do not kill servers you did not start.
 
 ### Other optional tools
 

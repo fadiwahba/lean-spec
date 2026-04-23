@@ -68,6 +68,34 @@ Each criterion must be:
 
 Target **1–4 criteria**. If more than 4, the feature is too large — split.
 
+### Visual Acceptance Criteria — ALWAYS a numbered table, NEVER prose
+
+When the feature has a UI and the project ships a binding visual contract (e.g. `docs/ux-design.png` referenced in the PRD's Implementation Contract), the visual AC **must** be expressed as a numbered checklist table under a Technical Notes heading (`V1`, `V2`, `V3`...). The AC itself is a one-liner that defers to the table.
+
+**Why:** prose visual ACs are not reviewable. The reviewer enforces what the spec encodes — if the spec says "recognisably matches the design," every visual detail is an opinion. If the spec says "V3 — ring is `rgba(255,107,53,0.15)` faint orange stroke at ~480px diameter," drift from that token is a first-class failing grade.
+
+**Correct shape:**
+```markdown
+- [ ] AC4 — Visual contract. The running app at <url> satisfies every row in the Visual Checklist table (Technical Notes) when compared against <path/to/reference.png>.
+
+## Technical Notes
+
+**Visual checklist for AC4** (all must hold against `<path/to/reference.png>`):
+
+| # | Requirement |
+|---|---|
+| V1 | Exact color tokens used — bg `#...`, primary `#...`, muted `#...`, ... |
+| V2 | Vertical stack order: <elem> → <elem> → <elem> |
+| V3 | Typography: <role> uses `<font>` `<weight>`, `<size>`, `<letter-spacing>`, `<case>` |
+| V4 | Controls: <button> is `<size>` `<color>` with `<glyph>`; <button2> is ... |
+| V5 | <State variants>: active = ..., inactive = ... |
+| V6 | <Format invariants>: MM:SS always zero-padded, currency always 2 decimals, etc. |
+```
+
+**Each V-row must be checkable by eye or by `getComputedStyle`.** If a row says "looks balanced" you rewrote it wrong — rewrite it as an exact measurement or token. Minimum 3 rows for any UI-bearing feature; 6–8 is typical.
+
+**Anti-pattern — do NOT do this:** `AC4: the page is visually recognisable as docs/ux-design.png — specifically with orange labels, mode pills, a ring containing readout, ...` (prose cramming).
+
 ## Scope Discipline
 
 A spec is not a design doc. **Stop before:**
@@ -99,5 +127,6 @@ Before submitting:
 - [ ] `handoffs.next_command` is `/lean-spec:submit-implementation <slug>`
 - [ ] Out of Scope section exists (even if "None identified.")
 - [ ] Coder Guardrails included (or explicitly omitted with a one-line note in Technical Notes)
+- [ ] **If the feature has UI and the PRD references a binding visual contract: AC4 is a one-liner deferring to a numbered Visual Checklist table (V1, V2, …) in Technical Notes. Prose visual ACs are rejected.**
 - [ ] Total file under ~80 lines
 - [ ] No implementation details leaked into Scope or ACs

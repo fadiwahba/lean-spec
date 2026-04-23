@@ -59,7 +59,8 @@ Group findings by severity: Critical / Important / Minor.
 If available:
 
 1. Determine the dev server URL — read `spec.md` Technical Notes; default to `http://localhost:3000` if not specified.
-2. Navigate and capture a full-page screenshot plus an accessibility snapshot.
+   **Dev server hygiene:** Verify the server is running (`curl -sf <url> >/dev/null`). **Do not start your own if one is already running.** If you must start one, use `setsid pnpm dev …` and record the PGID to `/tmp/lean-spec-<slug>-review.pgid` so you can kill it cleanly before exit: `kill -TERM -- -$(cat /tmp/lean-spec-<slug>-review.pgid)`. Never leave a server running that you started.
+2. Navigate and capture a full-page screenshot plus an accessibility snapshot. **Always save screenshots to `.playwright-mcp/<descriptive-name>.png`** (explicit relative path, not bare filename) so repo-root gitignore rules catch them.
 3. Compare against any visual contract referenced in the spec (e.g. `docs/ux-design.jpg`):
    - Named elements all present?
    - Typography matches (font families, sizes quantified in ACs)?
