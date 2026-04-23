@@ -95,6 +95,80 @@ hook_input() {
   echo "$output" | jq -e '.decision == "block"' > /dev/null
 }
 
+# ─── user-prompt-submit.sh × rules.yaml (F11) ───
+
+@test "rules: submit-implementation PASS when spec.md satisfies required_sections" {
+  mkdir -p "$TMPDIR/.lean-spec"
+  cat > "$TMPDIR/.lean-spec/rules.yaml" <<'EOF'
+required_sections:
+  spec.md: ["Scope", "Acceptance Criteria"]
+EOF
+  cat > "$TMPDIR/features/test-feature/spec.md" <<'EOF'
+## Scope
+Stuff.
+## Acceptance Criteria
+- [ ] AC1
+EOF
+  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "rules: submit-implementation BLOCKED when spec.md missing required section" {
+  mkdir -p "$TMPDIR/.lean-spec"
+  cat > "$TMPDIR/.lean-spec/rules.yaml" <<'EOF'
+required_sections:
+  spec.md: ["Scope", "Acceptance Criteria", "Out of Scope"]
+EOF
+  cat > "$TMPDIR/features/test-feature/spec.md" <<'EOF'
+## Scope
+Stuff.
+## Acceptance Criteria
+- [ ] AC1
+EOF
+  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  [ "$status" -eq 2 ]
+  echo "$output" | jq -e '.decision == "block"' > /dev/null
+  [[ "$output" == *"Out of Scope"* ]]
+}
+
+@test "rules: close-spec BLOCKED when verdict is not APPROVE" {
+  echo '{"slug":"test-feature","phase":"reviewing","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","history":[],"artifacts":{}}' > "$TMPDIR/features/test-feature/workflow.json"
+  mkdir -p "$TMPDIR/.lean-spec"
+  cat > "$TMPDIR/.lean-spec/rules.yaml" <<'EOF'
+required_verdict: APPROVE
+EOF
+  cat > "$TMPDIR/features/test-feature/review.md" <<'EOF'
+---
+verdict: NEEDS_FIXES
+---
+# Review
+EOF
+  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:close-spec test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"verdict"* ]] || [[ "$output" == *"NEEDS_FIXES"* ]]
+}
+
+@test "rules: submit-fixes is NOT subject to artifact validation (no artifact yet)" {
+  # The coder is about to run again; no artifact to validate.
+  # Even with strict rules, submit-fixes should pass the rules sweep
+  # (it can still fail the phase gate for unrelated reasons).
+  echo '{"slug":"test-feature","phase":"reviewing","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","history":[],"artifacts":{}}' > "$TMPDIR/features/test-feature/workflow.json"
+  mkdir -p "$TMPDIR/.lean-spec"
+  cat > "$TMPDIR/.lean-spec/rules.yaml" <<'EOF'
+required_sections:
+  spec.md: ["Nonexistent"]
+EOF
+  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-fixes test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "rules: no rules.yaml means no enforcement (backwards compatible)" {
+  # No rules.yaml at all — must still let the command through when phase is correct.
+  [ ! -f "$TMPDIR/.lean-spec/rules.yaml" ]
+  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  [ "$status" -eq 0 ]
+}
+
 # ─── pre-tool-use-workflow.sh ───
 
 @test "pre-tool-use: blocks Write on workflow.json" {

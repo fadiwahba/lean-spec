@@ -342,6 +342,40 @@ For any UI feature with a binding visual contract (`docs/ux-design.png` in a PRD
 
 Validated by experiment B2: swapping prose→table dropped review cycles from 3→1 and fixed the white-ring visual drift.
 
+### 8.7 Optional per-project rules (`.lean-spec/rules.yaml`)
+
+Projects can opt into stricter enforcement by dropping a `.lean-spec/rules.yaml` at the repo root. The schema is intentionally small (four fields):
+
+```yaml
+required_sections:      # markdown heading substrings that must be present
+  spec.md:   [Scope, Acceptance Criteria, Out of Scope, Coder Guardrails]
+  notes.md:  [What was built, How to verify]
+  review.md: [Verdict, Spec Compliance, Code Quality]
+
+max_tokens:             # approximated as char-count / 4
+  spec.md:  2000
+  notes.md: 6000
+
+required_verdict: APPROVE                # blocks /close-spec on anything else
+
+require_line_references:                 # heuristic: at least one `path:NNN`
+  review.md: true
+```
+
+Enforcement runs in `hooks/user-prompt-submit.sh` via `lib/rules.sh`. When the user types a phase-advancing command (`/submit-implementation`, `/submit-review`, `/close-spec`), the hook:
+
+1. Checks whether `.lean-spec/rules.yaml` exists in CWD. If not, skip — rules are opt-in.
+2. Loads and parses via Python (`yaml.safe_load` → JSON).
+3. Validates the artifact about to be consumed (`spec.md` for `submit-implementation`, `notes.md` for `submit-review`, `review.md` for `close-spec`).
+4. If any rule fails, exits `2` with a `decision: block` JSON and human-readable reason. `/submit-fixes` is exempt (no new artifact exists at that moment).
+
+Ship a copy for your project from `examples/rules.yaml`. All fields are optional — any rule you don't set is not enforced.
+
+**Design notes:**
+- **Section matching is case-insensitive substring** — "Acceptance" matches "## Acceptance Criteria". Keeps the rules forgiving as you iterate on artifact structure.
+- **`max_tokens` is chars / 4** — good enough for bounding runaway artifacts; don't expect exact tokenizer parity.
+- **`require_line_references` is "at least one"** — a review with one backtick `path:NNN` passes even if other findings lack them. Heuristic, not audit-grade. The real audit tool is the reviewer's scope-sweep (§8.2).
+
 ---
 
 ## 9. Testing

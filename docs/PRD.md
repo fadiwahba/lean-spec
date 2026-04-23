@@ -374,7 +374,7 @@ Goal: a solo developer can complete a full spec → implement → review → clo
 |---|---|---|
 | F9  | **Semi-auto driver** | Agent proposes next command; hook intercepts and shows single-keystroke confirm UX |
 | F10 | **/brainstorm + /decompose-prd** | Upstream greenfield commands producing `idea.md`, a project-level `docs/PRD.md` (from `templates/PRD.md` — see §12.9), and N feature skeletons |
-| F11 | **Optional rules.yaml enforcement** | `.lean-spec/rules.yaml` parsed by hooks; violations block phase advance with a visible reason |
+| F11 | **Optional rules.yaml enforcement** ✅ | `.lean-spec/rules.yaml` parsed by `lib/rules.sh` inside `hooks/user-prompt-submit.sh`. Four rules: `required_sections`, `max_tokens`, `required_verdict`, `require_line_references`. Violations block phase advance with a reason. Opt-in — no rules.yaml means no enforcement. See `examples/rules.yaml` + `docs/PLUGIN_DEV_GUIDE.md` §8.7 |
 | F12 | **Marketplace publish** | Create `lean-spec-marketplace` repo; write public install docs |
 
 ### Milestone M3 — Cross-provider (Gemini, OpenCode, Codex)

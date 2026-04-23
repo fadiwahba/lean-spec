@@ -1,0 +1,77 @@
+# Example .lean-spec/rules.yaml
+#
+# Copy this to your project as .lean-spec/rules.yaml and tune the values.
+# Any rule you don't set is simply not enforced — it's additive, never
+# subtractive. Without a rules.yaml file, the plugin runs with no extra
+# constraints (the default behavior).
+#
+# Enforcement is wired into hooks/user-prompt-submit.sh — violations block
+# the phase-advancing command (/submit-*, /close-spec) and explain why.
+#
+# Schema is intentionally small (PRD §12.1 "start bare"). Expand only on
+# demand from real usage.
+
+# --------------------------------------------------------------------
+# required_sections
+# --------------------------------------------------------------------
+# Each artifact must contain markdown headings (any level) whose text
+# matches every string listed below. Matching is case-insensitive and
+# substring-based — "Acceptance" matches "## Acceptance Criteria".
+#
+# Applied BEFORE the command that advances out of the phase that wrote
+# the artifact:
+#   spec.md   -> validated before /submit-implementation
+#   notes.md  -> validated before /submit-review
+#   review.md -> validated before /close-spec
+
+required_sections:
+  spec.md:
+    - Scope
+    - Acceptance Criteria
+    - Out of Scope
+    - Coder Guardrails
+  notes.md:
+    - What was built
+    - How to verify
+  review.md:
+    - Verdict
+    - Spec Compliance
+    - Code Quality
+
+# --------------------------------------------------------------------
+# max_tokens
+# --------------------------------------------------------------------
+# Approximated as character count / 4 (standard rule of thumb). A hard
+# cap on artifact size — if exceeded, the phase advance is blocked and
+# the user is expected to trim the artifact.
+#
+# Writing-specs skill already caps spec.md at ~80 lines (~2000 tokens)
+# in its frontmatter checklist — setting max_tokens here turns that
+# from a soft expectation into an enforced rule.
+
+max_tokens:
+  spec.md:   2000    # ~80 lines
+  notes.md:  6000    # coder can be verbose across fix cycles
+  review.md: 8000    # reviewer's findings + multiple cycle archives
+
+# --------------------------------------------------------------------
+# required_verdict
+# --------------------------------------------------------------------
+# The only verdict that allows /close-spec to succeed. Set to APPROVE in
+# strict projects where NEEDS_FIXES features must not be closed under any
+# circumstances (no "manual override").
+
+required_verdict: APPROVE
+
+# --------------------------------------------------------------------
+# require_line_references
+# --------------------------------------------------------------------
+# When true, the artifact must contain at least one backtick-quoted
+# `path:line` reference (e.g. `src/foo.ts:42`). Catches reviews that
+# consist of vague prose rather than concrete citations.
+#
+# Heuristic, not exhaustive — a review with one reference passes even
+# if other findings lack them. Pair with writing-specs discipline.
+
+require_line_references:
+  review.md: true
