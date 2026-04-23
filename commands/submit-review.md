@@ -17,8 +17,9 @@ Advance a feature from `implementing` to `reviewing` and dispatch the reviewer s
 
 ## Steps
 
-1. Advance phase to `reviewing`:
+1. Advance phase to `reviewing`. **If this block exits non-zero, STOP — do not dispatch the subagent. Report the error verbatim to the user.**
 ```bash
+set -e
 SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
 CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
@@ -29,7 +30,14 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
 jq --arg p "reviewing" --arg now "$NOW" \
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp" && mv -f "$tmp" "$WF"
+  "$WF" > "$tmp"
+mv -f "$tmp" "$WF" || { echo "ERROR: mv failed — workflow.json not updated. Orphan tmp: $tmp" >&2; exit 1; }
+NEW_PHASE=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$NEW_PHASE" != "reviewing" ]; then
+  echo "ERROR: phase did not advance — expected 'reviewing', still '$NEW_PHASE'. Aborting before subagent dispatch." >&2
+  exit 1
+fi
+echo "phase advanced: implementing → reviewing"
 ```
 
 2. Determine a diff reference for the reviewer. Prefer an explicit git range (e.g. `git log --oneline -n 10` to find the last pre-implementation commit), or fall back to "list files modified since the `implementing` phase began" via `git status`/`git diff --name-only`.

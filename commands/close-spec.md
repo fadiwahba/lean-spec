@@ -17,15 +17,23 @@ Verify the review verdict is `APPROVE`, then close the feature.
 
 ## Steps
 
-1. Advance phase to `closed`:
+1. Advance phase to `closed`. **If this block exits non-zero, STOP and report the error to the user — the lifecycle did not close.**
 ```bash
+set -e
 SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
 jq --arg p "closed" --arg now "$NOW" \
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp" && mv -f "$tmp" "$WF"
+  "$WF" > "$tmp"
+mv -f "$tmp" "$WF" || { echo "ERROR: mv failed — workflow.json not updated. Orphan tmp: $tmp" >&2; exit 1; }
+NEW_PHASE=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$NEW_PHASE" != "closed" ]; then
+  echo "ERROR: phase did not advance — expected 'closed', still '$NEW_PHASE'." >&2
+  exit 1
+fi
+echo "phase advanced: reviewing → closed"
 ```
 
 2. Confirm to the user:

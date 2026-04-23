@@ -16,8 +16,9 @@ Advance a feature from `specifying` to `implementing` and dispatch the coder sub
 
 ## Steps
 
-1. Advance phase to `implementing`:
+1. Advance phase to `implementing`. **If this block exits non-zero, STOP — do not dispatch the subagent. Report the error verbatim to the user.**
 ```bash
+set -e
 SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
 CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
@@ -28,7 +29,15 @@ NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
 jq --arg p "implementing" --arg now "$NOW" \
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp" && mv -f "$tmp" "$WF"
+  "$WF" > "$tmp"
+mv -f "$tmp" "$WF" || { echo "ERROR: mv failed — workflow.json not updated. Orphan tmp: $tmp" >&2; exit 1; }
+# Post-advance assertion — catch silent failures
+NEW_PHASE=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
+if [ "$NEW_PHASE" != "implementing" ]; then
+  echo "ERROR: phase did not advance — expected 'implementing', still '$NEW_PHASE'. Aborting before subagent dispatch." >&2
+  exit 1
+fi
+echo "phase advanced: specifying → implementing"
 ```
 
 2. Dispatch the **coder subagent** using the `Task` tool:

@@ -40,13 +40,18 @@ The orchestrator (you) does NOT edit `spec.md` directly. Tier enforcement is the
      <full contents of features/<slug>/spec.md, copied verbatim including frontmatter>
      ```
 
-4. When the architect subagent returns, update `updated_at` in `workflow.json`:
+4. When the architect subagent returns, update `updated_at` in `workflow.json`. **If this block exits non-zero, the architect's spec.md was written successfully but the workflow.json timestamp didn't update — report the error to the user but note the spec changes are still on disk.**
 ```bash
+set -e
 SLUG="$ARGUMENTS"
 WF="features/$SLUG/workflow.json"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
-jq --arg now "$NOW" '.updated_at = $now' "$WF" > "$tmp" && mv -f "$tmp" "$WF"
+jq --arg now "$NOW" '.updated_at = $now' "$WF" > "$tmp"
+mv -f "$tmp" "$WF" || { echo "ERROR: mv failed — workflow.json not updated. Orphan tmp: $tmp" >&2; exit 1; }
+# Verify file is still valid JSON with phase=specifying
+jq -e '.phase == "specifying"' "$WF" > /dev/null || { echo "ERROR: workflow.json corrupted or phase changed unexpectedly." >&2; exit 1; }
+echo "workflow.json updated_at refreshed"
 ```
 
 5. Confirm to the user:

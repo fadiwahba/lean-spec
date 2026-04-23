@@ -107,7 +107,11 @@ append_history() {
     return 1
   fi
 
-  mv -f "$tmp" "$path"
+  if ! mv -f "$tmp" "$path"; then
+    rm -f "$tmp"
+    echo "append_history: mv failed — $path not updated" >&2
+    return 1
+  fi
 }
 
 # set_phase <workflow_json_path> <new_phase>
@@ -155,5 +159,17 @@ set_phase() {
     return 1
   fi
 
-  mv -f "$tmp" "$path"
+  if ! mv -f "$tmp" "$path"; then
+    rm -f "$tmp"
+    echo "set_phase: mv failed — $path not updated" >&2
+    return 1
+  fi
+
+  # Post-write assertion — confirm the phase actually changed on disk
+  local actual
+  actual=$(jq -r '.phase // ""' "$path" 2>/dev/null)
+  if [[ "$actual" != "$new_phase" ]]; then
+    echo "set_phase: post-write assertion failed — expected '$new_phase', got '$actual'" >&2
+    return 1
+  fi
 }
