@@ -46,6 +46,19 @@ hook_input() {
   [[ "$output" != *"test-feature: [closed]"* ]]
 }
 
+@test "session-start: includes phase-appropriate next command (F9)" {
+  # test-feature is in specifying phase (from default setup)
+  run bash -c "echo '{\"hook_event_name\":\"SessionStart\",\"cwd\":\"$TMPDIR\"}' | $HOOKS/session-start.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/lean-spec:submit-implementation test-feature"* ]]
+}
+
+@test "session-start: mentions /lean-spec:next in the footer when features exist" {
+  run bash -c "echo '{\"hook_event_name\":\"SessionStart\",\"cwd\":\"$TMPDIR\"}' | $HOOKS/session-start.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"/lean-spec:next"* ]]
+}
+
 # ─── user-prompt-submit.sh ───
 
 @test "user-prompt-submit: allows non-lean-spec prompt" {

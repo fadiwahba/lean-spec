@@ -342,7 +342,30 @@ For any UI feature with a binding visual contract (`docs/ux-design.png` in a PRD
 
 Validated by experiment B2: swapping prose→table dropped review cycles from 3→1 and fixed the white-ring visual drift.
 
-### 8.7 Optional per-project rules (`.lean-spec/rules.yaml`)
+### 8.7 Semi-auto driver (F9)
+
+`SessionStart` hook surfaces, per in-progress feature, the phase-appropriate next slash command:
+
+```
+lean-spec v3 active. In-progress features:
+- pomodoro: [reviewing] last updated 2026-04-24T10:17:00Z — next: `/lean-spec:close-spec pomodoro`
+```
+
+The `/lean-spec:next` command resolves "what's next" for the most-recently-updated open feature and prints a single copy-pasteable command. It does **not** auto-dispatch — that would require a Claude Code hook primitive for confirm-and-run UX that doesn't exist yet. The resolver is factored to `lib/next-command.sh` (used by both the hook and the command), so upgrading to auto-dispatch when the primitive lands is a localized change.
+
+Phase → command mapping (canonical, same table used by `/lean-spec:spec-status`):
+
+| Phase | Resolves to |
+|---|---|
+| `specifying` | `/lean-spec:submit-implementation <slug>` |
+| `implementing` | `/lean-spec:submit-review <slug>` |
+| `reviewing` + `APPROVE` | `/lean-spec:close-spec <slug>` |
+| `reviewing` + `NEEDS_FIXES` | `/lean-spec:submit-fixes <slug>` |
+| `reviewing` + `BLOCKED` | `# BLOCKED` (human intervention) |
+| `reviewing` (no review.md) | `/lean-spec:spec-status <slug>` (awaiting reviewer) |
+| `closed` | (no advance) |
+
+### 8.8 Optional per-project rules (`.lean-spec/rules.yaml`)
 
 Projects can opt into stricter enforcement by dropping a `.lean-spec/rules.yaml` at the repo root. The schema is intentionally small (four fields):
 
