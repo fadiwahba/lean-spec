@@ -4,6 +4,18 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-04-27
+
+Bug fix surfaced by M4 attended-mode experiment (empty-state feature).
+
+### Fixed
+
+- **`commands/close-spec.md`** — reverted `allowed-tools` from `Read, Write` back to `Bash, Read`. The v0.3.2 Write-tool approach was blocked by `hooks/pre-tool-use-workflow.sh`, which denies ALL Write/Edit calls on `features/*/workflow.json`. Replaced Write-tool instructions with an explicit `jq + mktemp + mv` bash block (same pattern as `submit-implementation.md`), with a post-advance assertion and no text that a model could interpret as a CLI invocation.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.2 → 0.3.3.
+
 - F12 Marketplace publish (deferred by user direction — zero-refactor step whenever distribution becomes useful).
 
 ## [0.3.2] — 2026-04-27
