@@ -4,6 +4,23 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.3.5] — 2026-04-27
+
+Same root-cause fix as v0.3.4, applied to `start-spec`.
+
+### Fixed
+
+- **`hooks/user-prompt-submit.sh`** — added `start-spec` handler: when `/lean-spec:start-spec <slug> [brief]` is detected, the hook validates the slug format, blocks duplicate slugs (0 model tokens burned), creates `features/<slug>/` and `workflow.json` (phase: `specifying`) using pure bash+jq, then injects `additionalContext` telling the model to dispatch the architect subagent. The model never touches the filesystem.
+- **`commands/start-spec.md`** — removed the pre-flight bash block and Step 1 bash block entirely. `allowed-tools` changed from `Bash, Read, Task` to `Task, Read`. The command is now pure architect dispatch.
+
+### Root cause
+
+Same as v0.3.4 (`close-spec`): the model hallucinates a `lean-spec` CLI binary when it sees a bash block alongside a `/lean-spec:*` command name that matches its training-data knowledge of a lean-spec tool. Moving all filesystem operations to the hook layer eliminates the hallucination surface permanently.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.4 → 0.3.5.
+
 ## [0.3.4] — 2026-04-27
 
 Root-cause fix for close-spec hallucination, surfaced through three failed v0.3.x attempts.

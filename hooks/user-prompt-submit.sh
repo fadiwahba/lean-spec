@@ -36,6 +36,50 @@ artifact_for() {
   esac
 }
 
+# --- start-spec: create directory + workflow.json in the hook (before model) ----
+# The model hallucinates a lean-spec CLI binary when executing the bash block in
+# start-spec.md. Moving the filesystem setup here (pure bash) fixes the hallucination.
+# The command.md is reduced to architect dispatch only.
+if [[ "$PROMPT" =~ /lean-spec:start-spec[[:space:]]+([a-z0-9][a-z0-9-]*) ]]; then
+  SLUG="${BASH_REMATCH[1]}"
+
+  if ! [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    MSG="Invalid slug '$SLUG': use lowercase letters, digits, and hyphens only (e.g. 'add-user-export')."
+    echo "lean-spec block: $MSG" >&2
+    jq -n --arg msg "$MSG" '{decision: "block", reason: $msg}'
+    exit 2
+  fi
+
+  WF_NEW="$CWD/features/$SLUG/workflow.json"
+
+  if [ -f "$WF_NEW" ]; then
+    EXISTING_PHASE=$(jq -r '.phase // "unknown"' "$WF_NEW" 2>/dev/null)
+    MSG="Feature '$SLUG' already exists (phase: $EXISTING_PHASE). Use /lean-spec:update-spec $SLUG to revise."
+    echo "lean-spec block: $MSG" >&2
+    jq -n --arg msg "$MSG" '{decision: "block", reason: $msg}'
+    exit 2
+  fi
+
+  mkdir -p "$CWD/features/$SLUG"
+  NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  jq -n --arg slug "$SLUG" --arg now "$NOW" '{
+    slug: $slug,
+    phase: "specifying",
+    created_at: $now,
+    updated_at: $now,
+    history: [{"phase": "specifying", "entered_at": $now}],
+    artifacts: {spec: "spec.md", notes: "notes.md", review: "review.md"}
+  }' > "$WF_NEW"
+
+  jq -n --arg slug "$SLUG" '{
+    hookSpecificOutput: {
+      hookEventName: "UserPromptSubmit",
+      additionalContext: ("lean-spec hook: features/"+$slug+"/workflow.json created (phase: specifying). Dispatch the lean-spec:architect subagent to write features/"+$slug+"/spec.md.")
+    }
+  }'
+  exit 0
+fi
+
 # Check if prompt contains a /lean-spec:* command that advances phase
 if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|close-spec)[[:space:]]+([a-z0-9][a-z0-9-]*) ]]; then
   COMMAND="${BASH_REMATCH[1]}"
