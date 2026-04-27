@@ -76,7 +76,7 @@ If available:
    - Color tokens applied (spot-check the hex values named in ACs)?
    - No obvious runtime render bugs (missing elements, overlapping elements, broken layout)?
 4. Capture any browser console errors/warnings — these are first-class findings.
-5. Record findings under `## Visual Review` in `review.md`, grouped by severity (same taxonomy as code quality).
+5. Record findings under `## Visual Fidelity` in `review.md`, grouped by severity (same taxonomy as code quality). **The heading MUST be exactly `## Visual Fidelity` — never "Visual Review", "Visual Inspection", or any other variant.**
 
 ### Step 4 — Extras (CONDITIONAL on dispatch payload)
 
@@ -138,7 +138,7 @@ verdict: APPROVE | NEEDS_FIXES | BLOCKED
 - **Important** (should fix): ...
 - **Minor** (optional): ...
 
-## Visual Review
+## Visual Fidelity
 
 <!-- Present IFF Playwright was available. If skipped, say so here with one sentence. -->
 

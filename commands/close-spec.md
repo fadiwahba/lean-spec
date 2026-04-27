@@ -1,12 +1,12 @@
 ---
 description: Verify APPROVE verdict and close the feature lifecycle
 argument-hint: <slug>
-allowed-tools: Bash, Read
+allowed-tools: Read, Write
 ---
 
 # /lean-spec:close-spec
 
-Verify the review verdict is `APPROVE`, then close the feature.
+Verify the review verdict is `APPROVE`, then close the feature by updating `workflow.json` directly with the Write tool. **There is no `lean-spec` CLI — do not search for one, install one, or run any npm/npx command.**
 
 ## Pre-flight
 
@@ -17,28 +17,32 @@ Verify the review verdict is `APPROVE`, then close the feature.
 
 ## Steps
 
-> **IMPLEMENTATION NOTE — no CLI binary exists.** lean-spec is a Claude Code plugin, not an npm package or executable. Do NOT run `npm install lean-spec`, `npx lean-spec`, `lean-spec close`, or any other install/binary command. The bash block below IS the complete implementation — execute it directly with the Bash tool.
+1. Read `features/$ARGUMENTS/workflow.json` to capture the existing content (you have it from pre-flight).
 
-1. Advance phase to `closed`. **If this block exits non-zero, STOP and report the error to the user — the lifecycle did not close.**
-```bash
-set -e
-SLUG="$ARGUMENTS"
-WF="features/$SLUG/workflow.json"
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-tmp=$(mktemp "${WF}.tmp.XXXXXX")
-jq --arg p "closed" --arg now "$NOW" \
-  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \
-  "$WF" > "$tmp"
-mv -f "$tmp" "$WF" || { echo "ERROR: mv failed — workflow.json not updated. Orphan tmp: $tmp" >&2; exit 1; }
-NEW_PHASE=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
-if [ "$NEW_PHASE" != "closed" ]; then
-  echo "ERROR: phase did not advance — expected 'closed', still '$NEW_PHASE'." >&2
-  exit 1
-fi
-echo "phase advanced: reviewing → closed"
-```
+2. Compute the updated workflow object — make these three changes to the existing JSON:
+   - `phase` → `"closed"`
+   - `updated_at` → current UTC timestamp, format `YYYY-MM-DDTHH:MM:SSZ`
+   - `history` → append `{"phase": "closed", "entered_at": "<same timestamp>"}`
+   All other fields stay exactly as they are.
 
-2. Confirm to the user:
+3. Write the updated JSON back to `features/$ARGUMENTS/workflow.json` using the **Write tool** (full file replacement). Use 2-space indentation. Example of the shape:
+   ```json
+   {
+     "slug": "...",
+     "phase": "closed",
+     "created_at": "...",
+     "updated_at": "<now>",
+     "history": [
+       ...,
+       {"phase": "closed", "entered_at": "<now>"}
+     ],
+     "artifacts": { ... }
+   }
+   ```
+
+4. Read `features/$ARGUMENTS/workflow.json` again and confirm `.phase` is `"closed"`. If not, report: "ERROR: phase did not advance — Write tool may have failed."
+
+5. Confirm to the user:
    "Feature '$ARGUMENTS' is closed. Artifacts preserved at features/$ARGUMENTS/. Lifecycle complete."
    Print a summary:
    - Spec: features/$ARGUMENTS/spec.md

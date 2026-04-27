@@ -6,6 +6,19 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 - F12 Marketplace publish (deferred by user direction — zero-refactor step whenever distribution becomes useful).
 
+## [0.3.2] — 2026-04-27
+
+Reliability fixes surfaced by M2 greenfield v2 experiment (todo-demo, 3 features, $14.24).
+
+### Fixed
+
+- **`commands/close-spec.md`** — replaced bash block entirely with Read + Write tool instructions. Removed `Bash` from `allowed-tools`. The v0.3.1 "no CLI binary" preamble was ignored by Sonnet 4.6 in all 3 close-spec dispatches; eliminating the bash execution surface removes the hallucination vector entirely.
+- **`agents/reviewer.md`** — hard-prescribed `## Visual Fidelity` as the required heading (both in step guidance and the review.md template). Reviewer was consistently emitting `## Visual Review`; `rules.yaml` `required_sections` checked for `"Visual Fidelity"`; mismatch blocked every close-spec call requiring manual rename before each feature could close.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.1 → 0.3.2.
+
 ## [0.3.1] — 2026-04-27
 
 Headless/agentic driver fixes surfaced by the M2 greenfield experiment (todo-demo, 19 dispatches, $11.15).
