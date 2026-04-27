@@ -69,9 +69,10 @@ hook_input() {
 @test "user-prompt-submit: blocks submit-implementation when phase is not specifying" {
   # Set phase to implementing
   echo '{"slug":"test-feature","phase":"implementing","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","history":[],"artifacts":{}}' > "$TMPDIR/features/test-feature/workflow.json"
-  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  run --separate-stderr bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
   [ "$status" -eq 2 ]
   echo "$output" | jq -e '.decision == "block"' > /dev/null
+  [[ "$stderr" == *"lean-spec block"* ]]
 }
 
 @test "user-prompt-submit: allows submit-implementation when phase is specifying" {
@@ -81,9 +82,10 @@ hook_input() {
 
 @test "user-prompt-submit: blocks submit-review when phase is not implementing" {
   # phase is specifying, not implementing
-  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-review test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  run --separate-stderr bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-review test-feature\"}' | $HOOKS/user-prompt-submit.sh"
   [ "$status" -eq 2 ]
   echo "$output" | jq -e '.decision == "block"' > /dev/null
+  [[ "$stderr" == *"lean-spec block"* ]]
 }
 
 @test "user-prompt-submit: allows submit-review when phase is implementing" {
@@ -103,9 +105,10 @@ hook_input() {
 }
 
 @test "user-prompt-submit: blocks when feature not found" {
-  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation nonexistent-slug\"}' | $HOOKS/user-prompt-submit.sh"
+  run --separate-stderr bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation nonexistent-slug\"}' | $HOOKS/user-prompt-submit.sh"
   [ "$status" -eq 2 ]
   echo "$output" | jq -e '.decision == "block"' > /dev/null
+  [[ "$stderr" == *"lean-spec block"* ]]
 }
 
 # ─── user-prompt-submit.sh × rules.yaml (F11) ───
@@ -138,10 +141,11 @@ Stuff.
 ## Acceptance Criteria
 - [ ] AC1
 EOF
-  run bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
+  run --separate-stderr bash -c "echo '{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$TMPDIR\",\"prompt\":\"/lean-spec:submit-implementation test-feature\"}' | $HOOKS/user-prompt-submit.sh"
   [ "$status" -eq 2 ]
   echo "$output" | jq -e '.decision == "block"' > /dev/null
   [[ "$output" == *"Out of Scope"* ]]
+  [[ "$stderr" == *"lean-spec block (rules)"* ]]
 }
 
 @test "rules: close-spec BLOCKED when verdict is not APPROVE" {

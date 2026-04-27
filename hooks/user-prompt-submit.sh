@@ -45,6 +45,7 @@ if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|
   WF="$CWD/features/$SLUG/workflow.json"
 
   if [ ! -f "$WF" ]; then
+    echo "lean-spec block: feature '$SLUG' not found — run /lean-spec:start-spec $SLUG first." >&2
     jq -n --arg slug "$SLUG" '{
       decision: "block",
       reason: ("Feature '\''"+$slug+"'\'' not found. Run /lean-spec:start-spec "+$slug+" first."),
@@ -60,6 +61,7 @@ if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|
 
   if [ "$CURRENT" != "$REQUIRED" ]; then
     MSG="Phase gate: /lean-spec:${COMMAND} requires phase '${REQUIRED}', but '${SLUG}' is in phase '${CURRENT}'."
+    echo "lean-spec block: $MSG" >&2
     jq -n --arg msg "$MSG" --arg current "$CURRENT" --arg required "$REQUIRED" --arg cmd "$COMMAND" --arg slug "$SLUG" '{
       decision: "block",
       reason: $msg,
@@ -87,6 +89,7 @@ if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|
         if [ -n "$RULES_OUTPUT" ] && echo "$RULES_OUTPUT" | grep -q "rules violation"; then
           MSG="$RULES_OUTPUT"
           HINT="Fix the violations above (edit $ARTIFACT_PATH) or relax the rule in $(rules_path) before re-running /lean-spec:$COMMAND $SLUG."
+          echo "lean-spec block (rules): $MSG" >&2
           jq -n --arg msg "$MSG" --arg hint "$HINT" --arg slug "$SLUG" --arg artifact "$ARTIFACT" '{
             decision: "block",
             reason: $msg,

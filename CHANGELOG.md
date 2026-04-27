@@ -6,6 +6,21 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 - F12 Marketplace publish (deferred by user direction — zero-refactor step whenever distribution becomes useful).
 
+## [0.3.1] — 2026-04-27
+
+Headless/agentic driver fixes surfaced by the M2 greenfield experiment (todo-demo, 19 dispatches, $11.15).
+
+### Fixed
+
+- **`commands/update-spec.md`** — accepts optional `[inline-brief]` arg (same first-token slug pattern as `start-spec`). When the brief is non-empty the orchestrator skips the "ask user" interactive step entirely, enabling headless `claude -p` subprocess invocations without hanging. Empty brief still prompts interactively.
+- **`commands/close-spec.md`** — explicit "no CLI binary" preamble in Steps section. Prevents the orchestrator from hallucinating `npm install lean-spec` / `npx lean-spec` when `package.json` contains a stale lean-spec file-dep from v2 migrations.
+- **`hooks/user-prompt-submit.sh`** — all three block exit paths now `echo` the block reason to stderr before emitting the JSON block decision. Headless callers (`claude -p` subprocess, `/auto` driver) can now surface the block reason from stderr instead of seeing an empty `result` with `cost: 0`.
+- **`lib/rules.sh`** — `rules_load` now auto-detects `uv` and uses `uv run --quiet --with pyyaml python3` when available, falling back to bare `python3`. Makes PyYAML portable across fresh cloud sandboxes and macOS system Python (which lacks PyYAML) without requiring manual `pip install`.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.0 → 0.3.1.
+
 ## [0.3.0] — 2026-04-24
 
 M3 (cross-provider) and M4 (auto + telemetry) land together.

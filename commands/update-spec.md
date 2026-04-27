@@ -1,6 +1,6 @@
 ---
 description: Dispatch the architect subagent to revise spec.md (stays in specifying phase)
-argument-hint: <slug>
+argument-hint: <slug> [inline-brief]
 allowed-tools: Bash, Read, Task
 ---
 
@@ -12,15 +12,25 @@ The orchestrator (you) does NOT edit `spec.md` directly. Tier enforcement is the
 
 ## Pre-flight
 
-1. Check `$ARGUMENTS` provided. Usage: `/lean-spec:update-spec <slug>`.
-2. Verify `features/$ARGUMENTS/workflow.json` exists.
-3. Read `features/$ARGUMENTS/workflow.json` and verify current phase is `specifying`. If not, say: "Feature is in phase '<phase>' — spec is locked. Revisions after `specifying` require `/lean-spec:submit-fixes <slug>` (only valid from `reviewing` + NEEDS_FIXES)."
+1. Parse arguments — first token is the slug; everything after is the optional inline brief:
+```bash
+ARGS="$ARGUMENTS"
+SLUG="${ARGS%% *}"
+BRIEF="${ARGS#"$SLUG"}"
+BRIEF="${BRIEF# }"
+```
+   If `$SLUG` is empty, say: "Usage: /lean-spec:update-spec <slug> [inline-brief]" and stop.
+
+2. Verify `features/$SLUG/workflow.json` exists.
+3. Read `features/$SLUG/workflow.json` and verify current phase is `specifying`. If not, say: "Feature is in phase '<phase>' — spec is locked. Revisions after `specifying` require `/lean-spec:submit-fixes <slug>` (only valid from `reviewing` + NEEDS_FIXES)."
 
 ## Steps
 
-1. Read the existing `features/$ARGUMENTS/spec.md` so you can include it in the dispatch payload.
+1. Read the existing `features/$SLUG/spec.md` so you can include it in the dispatch payload.
 
-2. Ask the user: "What changes should I make to the spec for `$ARGUMENTS`?" and capture the full feedback verbatim. The orchestrator's job here is to *collect* feedback — not to interpret or summarize it.
+2. Collect the revision brief:
+   - If `$BRIEF` (parsed in pre-flight) is **non-empty**: use it verbatim — **do NOT prompt the user**. This path is used by headless/agentic callers (e.g. `/lean-spec:auto`, driver scripts) that pre-supply the brief inline.
+   - If `$BRIEF` is **empty**: ask the user: "What changes should I make to the spec for `$SLUG`?" and capture the full feedback verbatim. The orchestrator's job here is to *collect* feedback — not to interpret or summarize it.
 
 3. Dispatch the **architect subagent** using the `Task` tool:
 
@@ -33,8 +43,8 @@ The orchestrator (you) does NOT edit `spec.md` directly. Tier enforcement is the
      Spec path: features/<slug>/spec.md
      Mode: update
 
-     Brief (user's verbatim revision feedback):
-     <feedback captured in step 2>
+     Brief (revision feedback):
+     <brief from step 2 — verbatim>
 
      Existing spec:
      <full contents of features/<slug>/spec.md, copied verbatim including frontmatter>
@@ -43,7 +53,7 @@ The orchestrator (you) does NOT edit `spec.md` directly. Tier enforcement is the
 4. When the architect subagent returns, update `updated_at` in `workflow.json`. **If this block exits non-zero, the architect's spec.md was written successfully but the workflow.json timestamp didn't update — report the error to the user but note the spec changes are still on disk.**
 ```bash
 set -e
-SLUG="$ARGUMENTS"
+SLUG="${ARGUMENTS%% *}"
 WF="features/$SLUG/workflow.json"
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 tmp=$(mktemp "${WF}.tmp.XXXXXX")
@@ -56,7 +66,7 @@ echo "workflow.json updated_at refreshed"
 
 5. Confirm to the user:
 
-   > "Spec revised. Review `features/$ARGUMENTS/spec.md`. Run `/lean-spec:update-spec $ARGUMENTS` again for more changes, or `/lean-spec:submit-implementation $ARGUMENTS` when ready."
+   > "Spec revised. Review `features/$SLUG/spec.md`. Run `/lean-spec:update-spec $SLUG` again for more changes, or `/lean-spec:submit-implementation $SLUG` when ready."
 
 ## Notes
 

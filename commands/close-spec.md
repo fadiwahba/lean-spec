@@ -17,6 +17,8 @@ Verify the review verdict is `APPROVE`, then close the feature.
 
 ## Steps
 
+> **IMPLEMENTATION NOTE — no CLI binary exists.** lean-spec is a Claude Code plugin, not an npm package or executable. Do NOT run `npm install lean-spec`, `npx lean-spec`, `lean-spec close`, or any other install/binary command. The bash block below IS the complete implementation — execute it directly with the Bash tool.
+
 1. Advance phase to `closed`. **If this block exits non-zero, STOP and report the error to the user — the lifecycle did not close.**
 ```bash
 set -e

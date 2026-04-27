@@ -23,7 +23,8 @@
 # Exit conventions: functions that validate return 0 on pass, 1 on violation
 # (printing a human-readable message to stderr). `rules_enforce` aggregates.
 #
-# Dependencies: python3 (PyYAML), jq, awk, grep, wc.
+# Dependencies: python3 + PyYAML (auto-installed via `uv run --with pyyaml` when uv is available;
+#               falls back to bare python3 which requires PyYAML in the active environment), jq, awk, grep, wc.
 
 # Path to rules.yaml relative to the project root (CWD when hook runs).
 # Override with LEAN_SPEC_RULES_PATH for tests.
@@ -46,12 +47,17 @@ rules_load() {
     echo "{}"
     return 0
   fi
-  python3 - "$path" <<'PY'
-import sys, yaml, json
+  # Use uv to auto-install pyyaml when available (portable across fresh sandboxes).
+  # Fall back to bare python3 for environments where PyYAML is pre-installed.
+  local py_script='import sys, yaml, json
 with open(sys.argv[1]) as f:
     d = yaml.safe_load(f) or {}
-print(json.dumps(d))
-PY
+print(json.dumps(d))'
+  if command -v uv >/dev/null 2>&1; then
+    uv run --quiet --with pyyaml python3 -c "$py_script" "$path"
+  else
+    python3 -c "$py_script" "$path"
+  fi
 }
 
 # -----------------------------------------------------------------------------
