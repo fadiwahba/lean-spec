@@ -103,6 +103,39 @@ if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|
       fi
     fi
   fi
+
+  # --- close-spec: advance workflow.json to closed in the hook (before model) ----
+  # The model reliably hallucinates a lean-spec CLI binary when executing bash
+  # blocks inside close-spec. Moving the state mutation here (pure bash, no model
+  # involved) fixes the hallucination permanently. The command.md becomes read-only
+  # confirmation UX; this hook does the actual work.
+  if [ "$COMMAND" = "close-spec" ]; then
+    REVIEW_MD="$CWD/features/$SLUG/review.md"
+    VERDICT=$(awk '/^verdict:/{gsub(/[[:space:]]/,"",$0); sub(/^verdict:/,"",$0); print; exit}' "$REVIEW_MD" 2>/dev/null || echo "")
+    if [ "$VERDICT" != "APPROVE" ]; then
+      MSG="Cannot close '$SLUG': verdict is '${VERDICT:-missing}'. Resolve before closing."
+      echo "lean-spec block: $MSG" >&2
+      jq -n --arg msg "$MSG" '{decision: "block", reason: $msg}'
+      exit 2
+    fi
+    NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    tmp=$(mktemp "${WF}.tmp.XXXXXX")
+    if jq --arg now "$NOW" \
+        '.phase = "closed" | .updated_at = $now | .history += [{"phase": "closed", "entered_at": $now}]' \
+        "$WF" > "$tmp" && mv -f "$tmp" "$WF"; then
+      jq -n --arg slug "$SLUG" '{
+        hookSpecificOutput: {
+          hookEventName: "UserPromptSubmit",
+          additionalContext: ("lean-spec hook: workflow.json for '\''"+$slug+"'\'' has been advanced to closed. Tell the user the feature is closed and print the artifact paths.")
+        }
+      }'
+    else
+      MSG="close-spec hook: failed to advance workflow.json for '$SLUG'."
+      echo "lean-spec block: $MSG" >&2
+      jq -n --arg msg "$MSG" '{decision: "block", reason: $msg}'
+      exit 2
+    fi
+  fi
 fi
 
 # Allow (with context injection noting lean-spec is active)

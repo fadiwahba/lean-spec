@@ -4,6 +4,23 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.3.4] — 2026-04-27
+
+Root-cause fix for close-spec hallucination, surfaced through three failed v0.3.x attempts.
+
+### Fixed
+
+- **`hooks/user-prompt-submit.sh`** — added close-spec handler: when `/lean-spec:close-spec <slug>` is detected, the hook validates the APPROVE verdict and advances `workflow.json` to `closed` using pure bash+jq **before the model sees the command**. The model is only responsible for confirming the outcome to the user. This permanently eliminates the hallucination vector — the model never needs to run a bash block or touch workflow.json.
+- **`commands/close-spec.md`** — reduced to pure confirmation UX (no bash block, `allowed-tools: Read` only). The hook does all state mutation; the command just tells the user what happened.
+
+### Root cause analysis (v0.3.2 and v0.3.3 post-mortem)
+
+The model has training-data knowledge of a `lean-spec` CLI binary. When dispatched as a standalone `claude -p` subprocess with `/lean-spec:close-spec`, it consistently attempts `lean-spec close` or `npx lean-spec close` and ignores the bash block in the command markdown — regardless of how the instructions are phrased. This is a model-training artifact, not a prompt-engineering problem. Moving the mutation to the hook layer (where it runs as a plain bash script with no model involvement) is the correct fix.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.3 → 0.3.4.
+
 ## [0.3.3] — 2026-04-27
 
 Bug fix surfaced by M4 attended-mode experiment (empty-state feature).
