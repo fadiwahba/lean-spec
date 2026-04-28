@@ -37,6 +37,7 @@ Editing any of the following **outside the spec's explicit request** is treated 
 - `next.config.*`, `tsconfig.json`, `eslint.config.*`, `postcss.config.*`, `tailwind.config.*` — framework/tool config
 - Root `app/layout.tsx` metadata, `<head>` content, or global providers — unless the spec's feature *is* layout/metadata
 - Existing tests — unless the spec's feature *is* the test
+- **`features/*/` directories** — never create entries under `features/` for testing or fixture purposes. If the implementation requires test data (e.g. sample `workflow.json` files to smoke-test a board reader), write them to a **temporary directory outside the project root** (`/tmp/lean-spec-<slug>-fixtures/`) and delete the directory before stopping. Creating `features/test-*` or any non-spec slug under `features/` is treated as a Critical scope violation.
 
 If the spec genuinely requires touching one of these, the spec should name the file. If you find yourself editing one and the spec doesn't name it, you are doing scope creep — stop, revert, and report `NEEDS_CONTEXT`.
 
@@ -63,7 +64,8 @@ If a Playwright tool is available (typically `mcp__playwright__browser_*` or `mc
    - Top-level snapshot contains the spec's named UI elements (for UI specs) — quick sanity check, not visual fidelity
 6. **If the smoke-test fails**: attempt ONE self-fix retry. If still failing after the retry, report status `BLOCKED` with the specific failure (stack trace / console error / missing element) and do not proceed.
 7. Add a one-line summary to `notes.md` under "What was built": `Smoke-test: passed (<URL>) — N console errors, M warnings.`
-8. **If you started the dev server yourself** (step 2 created the `.pid` file), kill its entire process group before exiting. Portable pattern (works on macOS + Linux):
+8. **Clean up any temporary fixture data** you created for the smoke-test (e.g. `/tmp/lean-spec-<slug>-fixtures/`) before stopping. Do not leave test artifacts under `features/` — see Hard-forbidden edits above.
+9. **If you started the dev server yourself** (step 2 created the `.pid` file), kill its entire process group before exiting. Portable pattern (works on macOS + Linux):
    ```bash
    PID=$(cat /tmp/lean-spec-<slug>-dev.pid)
    PGID=$(ps -o pgid= -p "$PID" 2>/dev/null | tr -d ' ')
