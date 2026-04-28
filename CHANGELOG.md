@@ -4,6 +4,23 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.3.6] — 2026-04-28
+
+Surfaced by the lean-spec-kanban greenfield experiment.
+
+### Fixed
+
+- **`agents/coder.md`** — Hard-forbidden edits: added explicit rule banning `features/*/` directory creation for testing/fixture purposes. Coder must write fixture data to `/tmp/lean-spec-<slug>-fixtures/` and delete it before stopping. Creating `features/test-*` or any non-spec slug under `features/` is a Critical scope violation.
+- **`agents/coder.md`** — Playwright smoke-test step 8 (renumbered from 8→9): added explicit fixture cleanup step before server shutdown.
+
+### Root cause
+
+During the kanban-board implementation, the coder created `features/test-feature-{1,2,3,closed,unknown}/` directories in the project to smoke-test the board. These leaked into the project's `features/` directory (visible on the board itself), into the orchestrator's `result` text summary, and required manual cleanup after the feature closed.
+
+### Changed
+
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.5 → 0.3.6.
+
 ## [0.3.5] — 2026-04-27
 
 Same root-cause fix as v0.3.4, applied to `start-spec`.
