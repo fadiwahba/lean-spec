@@ -147,8 +147,13 @@ else:
 }
 
 @test "command allowed-tools includes Bash (all commands mutate workflow.json)" {
+  # start-spec and close-spec delegate all filesystem mutation to the UserPromptSubmit
+  # hook (hook-based architecture, v0.3.4+). They use Task/Read only — no Bash needed.
+  local hook_delegated="start-spec.md close-spec.md"
   for cmd in "$PLUGIN_ROOT"/commands/*.md; do
     [ -f "$cmd" ] || continue
+    base=$(basename "$cmd")
+    [[ " $hook_delegated " == *" $base "* ]] && continue
     run yaml_field "$cmd" "allowed-tools"
     [[ "$output" == *"Bash"* ]] || { echo "command $cmd missing Bash: $output"; false; }
   done
@@ -156,13 +161,16 @@ else:
 
 @test "phase-mutating commands use the mv -f + post-advance assertion pattern" {
   # Lesson from the lean-spec-v3 session: mv without -f triggers the macOS rm -i
-  # alias and silently fails. Every command that rewrites workflow.json must use
-  # `mv -f` AND re-read the file to assert the phase actually advanced.
-  for cmd in submit-implementation.md submit-review.md submit-fixes.md close-spec.md; do
+  # alias and silently fails. Commands that own their own workflow.json mutation must
+  # use `mv -f`. close-spec is exempt — mutation moved to UserPromptSubmit hook (v0.3.4+).
+  for cmd in submit-implementation.md submit-review.md submit-fixes.md; do
     f="$PLUGIN_ROOT/commands/$cmd"
     [ -f "$f" ] || continue
     grep -q "mv -f" "$f" || { echo "$cmd missing 'mv -f' in body"; false; }
   done
+  # Verify hook carries the mv -f pattern for hook-delegated commands
+  grep -q "mv -f" "$PLUGIN_ROOT/hooks/user-prompt-submit.sh" \
+    || { echo "user-prompt-submit.sh missing 'mv -f' (hook-delegated mutation)"; false; }
 }
 
 # ---------- skills ----------
