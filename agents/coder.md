@@ -81,6 +81,10 @@ If a Playwright tool is available (typically `mcp__playwright__browser_*` or `mc
 
 These are aids, not requirements. Don't burn tokens consulting them for trivial tasks.
 
+### Known library version footguns
+
+- **chokidar v5**: Glob expansion was removed. `chokidar.watch('path/*/file.json', ...)` silently produces zero watchers — `watcher.getWatched()` returns `{}` and no events fire. Always watch the **parent directory** and filter events by `path.basename(file) === 'target.json'` instead. Verify the installed version before writing any `watch()` call.
+
 ## Required output
 
 ### Initial mode
