@@ -47,6 +47,7 @@ Read `features/<slug>/spec.md` fully. Every AC must be satisfied — no more, no
 
 Honor the hard-forbidden edits list:
 - NEVER modify `package.json`, lockfiles, `next.config.*`, `tsconfig.json`, `eslint.config.*`, `postcss.config.*`, `tailwind.config.*`, root `app/layout.tsx` metadata, or existing tests unless the spec explicitly names them.
+- NEVER create git branches, run `git checkout -b`, `git branch`, `git switch -c`, or any variant that creates or switches branches. Implementation stays on the current branch.
 
 If a Playwright MCP is loaded, run a smoke-test before finishing:
 1. Detect the dev server URL (spec.md Technical Notes; default `http://localhost:3000`).

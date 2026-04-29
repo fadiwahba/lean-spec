@@ -17,6 +17,9 @@ fi
 
 [ -d "$FEATURES_DIR" ] || exit 0
 
+# Cross-provider mode: sentinel disables artifact guard (Gemini writes artifacts asynchronously)
+[ -f "$CWD/.lean-spec/cross-provider" ] && exit 0
+
 MISSING=""
 
 while IFS= read -r wf; do

@@ -199,15 +199,15 @@ else:
 
 # ---------- hooks ----------
 
-@test "hooks.json exists and is valid JSON" {
-  [ -f "$PLUGIN_ROOT/hooks/hooks.json" ]
-  run jq . "$PLUGIN_ROOT/hooks/hooks.json"
+@test "claude-hooks.json exists and is valid JSON" {
+  [ -f "$PLUGIN_ROOT/hooks/claude-hooks.json" ]
+  run jq . "$PLUGIN_ROOT/hooks/claude-hooks.json"
   [ "$status" -eq 0 ]
 }
 
-@test "every hook referenced in hooks.json exists and is executable" {
+@test "every hook referenced in claude-hooks.json exists and is executable" {
   # Extract all referenced script paths and verify each exists as executable.
-  run jq -r '.. | .command? // empty' "$PLUGIN_ROOT/hooks/hooks.json"
+  run jq -r '.. | .command? // empty' "$PLUGIN_ROOT/hooks/claude-hooks.json"
   [ "$status" -eq 0 ]
   while IFS= read -r cmd; do
     [ -z "$cmd" ] && continue

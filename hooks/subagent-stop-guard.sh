@@ -8,6 +8,9 @@ CWD=$(echo "$INPUT" | jq -r '.cwd // "."')
 FEATURES_DIR="$CWD/features"
 [ -d "$FEATURES_DIR" ] || exit 0
 
+# Cross-provider mode: sentinel disables artifact guard
+[ -f "$CWD/.lean-spec/cross-provider" ] && exit 0
+
 case "$AGENT_TYPE" in
   architect)
     EXPECTED_ARTIFACT="spec.md"

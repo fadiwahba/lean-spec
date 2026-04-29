@@ -148,29 +148,41 @@ fi
 
 # P12: Cross-feature dependency scan — warn before auto-all runs into scope creep
 if [ "$CREATED" -gt 1 ]; then
-  declare -A SCOPES
-  declare -A TITLES
-  while IFS= read -r S; do
-    [ -z "$S" ] && continue
-    SCOPES[$S]=$(feature_scope "$PRD" "$S" 2>/dev/null | tr '\n' ' ')
-    TITLES[$S]=$(feature_section_title "$PRD" "$S" 2>/dev/null | tr '[:upper:]' '[:lower:]')
-  done <<< "$SLUGS"
-  DEPS_FOUND=0
-  for A in "${!SCOPES[@]}"; do
-    SCOPE_A="${SCOPES[$A]}"
-    for B in "${!SCOPES[@]}"; do
-      [ "$A" = "$B" ] && continue
-      TITLE_B_WORDS=$(echo "${TITLES[$B]}" | tr '-' ' ' | sed 's/[^a-z ]//g')
-      if echo "$SCOPE_A" | grep -qi "$B\|$TITLE_B_WORDS"; then
-        if [ "$DEPS_FOUND" = "0" ]; then
-          echo ""
-          echo "Potential dependencies detected (set blocks_on in spec.md before running auto-all):"
-          DEPS_FOUND=1
-        fi
-        echo "   * '$A' may depend on '$B' — consider: blocks_on: [$B]"
-      fi
-    done
-  done
+  python3 - "$PRD" "$SLUGS" <<'PYEOF'
+import sys, re
+
+prd_path = sys.argv[1]
+slugs_raw = sys.argv[2] if len(sys.argv) > 2 else ""
+slugs = [s.strip() for s in slugs_raw.splitlines() if s.strip()]
+
+try:
+    prd = open(prd_path).read()
+except Exception:
+    sys.exit(0)
+
+def section_for_slug(slug):
+    pattern = re.compile(
+        r'(?:^|\n)#+\s+.*?' + re.escape(slug) + r'.*?\n(.*?)(?=\n#+\s|\Z)',
+        re.IGNORECASE | re.DOTALL
+    )
+    m = pattern.search(prd)
+    return m.group(1) if m else ""
+
+scopes = {s: section_for_slug(s) for s in slugs}
+titles = {s: s.replace("-", " ").lower() for s in slugs}
+
+deps_found = False
+for a in slugs:
+    for b in slugs:
+        if a == b:
+            continue
+        title_b_words = re.sub(r'[^a-z ]', '', titles[b])
+        if re.search(re.escape(b) + r'|' + re.escape(title_b_words), scopes[a], re.IGNORECASE):
+            if not deps_found:
+                print("\nPotential dependencies detected (set blocks_on in spec.md before running auto-all):")
+                deps_found = True
+            print(f"   * '{a}' may depend on '{b}' — consider: blocks_on: [{b}]")
+PYEOF
 fi
 
 echo ""
