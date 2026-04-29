@@ -1,0 +1,51 @@
+description = "Run a standalone Playwright visual-fidelity check and append findings to review.md"
+
+prompt = """
+Arguments: `{{args}}`
+
+!{
+SLUG='{{args}}'
+WF="features/$SLUG/workflow.json"
+
+if [ ! -f "$WF" ]; then
+  echo "Feature '$SLUG' not found."
+  exit 1
+fi
+
+PHASE=$(jq -r '.phase' "$WF")
+if [ "$PHASE" != "reviewing" ] && [ "$PHASE" != "closed" ]; then
+  echo "Phase gate: visual-check requires 'reviewing' or 'closed', got '$PHASE'."
+  echo "Run /lean-spec:submit-review $SLUG first."
+  exit 1
+fi
+
+if [ ! -f "features/$SLUG/review.md" ]; then
+  echo "review.md not found. Run /lean-spec:submit-review $SLUG first."
+  exit 1
+fi
+
+echo "Feature: $SLUG | Phase: $PHASE"
+echo ""
+echo "=== spec.md (first 60 lines) ==="
+head -60 "features/$SLUG/spec.md" 2>/dev/null || echo "(spec.md not found)"
+echo ""
+echo "=== review.md (current) ==="
+cat "features/$SLUG/review.md" 2>/dev/null || echo "(review.md not found)"
+}
+
+Run a visual fidelity check for the feature above:
+
+1. Check if the dev server is running (`curl -sf http://localhost:3000`). If not, start it with `npm run dev` and wait ~5s.
+2. Use the Playwright tool to navigate to `http://localhost:3000` and capture a full-page screenshot. Save to `.playwright-mcp/$SLUG-visual-check.png`.
+3. Read the visual ACs from spec.md and compare against the screenshot:
+   - Named elements present?
+   - Typography correct (font families, sizes)?
+   - Colour tokens applied (hex values from spec)?
+   - Layout structure matches PRD?
+   - No console errors?
+4. List each visual AC with ✅ PASS or ❌ FAIL and a short note.
+5. Append a `## Visual Fidelity (standalone check)` section to `features/$SLUG/review.md` with a results table and overall PASS / FAIL.
+6. Report: "Visual check complete — Overall: PASS | FAIL. Screenshot: .playwright-mcp/$SLUG-visual-check.png"
+
+If Playwright is not available, report: "Playwright MCP not available in Gemini session. Skipping visual check."
+"""

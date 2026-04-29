@@ -30,6 +30,7 @@ echo "Change request: $BRIEF"
 
 ## Step 2 — Revise
 
+<!-- Note: model overrides in rules.yaml do not apply in OpenCode (fixed model). -->
 Act as the Architect. Revise `features/<slug>/spec.md` per the change request. Preserve the ~80-line cap and the V1/V2 table rule for visual ACs. If the change would break an AC, flag it for user confirmation before silently removing.
 
 ## Step 3 — Hand off

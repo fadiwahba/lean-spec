@@ -38,7 +38,9 @@ fi
 echo "phase rolled back: reviewing → implementing"
 ```
 
-2. Dispatch the **coder subagent** using the `Task` tool:
+2. Read the model override for the coder (if any): check if `.lean-spec/rules.yaml` exists and contains a `models.coder:` key. If found, use that value as `model` in the Task call. If not, omit `model` — the agent's frontmatter default (`haiku`) applies.
+
+3. Dispatch the **coder subagent** using the `Task` tool:
 
    - `subagent_type`: `"lean-spec:coder"`
    - `description`: `"Apply review fixes for <slug>"`
@@ -54,7 +56,7 @@ echo "phase rolled back: reviewing → implementing"
      (The coder should read spec.md and review.md with its own Read tool, address every finding in review.md, then overwrite notes.md to enumerate what was fixed per reviewer item.)
      ```
 
-3. Tell the user: "Fix cycle complete. Feature is in `implementing` phase with updated `notes.md`. Run `/lean-spec:submit-review $ARGUMENTS` to re-review."
+4. Tell the user: "Fix cycle complete. Feature is in `implementing` phase with updated `notes.md`. Run `/lean-spec:submit-review $ARGUMENTS` to re-review."
 
 ## Notes
 

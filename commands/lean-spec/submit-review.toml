@@ -1,16 +1,28 @@
-description = "Advance to reviewing and produce review.md with APPROVE | NEEDS_FIXES | BLOCKED verdict (pass --no-rules to skip rules validation)"
+description = "Advance to reviewing and produce review.md with APPROVE | NEEDS_FIXES | BLOCKED verdict (pass --visual for Playwright check, --no-rules to skip rules validation)"
 
 prompt = """
 You are acting as the Reviewer for a lean-spec v3 feature. In Gemini mode there is no subagent dispatch — you are the main session AND the reviewer.
 
-Arguments: `{{args}}`  (first token = slug; rest = optional extras like `security performance` or `full`)
+Arguments: `{{args}}`  (first token = slug; optional `--visual` flag; rest = optional extras like `security performance` or `full`)
 
 ## Step 1 — Parse args, validate phase, advance
 
 !{
 ARGS='{{args}}'
 SLUG="${ARGS%% *}"
-EXTRAS="${ARGS#"$SLUG"}"
+REST="${ARGS#"$SLUG"}"
+REST="${REST# }"
+
+# Detect --visual flag
+VISUAL=no
+EXTRAS=""
+for tok in $REST; do
+  case "$tok" in
+    --visual) VISUAL=yes ;;
+    --no-rules) ;;  # handled by hook layer
+    *) EXTRAS="$EXTRAS $tok" ;;
+  esac
+done
 EXTRAS="${EXTRAS# }"
 
 WF="features/$SLUG/workflow.json"
@@ -26,7 +38,7 @@ if [ ! -f "features/$SLUG/notes.md" ]; then
   echo "notes.md not found. Run /lean-spec:submit-implementation $SLUG first."; exit 1
 fi
 
-# Archive prior review.md if present (post-experiment fix #81)
+# Archive prior review.md if present
 REVIEW_DIR="features/$SLUG"
 if [ -f "$REVIEW_DIR/review.md" ]; then
   PRIOR=$(ls "$REVIEW_DIR"/review-cycle-*.md 2>/dev/null | wc -l | tr -d ' ')
@@ -41,9 +53,10 @@ jq --arg p "reviewing" --arg now "$NOW" \\
   '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
   "$WF" > "$tmp"
 mv -f "$tmp" "$WF"
-echo "phase advanced: implementing → reviewing (extras: ${EXTRAS:-none})"
+echo "phase advanced: implementing → reviewing (visual: $VISUAL, extras: ${EXTRAS:-none})"
 }
 
+# Note: model overrides in rules.yaml do not apply in Gemini (fixed model).
 ## Step 2 — Run review pipeline
 
 **Default skills (always run):**
@@ -52,7 +65,7 @@ echo "phase advanced: implementing → reviewing (extras: ${EXTRAS:-none})"
 
 **Scope-violation sweep (mandatory, Critical when found):** Run `git diff --name-only <base>` and check each touched file against the coder's hard-forbidden list (`package.json`, lockfiles, framework configs, root `layout.tsx`, existing tests). Any unexpected edit is a Critical finding.
 
-**Visual fidelity (AUTO if Playwright MCP available):** navigate the dev server, screenshot to `.playwright-mcp/<name>.png`, spot-check tokens via `getComputedStyle`, zero tolerance on console errors.
+**Visual fidelity (only if `--visual` was passed in args):** If `$VISUAL=yes`, navigate the dev server, screenshot to `.playwright-mcp/<name>.png`, spot-check tokens via `getComputedStyle`, zero tolerance on console errors. If `$VISUAL=no`, note `Visual fidelity: skipped (use --visual flag or /lean-spec:visual-check <slug>)` in the Summary.
 
 **Extras (opt-in via the args):**
 - `security` → load `skills/reviewing-security/SKILL.md`, produce `## Security Review` section
@@ -84,7 +97,7 @@ verdict: APPROVE | NEEDS_FIXES | BLOCKED
 ### Important
 ### Minor
 
-## Visual Review   (IFF Playwright was available)
+## Visual Fidelity   (IFF --visual was passed; otherwise one-line skip note)
 
 ## Security Review | Performance Review   (IFF extras requested)
 

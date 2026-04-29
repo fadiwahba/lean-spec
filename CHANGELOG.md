@@ -4,6 +4,26 @@ All notable changes to lean-spec are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-04-29
+
+Cost-arbitrage model overrides, `/lean-spec:init`, batch speccing, visual-check decoupling, and chunky-feature decomposition guidance.
+
+### Added
+
+- **`models:` override block in `examples/rules.yaml`** (opt-in, commented-out) — users can set `architect`, `reviewer`, and `coder` model per-project; overrides the agent frontmatter defaults at dispatch time.
+- **`/lean-spec:init`** (P13) — bootstraps `.lean-spec/rules.yaml` (from the default template) and `docs/` in one command; idempotent. Three-port: Claude `.md`, Gemini TOML, OpenCode `.md`, Codex `.md`.
+- **`/lean-spec:spec-all`** (P14) — batch dispatches the architect for every feature currently in the `specifying` phase; surfaces progress without blocking the main session.
+- **`/lean-spec:visual-check`** (P15) — standalone Playwright visual-fidelity command, decoupled from `submit-review`; accepts optional `--spec-sections` flag.
+- **`--visual` flag on `/lean-spec:submit-review`** — visual fidelity is now opt-in (text-only by default); `--visual` re-enables Playwright in the reviewer subagent.
+- **Coupling check in `/lean-spec:decompose-prd`** (P16) — before generating slugs, warns when >4 features share a state store and recommends merging into 1–3 cohesive features.
+- **CSS token bootstrap AC notice in `/lean-spec:decompose-prd`** (P17) — after slug generation, scans for Tailwind `@theme inline` design token definitions and emits a mandatory AC reminder for the first feature's `spec.md`.
+
+### Changed
+
+- **`agents/reviewer.md`** — default model changed `opus` → `sonnet` (5× cheaper for structured AC-comparison tasks; validated in cross-provider experiment).
+- **`commands/update-spec.md`, `submit-implementation.md`, `submit-fixes.md`, `submit-review.md`, `auto.md`** — each reads `models.<role>` from `.lean-spec/rules.yaml` before dispatching its subagent and passes the value as the `model` parameter to the Task tool.
+- **`.claude-plugin/plugin.json`** + **`gemini-extension.json`**: version bump 0.3.6 → 0.4.0.
+
 ## [0.3.6] — 2026-04-28
 
 Surfaced by the lean-spec-kanban greenfield experiment.

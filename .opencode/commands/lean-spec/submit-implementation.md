@@ -32,6 +32,7 @@ echo "phase advanced: specifying → implementing"
 ## Step 2 — Implement
 
 Act as the Coder (per your agent definition). Read `features/<slug>/spec.md` and implement it. Honour:
+<!-- Note: model overrides in rules.yaml do not apply in OpenCode (fixed model). -->
 - Coder Guardrails in the spec
 - Hard-forbidden edits list (package.json, lockfiles, framework configs, root layout.tsx, tests)
 - Run Playwright smoke-test if MCP available (see agent definition)

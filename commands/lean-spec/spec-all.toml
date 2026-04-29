@@ -1,0 +1,48 @@
+description = "Write spec.md for every feature currently in specifying phase (acts as architect in main session)"
+
+prompt = """
+Arguments: `{{args}}`
+
+!{
+PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+FEATURES_DIR="$PROJ/features"
+
+if [ ! -d "$FEATURES_DIR" ]; then
+  echo "No features/ directory found. Run /lean-spec:decompose-prd first."
+  exit 1
+fi
+
+SLUGS=$(find "$FEATURES_DIR" -name workflow.json 2>/dev/null \
+  | xargs -I{} sh -c 'jq -r "select(.phase==\"specifying\") | .slug" "{}" 2>/dev/null' \
+  | sort)
+
+if [ -z "$SLUGS" ]; then
+  echo "No features in specifying phase."
+  exit 0
+fi
+
+echo "Features to spec:"
+echo "$SLUGS"
+echo ""
+echo "PRD contents:"
+cat docs/PRD.md 2>/dev/null || echo "(docs/PRD.md not found)"
+}
+
+For each slug listed above that is in `specifying` phase, act as the architect:
+
+1. Read `features/<slug>/spec.md` (may be a skeleton).
+2. Find the matching feature section in `docs/PRD.md` for this slug.
+3. Write a complete `features/<slug>/spec.md` following the structure in `skills/writing-specs/SKILL.md`:
+   - Frontmatter (slug, phase, blocks_on)
+   - Scope
+   - Acceptance Criteria (functional + visual if applicable)
+   - Out of Scope
+   - Coder Guardrails
+4. Cap each spec at ~80 lines.
+
+Work through slugs sequentially. After finishing all, report:
+"spec-all complete — N features specced: <slug-list>.
+Run /lean-spec:submit-implementation <slug> when ready to implement."
+
+Note: model overrides from .lean-spec/rules.yaml do not apply in Gemini (fixed model).
+"""

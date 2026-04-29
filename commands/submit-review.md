@@ -1,6 +1,6 @@
 ---
 description: Advance to reviewing phase and dispatch the reviewer subagent. Optional extra skills via trailing args (e.g. security, performance, full).
-argument-hint: <slug> [extra-skills...] [--no-rules]
+argument-hint: <slug> [--visual] [extra-skills...] [--no-rules]
 allowed-tools: Bash, Read, Task
 ---
 
@@ -8,14 +8,15 @@ allowed-tools: Bash, Read, Task
 
 Advance a feature from `implementing` to `reviewing` and dispatch the reviewer subagent.
 
-**Default review runs:** `spec-compliance` + `code-quality` (always) + `visual-fidelity` (auto, IF Playwright MCP is available in this session).
+**Default review runs:** `spec-compliance` + `code-quality`. Add `--visual` to also run Playwright visual-fidelity check. Alternatively, run `/lean-spec:visual-check <slug>` as a standalone step after review.
 
 **Optional extras** via trailing arguments — reviewer runs additional review skills:
 
 ```
-/lean-spec:submit-review <slug>                           # default only
+/lean-spec:submit-review <slug>                           # default only (text review)
+/lean-spec:submit-review <slug> --visual                  # + Playwright visual check
 /lean-spec:submit-review <slug> security                  # + security
-/lean-spec:submit-review <slug> security performance      # + both
+/lean-spec:submit-review <slug> --visual security         # + visual + security
 /lean-spec:submit-review <slug> full                      # all available extras
 ```
 
@@ -25,12 +26,23 @@ Pass `--no-rules` to skip `rules.yaml` validation for this invocation.
 
 ## Pre-flight
 
-Parse `$ARGUMENTS`. First token = slug; remaining tokens = extras list (may be empty).
+Parse `$ARGUMENTS`. First token = slug; remaining tokens = flags + extras list.
 
 ```bash
 ARGS="$ARGUMENTS"
 SLUG="${ARGS%% *}"
-EXTRAS="${ARGS#$SLUG}"
+REST="${ARGS#$SLUG}"
+REST="${REST# }"   # trim leading space
+
+# Detect --visual flag and strip it from extras
+VISUAL=no
+EXTRAS=""
+for tok in $REST; do
+  case "$tok" in
+    --visual) VISUAL=yes ;;
+    *)        EXTRAS="$EXTRAS $tok" ;;
+  esac
+done
 EXTRAS="${EXTRAS# }"   # trim leading space
 ```
 
@@ -65,9 +77,11 @@ echo "phase advanced: implementing → reviewing"
 
 2. Determine a diff reference for the reviewer. Prefer an explicit git range (e.g. `git log --oneline -n 10` to find the last pre-implementation commit), or fall back to "list files modified since the `implementing` phase began" via `git status`/`git diff --name-only`.
 
-3. Dispatch the **reviewer subagent** using the `Task` tool:
+3. Read the model override for the reviewer (if any): check if `.lean-spec/rules.yaml` exists and contains a `models.reviewer:` key. If found, use that value as `model` in the Task call. If not, omit `model` — the agent's frontmatter default (`sonnet`) applies.
 
-   - `subagent_type`: `"lean-spec:reviewer"` — the plugin-provided reviewer (see `agents/reviewer.md`). Its frontmatter pins `model: opus`; do not override.
+4. Dispatch the **reviewer subagent** using the `Task` tool:
+
+   - `subagent_type`: `"lean-spec:reviewer"` — the plugin-provided reviewer (see `agents/reviewer.md`). Its frontmatter default is `model: sonnet`. Override via `.lean-spec/rules.yaml` models block if present.
    - `description`: `"Review <slug>"`
    - `prompt`: build a fresh invocation payload like this (the reviewer's system prompt comes from `agents/reviewer.md`; do not include it yourself). Include the `Extras:` line ONLY if `$EXTRAS` is non-empty:
 
@@ -76,8 +90,11 @@ echo "phase advanced: implementing → reviewing"
      Spec path: features/<slug>/spec.md
      Notes path: features/<slug>/notes.md
      Review path: features/<slug>/review.md
-     Diff reference: <git range or list of modified files from step 2>
+     Diff reference: <git range or list of modified files from step 3>
+     Visual: <yes|no>
      Extras: <contents of $EXTRAS — e.g. "security performance" or "full">
      ```
 
-4. Tell the user: "Dispatching reviewer subagent for '$SLUG'. Extras: `<extras or 'none'>`. Expected output: features/$SLUG/review.md with verdict APPROVE | NEEDS_FIXES | BLOCKED."
+     Include the `Extras:` line ONLY if `$EXTRAS` is non-empty. Always include the `Visual:` line.
+
+5. Tell the user: "Dispatching reviewer subagent for '$SLUG'. Visual: `<yes|no>`. Extras: `<extras or 'none'>`. Expected output: features/$SLUG/review.md with verdict APPROVE | NEEDS_FIXES | BLOCKED."

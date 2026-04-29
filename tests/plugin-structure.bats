@@ -125,7 +125,7 @@ else:
   run yaml_field "$PLUGIN_ROOT/agents/coder.md" "model"
   [ "$output" = "haiku" ]
   run yaml_field "$PLUGIN_ROOT/agents/reviewer.md" "model"
-  [ "$output" = "opus" ]
+  [ "$output" = "sonnet" ]
 }
 
 # ---------- commands ----------

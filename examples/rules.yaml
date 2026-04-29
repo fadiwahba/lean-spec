@@ -75,3 +75,19 @@ required_verdict: APPROVE
 
 require_line_references:
   review.md: true
+
+# --------------------------------------------------------------------
+# models
+# --------------------------------------------------------------------
+# Override the model used for each agent role. Defaults (if omitted) are
+# set in the agent frontmatter: architect=opus, reviewer=sonnet, coder=haiku.
+#
+# Valid values: opus | sonnet | haiku
+#
+# Use this to trade cost for quality on a per-project basis.
+# Example: set architect to sonnet for a low-stakes project to halve spec cost.
+
+# models:
+#   architect: opus
+#   reviewer: sonnet
+#   coder: haiku

@@ -42,9 +42,11 @@ fi
 echo "phase advanced: specifying → implementing"
 ```
 
-2. Dispatch the **coder subagent** using the `Task` tool:
+2. Read the model override for the coder (if any): check if `.lean-spec/rules.yaml` exists and contains a `models.coder:` key. If found, use that value as `model` in the Task call. If not, omit `model` — the agent's frontmatter default (`haiku`) applies.
 
-   - `subagent_type`: `"lean-spec:coder"` — the plugin-provided coder (see `agents/coder.md`). Its frontmatter pins `model: haiku`; do not override.
+3. Dispatch the **coder subagent** using the `Task` tool:
+
+   - `subagent_type`: `"lean-spec:coder"` — the plugin-provided coder (see `agents/coder.md`). Its frontmatter default is `model: haiku`. Override via `.lean-spec/rules.yaml` models block if present.
    - `description`: `"Implement <slug>"`
    - `prompt`: build a fresh invocation payload like this (the coder's system prompt comes from `agents/coder.md`; do not include it yourself):
 
@@ -57,4 +59,4 @@ echo "phase advanced: specifying → implementing"
      (The coder should read spec.md with its own Read tool. No review.md exists in initial mode.)
      ```
 
-3. Tell the user: "Dispatching coder subagent for '$ARGUMENTS'. Expected output: features/$ARGUMENTS/notes.md. Once notes.md is produced, run /lean-spec:submit-review $ARGUMENTS."
+4. Tell the user: "Dispatching coder subagent for '$ARGUMENTS'. Expected output: features/$ARGUMENTS/notes.md. Once notes.md is produced, run /lean-spec:submit-review $ARGUMENTS."

@@ -41,6 +41,7 @@ fi
 echo "phase advanced: specifying → implementing"
 }
 
+# Note: model overrides in rules.yaml do not apply in Gemini (fixed model).
 ## Step 2 — Implement
 
 Read `features/<slug>/spec.md` fully. Every AC must be satisfied — no more, no less. Follow the spec's `Coder Guardrails` section (known footguns) as hard constraints.

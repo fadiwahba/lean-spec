@@ -4,6 +4,12 @@ description: Generate feature skeletons from docs/PRD.md (deterministic bash —
 
 Arguments: `$ARGUMENTS` (optional path to PRD; defaults to `docs/PRD.md`).
 
+**Coupling check (before generating slugs):** Count the `### 4.x` subsections in the PRD. If there are more than 4 AND they appear to share a single state store (typical UI apps), pause and say:
+
+> "Found N features. For UI apps sharing a single state store, lean-spec recommends 1–3 cohesive features to minimise scope creep. Consider merging tightly-coupled sections into one feature (e.g. `task-manager`). Reply with a revised list or type `proceed` to continue."
+
+Wait for user confirmation before running the bash block below.
+
 ```bash
 PRD="${ARGUMENTS:-docs/PRD.md}"
 [ -f "$PRD" ] || { echo "PRD not found at '$PRD'. Run /lean-spec:brainstorm first."; exit 1; }
@@ -82,3 +88,9 @@ echo "Note: Claude Code native version also auto-generates .lean-spec/rules.yaml
 echo "cross-feature dependencies. This degraded port omits both — check blocks_on manually."
 echo "Next: /lean-spec:update-spec <slug> per feature."
 ```
+
+After the bash block, scan `docs/PRD.md` for design token definitions (colour palette table, typography scale, or Tailwind `@theme inline`). If found, emit:
+
+> **Design token check:** `docs/PRD.md` defines a design token system. The **first** feature's `spec.md` must include this Acceptance Criterion after the architect runs:
+> > All PRD design tokens are declared in `app/globals.css` under `@theme inline { ... }` before any component renders. No component may reference a colour/font token not declared there.
+> Without this AC, Tailwind v4 silently drops unknown utilities and all visual ACs fail.

@@ -34,7 +34,16 @@ PROJ_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || PROJ_ROOT="."
 
 ## Steps
 
-1. Extract feature slugs from the PRD:
+1. **Coupling check — before generating slugs:**
+
+   Count the `## 4.x` (or `### 4.x`) subsections in the PRD. If there are more than 4 AND the features all appear to share a single state store or data model (common in UI apps), pause and recommend merging before proceeding. Say:
+
+   > "Found N features. For UI apps sharing a single state store, lean-spec recommends 1–3 cohesive features to minimise cross-feature scope creep and Coder context overhead. Consider merging tightly-coupled sections — for example, collapse Header + AddTask + StatsRow + TaskList + Divider + EmptyState into a single `task-manager` feature.
+   > Reply with your revised feature list (one per line), or type `proceed` to use the current N-feature split."
+
+   Wait for the user's reply. If they type `proceed`, continue with the PRD as-is. If they provide a revised list, use that list as the source of slugs (skip the bash extraction below and derive slugs from their reply instead).
+
+2. Extract feature slugs from the PRD:
 
 ```bash
 SLUGS=$(list_feature_slugs "$PRD")
@@ -47,7 +56,7 @@ if [ -z "$SLUGS" ]; then
 fi
 ```
 
-2. For each slug, create `features/<slug>/` if it doesn't already exist, with a workflow.json (phase=specifying) and a spec.md skeleton:
+3. For each slug, create `features/<slug>/` if it doesn't already exist, with a workflow.json (phase=specifying) and a spec.md skeleton:
 
 ```bash
 NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -191,6 +200,14 @@ echo "  1. Review each features/<slug>/spec.md — check blocks_on if dependenci
 echo "  2. Run /lean-spec:update-spec <slug> per feature to dispatch the architect."
 echo "  3. /lean-spec:spec-status for the current lifecycle view."
 ```
+
+After the bash block completes, scan `docs/PRD.md` for design token definitions (look for a colour palette table, typography scale, or any mention of Tailwind `@theme inline`). If found, emit this notice:
+
+> **Design token check:** `docs/PRD.md` defines a design token system. The **first** feature's `spec.md` must include this Acceptance Criterion after the architect runs:
+>
+> > All PRD design tokens are declared in `app/globals.css` under `@theme inline { ... }` before any component renders. No component may reference a colour/font token not declared there.
+>
+> Without this AC, Tailwind v4 silently drops unknown utilities and all visual ACs fail across every feature. Add it manually to the first feature's spec.
 
 ## Notes
 

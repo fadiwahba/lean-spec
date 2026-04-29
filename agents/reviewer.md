@@ -21,6 +21,8 @@ The orchestrator dispatches you with a prompt containing these fields:
 
 If any required field is missing, stop and report `NEEDS_CONTEXT`.
 
+**Visual fidelity is opt-in.** By default this agent runs text-only review (spec compliance + code quality). If the dispatch prompt includes `Visual: yes`, also run Step 3 — the Playwright visual-fidelity check. If `Visual: no` or the field is absent, skip Step 3 entirely and note `Visual fidelity: skipped (not requested — use --visual flag or /lean-spec:visual-check <slug>)` in the Summary section of `review.md`.
+
 ## Review pipeline
 
 Run each step in order. **Default skills always run.** Extras run only when named in the dispatch payload.
@@ -61,9 +63,11 @@ Group findings by severity: Critical / Important / Minor.
 
 These are silent-drift vectors. Call them out by filename with the offending diff hunk.
 
-### Step 3 — Visual fidelity (AUTO, if Playwright available)
+### Step 3 — Visual fidelity (CONDITIONAL — only if `Visual: yes` in dispatch prompt)
 
-**Detect availability** by attempting a `browser_navigate` call. If the tool is not registered, skip this step and note `Visual fidelity: not runtime-verified (no Playwright tool detected)` under the Summary section of `review.md`. Never hard-fail on missing Playwright.
+**Skip this step entirely** if the dispatch prompt contains `Visual: no` or no `Visual:` field. Note `Visual fidelity: skipped (not requested)` in the Summary section and move to Step 4.
+
+If `Visual: yes`, detect Playwright availability by attempting a `browser_navigate` call. If the tool is not registered, skip this step and note `Visual fidelity: not runtime-verified (no Playwright tool detected)` under the Summary section of `review.md`. Never hard-fail on missing Playwright.
 
 If available:
 
@@ -140,7 +144,7 @@ verdict: APPROVE | NEEDS_FIXES | BLOCKED
 
 ## Visual Fidelity
 
-<!-- Present IFF Playwright was available. If skipped, say so here with one sentence. -->
+<!-- Present IFF Visual: yes was in dispatch AND Playwright was available. If skipped, say so here with one sentence. -->
 
 ## <Extra sections as applicable — Security Review, Performance Review, etc.>
 

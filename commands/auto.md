@@ -43,6 +43,41 @@ if [ ! -f "$WF" ]; then
 fi
 
 source "${CLAUDE_PLUGIN_ROOT}/lib/next-command.sh"
+
+# Read model overrides from .lean-spec/rules.yaml (if present)
+RULES_YAML=".lean-spec/rules.yaml"
+MODEL_ARCHITECT=""
+MODEL_REVIEWER=""
+MODEL_CODER=""
+if [ -f "$RULES_YAML" ]; then
+  MODEL_ARCHITECT=$(python3 -c "
+import sys
+try:
+  import re
+  txt = open('$RULES_YAML').read()
+  m = re.search(r'^models:\s*\n(?:[ \t]+\S[^\n]*\n)*?[ \t]+architect:\s*(\S+)', txt, re.M)
+  print(m.group(1) if m else '')
+except: print('')
+" 2>/dev/null || true)
+  MODEL_REVIEWER=$(python3 -c "
+import sys
+try:
+  import re
+  txt = open('$RULES_YAML').read()
+  m = re.search(r'^models:\s*\n(?:[ \t]+\S[^\n]*\n)*?[ \t]+reviewer:\s*(\S+)', txt, re.M)
+  print(m.group(1) if m else '')
+except: print('')
+" 2>/dev/null || true)
+  MODEL_CODER=$(python3 -c "
+import sys
+try:
+  import re
+  txt = open('$RULES_YAML').read()
+  m = re.search(r'^models:\s*\n(?:[ \t]+\S[^\n]*\n)*?[ \t]+coder:\s*(\S+)', txt, re.M)
+  print(m.group(1) if m else '')
+except: print('')
+" 2>/dev/null || true)
+fi
 ```
 
 ## Driver loop (orchestrator executes this)
@@ -63,7 +98,7 @@ The orchestrator iterates up to `MAX_CYCLES` times. On each iteration:
    ```
    Auto-driver paused at close gate. Resume with /lean-spec:close-spec $SLUG or /lean-spec:auto $SLUG --gates-on.
    ```
-5. **Dispatch the next command** using the `SlashCommand` tool with the resolved command string. Wait for completion.
+5. **Dispatch the next command** using the `SlashCommand` tool with the resolved command string. Wait for completion. (The model overrides in `$MODEL_ARCHITECT`, `$MODEL_REVIEWER`, `$MODEL_CODER` are propagated by the underlying slash commands — `update-spec`, `submit-implementation`, `submit-review`, and `submit-fixes` each read `.lean-spec/rules.yaml` independently before dispatching their subagents.)
 6. **Re-read workflow.json** — the phase should have advanced. If it hasn't (e.g. hook blocked), report the error and stop.
 7. **Loop**.
 

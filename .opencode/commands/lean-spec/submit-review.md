@@ -39,10 +39,11 @@ echo "phase advanced: implementing → reviewing (extras: ${EXTRAS:-none})"
 
 ## Step 2 — Review
 
+<!-- Note: model overrides in rules.yaml do not apply in OpenCode (fixed model). -->
 Act as the Reviewer (per your agent definition). Run the review pipeline:
 - Default skills (always): spec-compliance + code-quality
 - Scope-violation sweep (mandatory Critical): `git diff --name-only` against the coder's hard-forbidden list
-- Visual fidelity (AUTO if Playwright): screenshot → `.playwright-mcp/<name>.png`
+- Visual fidelity: only if `--visual` was passed in extras; otherwise skip and note `Visual fidelity: skipped (not requested — use --visual or /lean-spec:visual-check <slug>)`
 - Extras: parse `$EXTRAS` and run `security` / `performance` / `full` as requested
 
 ## Step 3 — Write review.md with verdict

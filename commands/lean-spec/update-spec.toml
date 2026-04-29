@@ -33,6 +33,7 @@ echo ""
 echo "Change request: $BRIEF"
 }
 
+# Note: model overrides in rules.yaml do not apply in Gemini (fixed model).
 Act as the architect (no subagent in Gemini mode). Revise `features/<slug>/spec.md` per the change request above. Preserve the shape and cap (~80 lines) defined in `skills/writing-specs/SKILL.md`. If the change would break an AC, negotiate with the user before silently removing it.
 
 After writing, tell the user: "Spec updated. Review and run `/lean-spec:submit-implementation <slug>` when ready."
