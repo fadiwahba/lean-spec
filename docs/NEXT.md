@@ -16,6 +16,12 @@ Living document. Updated after each session. Captures open design decisions, que
 - `auto-all` shipped (14th command + cross-provider ports, count assertion updated)
 - README: Manual/Auto usage section added
 
+**Validated this session (todo-cli experiment, $3.97 total):**
+- `auto-all --gates-off` drives 3 features to `closed` unattended ✅
+- SlashCommand chaining works in `-p` subprocess mode ✅
+- 2/3 features closed clean; 1 fix cycle on `task-crud-commands` (scope creep from tightly coupled decomposition)
+- Telemetry heuristic captures ~15% of actual cost (output tokens only); ~7× multiplier gives rough total
+
 ---
 
 ## Agreed design decisions (ready to implement)
@@ -96,12 +102,14 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | ~~P2~~ | ~~`start-spec --auto --gates-on/off` flag~~ | ~~High~~ | — | ✅ Done c525481 |
 | ~~P3~~ | ~~Token/cost heuristics in telemetry~~ | ~~High~~ | — | ✅ Done c52f1ef |
 | ~~P6~~ | ~~`/lean-spec:auto-all` command~~ | ~~Medium~~ | — | ✅ Done c525481 |
-| P4 | rules.yaml auto-generation in decompose-prd | Medium | D2 | Copy template to `.lean-spec/rules.yaml` if not exists |
-| P5 | `--no-rules` flag on phase-advancing commands | Medium | D2 | Hook reads flag and skips rules check |
+| P4 | rules.yaml auto-generation in decompose-prd | Medium | D2 | Deferred — implement after v3 is fully stable |
+| P5 | `--no-rules` flag on phase-advancing commands | Medium | D2 | Deferred — implement after v3 is fully stable |
 | P7 | F12 — Marketplace publish | Medium | — | `lean-spec-marketplace` repo + install docs + plugin registry PR |
-| P8 | PR lean-spec-v3 → main | Medium | — | Branch never merged |
+| P8 | PR lean-spec-v3 → main | Medium | — | Branch never merged; prerequisite to marketplace |
 | P9 | Token/cost Tier 2 (subprocess exact counts) | Low | D3 Tier 1 | Only with `--precise-cost` flag |
 | P10 | Cross-provider live test | Low | — | Real Gemini CLI run picking up Claude-written spec |
+| P11 | Telemetry heuristic correction multiplier (~7×) | Low | Experiment data | Show `estimated × 7 ≈ total cost` note in report output |
+| P12 | `decompose-prd` dependency awareness | Low | todo-cli finding | When features are tightly coupled, let architect surface `blocks_on` in skeleton so coder doesn't absorb sibling scope |
 
 ---
 
@@ -113,6 +121,7 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | Kanban board v2 (Next.js 16 + shadcn) | Complete | 3 bugs surfaced by reviewer: chokidar v5 glob no-op, SSE flush timing, stream cleanup scope |
 | CLI hallucination audit (update-spec, submit-fixes) | No hallucination | Only `start-spec` and `close-spec` trigger it; pattern: name matches training-data CLI binary |
 | Cost capture via subprocess (`lsk-run.sh`) | Partial | Background tasks lose cost; write-to-file-first required; Opus dominated at 64% of total |
+| todo-cli (Node.js CLI, 3 features, `auto-all`) | Complete | `auto-all` validated end-to-end; SlashCommand chaining works in subprocess mode; heuristic ~15% of actual; tightly coupled features cause scope creep |
 
 ## Experiments queued
 
@@ -120,7 +129,6 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 |---|---|
 | Cross-provider live run (Gemini writes spec, Claude implements) | Validate real artifact hand-off across terminals |
 | Subprocess `--precise-cost` | Validate exact token capture; measure cold-start overhead vs heuristic estimates |
-| Multi-feature `auto-all` end-to-end run | Validate real lifecycle driving across multiple features (command shipped, not yet live-tested) |
 
 ---
 
