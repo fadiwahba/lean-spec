@@ -69,7 +69,7 @@ slug: $SLUG
 phase: specifying
 handoffs:
   next_command: /lean-spec:submit-implementation $SLUG
-  blocks_on: []
+  blocks_on: []   # list sibling slugs this feature depends on
   consumed_by: [coder, reviewer]
 ---
 
@@ -91,6 +91,8 @@ done <<< "$HEADINGS"
 
 echo ""
 echo "Done. $CREATED skeleton(s) created, $SKIPPED already existed."
+echo "Note: Claude Code native version also auto-generates .lean-spec/rules.yaml and warns about"
+echo "cross-feature dependencies. This degraded port omits both — check blocks_on manually."
 echo "Next: /lean-spec:update-spec <slug> per feature."
 }
 """

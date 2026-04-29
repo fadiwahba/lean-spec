@@ -4,7 +4,7 @@ agent: coder
 subtask: true
 ---
 
-Arguments: `$ARGUMENTS` (the feature slug).
+Arguments: `$ARGUMENTS` — the feature slug. Pass `--no-rules` to skip rules.yaml validation for this invocation.
 
 ## Step 1 — Phase gate + advance
 

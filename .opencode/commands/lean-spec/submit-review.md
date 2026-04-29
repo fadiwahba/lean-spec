@@ -4,7 +4,7 @@ agent: reviewer
 subtask: true
 ---
 
-Arguments: `$ARGUMENTS` — first token = slug; remaining = optional extras (`security`, `performance`, `full`).
+Arguments: `$ARGUMENTS` — first token = slug; remaining = optional extras (`security`, `performance`, `full`). Pass `--no-rules` to skip rules.yaml validation.
 
 ## Step 1 — Phase gate + advance (+ archive prior review)
 

@@ -1,6 +1,6 @@
 ---
 description: Advance to reviewing phase and dispatch the reviewer subagent. Optional extra skills via trailing args (e.g. security, performance, full).
-argument-hint: <slug> [extra-skills...]
+argument-hint: <slug> [extra-skills...] [--no-rules]
 allowed-tools: Bash, Read, Task
 ---
 
@@ -20,6 +20,8 @@ Advance a feature from `implementing` to `reviewing` and dispatch the reviewer s
 ```
 
 Extras map to `skills/reviewing-<name>/SKILL.md`. Unknown extras are noted in `review.md` summary and skipped; they never fail the dispatch.
+
+Pass `--no-rules` to skip `rules.yaml` validation for this invocation.
 
 ## Pre-flight
 

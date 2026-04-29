@@ -222,8 +222,8 @@ if not by_slug:
     print(f"No records for slug '{filter_slug}'" if filter_slug else "No records.")
     sys.exit(0)
 
-print(f"{'Feature':<28} {'Phases':<48} {'Total(s)':>9}  {'Est.tokens':>10}  {'Est.cost':>9}")
-print('-' * 110)
+print(f"{'Feature':<28} {'Phases':<48} {'Total(s)':>9}  {'Est.tokens':>10}  {'Est.cost':>9}  {'Est.total(×7)':>13}")
+print('-' * 125)
 
 total_cost_all = 0.0
 total_tokens_all = 0
@@ -242,18 +242,21 @@ for slug, rs in sorted(by_slug.items()):
 
     cost_str = f"\${cost:.4f}" if cost is not None else "-"
     tokens_str = f"~{tokens:,}" if tokens else "-"
+    rough_total = cost * 7 if cost is not None else None
+    rough_str = f"~\${rough_total:.2f}" if rough_total is not None else "-"
 
     if cost is not None:
         total_cost_all += cost
     total_tokens_all += tokens
 
-    print(f"{slug:<28} {phases:<48} {elapsed_s:>9}  {tokens_str:>10}  {cost_str:>9}")
+    print(f"{slug:<28} {phases:<48} {elapsed_s:>9}  {tokens_str:>10}  {cost_str:>9}  {rough_str:>13}")
 
 print()
-print(f"{'TOTAL':<28} {'':<48} {'':>9}  {('~'+f'{total_tokens_all:,}'):>10}  \${total_cost_all:.4f}")
+rough_grand = total_cost_all * 7
+print(f"{'TOTAL':<28} {'':<48} {'':>9}  {('~'+f'{total_tokens_all:,}'):>10}  \${total_cost_all:.4f}  {'~$'+f'{rough_grand:.2f}':>13}")
 print()
 print(f"Total features tracked: {len(by_slug)}")
 print(f"Source: {path}")
-print(f"Note: estimates based on artifact output size (+-30%). Claude pricing, output tokens only.")
+print(f"Note: estimates based on artifact output size (+-30%). Output tokens only (~15% of actual); Est.total(×7) ≈ rough full cost.")
 PY
 }

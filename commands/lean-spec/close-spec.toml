@@ -1,4 +1,4 @@
-description = "Close a feature after APPROVE verdict — phase goes reviewing → closed"
+description = "Close a feature after APPROVE verdict — phase goes reviewing → closed (pass --no-rules to skip rules validation)"
 
 prompt = """
 Arguments: `{{args}}`  (the feature slug)

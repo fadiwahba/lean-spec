@@ -1,12 +1,14 @@
 ---
 description: Verify APPROVE verdict and close the feature lifecycle
-argument-hint: <slug>
+argument-hint: <slug> [--no-rules]
 allowed-tools: Read
 ---
 
 # /lean-spec:close-spec
 
 The `UserPromptSubmit` hook has already validated the verdict and advanced `workflow.json` to `closed` before this command runs. Your job is to confirm the outcome to the user.
+
+Pass `--no-rules` to skip `rules.yaml` validation for this invocation.
 
 ## Steps
 

@@ -1,12 +1,14 @@
 ---
 description: Advance to implementing phase and dispatch the coder subagent
-argument-hint: <slug>
+argument-hint: <slug> [--no-rules]
 allowed-tools: Bash, Read, Task
 ---
 
 # /lean-spec:submit-implementation
 
 Advance a feature from `specifying` to `implementing` and dispatch the coder subagent.
+
+Pass `--no-rules` to skip `rules.yaml` validation for this invocation (e.g. when iterating on a draft spec).
 
 ## Pre-flight
 

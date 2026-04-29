@@ -94,7 +94,7 @@ slug: $SLUG
 phase: specifying
 handoffs:
   next_command: /lean-spec:submit-implementation $SLUG
-  blocks_on: []
+  blocks_on: []   # list sibling slugs this feature depends on, e.g. [json-file-persistence]
   consumed_by: [coder, reviewer]
 ---
 
@@ -133,9 +133,49 @@ done <<< "$SLUGS"
 
 echo ""
 echo "Done. $CREATED skeleton(s) created, $SKIPPED already existed."
+
+# P4: Auto-generate .lean-spec/rules.yaml from the default template if absent
+RULES_DIR="$PROJ_ROOT/.lean-spec"
+RULES_DEST="$RULES_DIR/rules.yaml"
+RULES_SRC="${CLAUDE_PLUGIN_ROOT}/examples/rules.yaml"
+if [ ! -f "$RULES_DEST" ] && [ -f "$RULES_SRC" ]; then
+  mkdir -p "$RULES_DIR"
+  cp "$RULES_SRC" "$RULES_DEST"
+  echo ""
+  echo "Created .lean-spec/rules.yaml from default template."
+  echo "Edit it to tighten or loosen quality gates, or delete it to disable enforcement."
+fi
+
+# P12: Cross-feature dependency scan — warn before auto-all runs into scope creep
+if [ "$CREATED" -gt 1 ]; then
+  declare -A SCOPES
+  declare -A TITLES
+  while IFS= read -r S; do
+    [ -z "$S" ] && continue
+    SCOPES[$S]=$(feature_scope "$PRD" "$S" 2>/dev/null | tr '\n' ' ')
+    TITLES[$S]=$(feature_section_title "$PRD" "$S" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+  done <<< "$SLUGS"
+  DEPS_FOUND=0
+  for A in "${!SCOPES[@]}"; do
+    SCOPE_A="${SCOPES[$A]}"
+    for B in "${!SCOPES[@]}"; do
+      [ "$A" = "$B" ] && continue
+      TITLE_B_WORDS=$(echo "${TITLES[$B]}" | tr '-' ' ' | sed 's/[^a-z ]//g')
+      if echo "$SCOPE_A" | grep -qi "$B\|$TITLE_B_WORDS"; then
+        if [ "$DEPS_FOUND" = "0" ]; then
+          echo ""
+          echo "Potential dependencies detected (set blocks_on in spec.md before running auto-all):"
+          DEPS_FOUND=1
+        fi
+        echo "   * '$A' may depend on '$B' — consider: blocks_on: [$B]"
+      fi
+    done
+  done
+fi
+
 echo ""
 echo "Next:"
-echo "  1. Review each features/<slug>/spec.md and trim Scope if needed."
+echo "  1. Review each features/<slug>/spec.md — check blocks_on if dependencies were flagged above."
 echo "  2. Run /lean-spec:update-spec <slug> per feature to dispatch the architect."
 echo "  3. /lean-spec:spec-status for the current lifecycle view."
 ```

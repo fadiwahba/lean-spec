@@ -2,7 +2,7 @@
 description: Close a feature after APPROVE verdict
 ---
 
-Arguments: `$ARGUMENTS` (the feature slug).
+Arguments: `$ARGUMENTS` — the feature slug. Pass `--no-rules` to skip rules.yaml validation for this invocation.
 
 ```bash
 SLUG="$ARGUMENTS"

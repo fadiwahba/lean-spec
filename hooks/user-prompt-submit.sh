@@ -84,6 +84,8 @@ fi
 if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|close-spec)[[:space:]]+([a-z0-9][a-z0-9-]*) ]]; then
   COMMAND="${BASH_REMATCH[1]}"
   SLUG="${BASH_REMATCH[2]}"
+  NO_RULES=0
+  [[ "$PROMPT" =~ --no-rules ]] && NO_RULES=1
   REQUIRED=$(required_phase_for "$COMMAND")
 
   WF="$CWD/features/$SLUG/workflow.json"
@@ -118,31 +120,34 @@ if [[ "$PROMPT" =~ /lean-spec:(submit-implementation|submit-review|submit-fixes|
   fi
 
   # --- rules.yaml enforcement (F11) ---------------------------------------
-  # Only runs if:
+  # Skipped if --no-rules was passed in the prompt (P5).
+  # Otherwise only runs if:
   #   (1) rules library loaded successfully
   #   (2) .lean-spec/rules.yaml exists in the project (rules_exist)
   #   (3) this command has an artifact to validate (submit-fixes is skipped)
-  if declare -f rules_enforce >/dev/null 2>&1; then
-    cd "$CWD"
-    if rules_exist; then
-      ARTIFACT=$(artifact_for "$COMMAND")
-      if [ -n "$ARTIFACT" ]; then
-        ARTIFACT_PATH="features/$SLUG/$ARTIFACT"
-        # Capture stderr from rules_enforce to surface violations to the user.
-        RULES_OUTPUT=$(rules_enforce "$ARTIFACT" "$ARTIFACT_PATH" 2>&1 || true)
-        if [ -n "$RULES_OUTPUT" ] && echo "$RULES_OUTPUT" | grep -q "rules violation"; then
-          MSG="$RULES_OUTPUT"
-          HINT="Fix the violations above (edit $ARTIFACT_PATH) or relax the rule in $(rules_path) before re-running /lean-spec:$COMMAND $SLUG."
-          echo "lean-spec block (rules): $MSG" >&2
-          jq -n --arg msg "$MSG" --arg hint "$HINT" --arg slug "$SLUG" --arg artifact "$ARTIFACT" '{
-            decision: "block",
-            reason: $msg,
-            hookSpecificOutput: {
-              hookEventName: "UserPromptSubmit",
-              additionalContext: ($msg + "\n\n" + $hint)
-            }
-          }'
-          exit 2
+  if [ "$NO_RULES" = "0" ]; then
+    if declare -f rules_enforce >/dev/null 2>&1; then
+      cd "$CWD"
+      if rules_exist; then
+        ARTIFACT=$(artifact_for "$COMMAND")
+        if [ -n "$ARTIFACT" ]; then
+          ARTIFACT_PATH="features/$SLUG/$ARTIFACT"
+          # Capture stderr from rules_enforce to surface violations to the user.
+          RULES_OUTPUT=$(rules_enforce "$ARTIFACT" "$ARTIFACT_PATH" 2>&1 || true)
+          if [ -n "$RULES_OUTPUT" ] && echo "$RULES_OUTPUT" | grep -q "rules violation"; then
+            MSG="$RULES_OUTPUT"
+            HINT="Fix the violations above (edit $ARTIFACT_PATH) or relax the rule in $(rules_path) before re-running /lean-spec:$COMMAND $SLUG."
+            echo "lean-spec block (rules): $MSG" >&2
+            jq -n --arg msg "$MSG" --arg hint "$HINT" --arg slug "$SLUG" --arg artifact "$ARTIFACT" '{
+              decision: "block",
+              reason: $msg,
+              hookSpecificOutput: {
+                hookEventName: "UserPromptSubmit",
+                additionalContext: ($msg + "\n\n" + $hint)
+              }
+            }'
+            exit 2
+          fi
         fi
       fi
     fi
