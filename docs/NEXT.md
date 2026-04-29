@@ -94,6 +94,34 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 
 ---
 
+## P10 — Cross-provider live run findings (todo-demo, 2026-04-29, in progress)
+
+### Setup learnings
+- **Local plugin install broken in v2.1.123** — `source type not supported` for all local path variants (`..`, `./`, `file://`, absolute). Only `github` and `npm` sources work. Workaround: symlink `.claude/commands/lean-spec`, `.claude/agents/lean-spec`, `.claude/skills/lean-spec` + wire hooks in `.claude/settings.local.json` with absolute paths.
+- **Agents not loaded via command symlink alone** — `.claude/commands/lean-spec/` loads commands but not agents. Must also symlink `.claude/agents/` for `lean-spec:architect` etc. to register; same for `.claude/skills/`.
+- **`marketplace.json` required** — `claude plugin marketplace add <dir>` expects `.claude-plugin/marketplace.json`, not just `plugin.json`.
+
+### Gemini-specific behaviours observed
+- **Superpowers fires on every session** — `~/.gemini/extensions/superpowers/` is global; `using-superpowers` skill self-activates at session start whether or not it's relevant.
+- **Gemini reads `.claude/settings.local.json` hooks** — picks up Claude hook event names, logs "Invalid hook event name" warnings for each, skips gracefully. `SessionStart` runs but fails because `${CLAUDE_PLUGIN_ROOT}` is unset in Gemini.
+- **Gemini invents git branching** — `submit-implementation` created `feature/header` branch unprompted, then offered merge/PR options. No branching is part of lean-spec's coder contract. Root cause: superpowers brainstorming skill + Gemini training data on git workflows. Fix: add explicit "do not create branches" guardrail to Gemini TOML coder port.
+- **Gemini can act as Architect** — when `start-spec` was run in T2 by mistake, Gemini produced a well-structured spec. Quality was good; wrong role/terminal.
+
+### Workflow pattern learnings
+- **Spec all features before handing to Gemini** — interleaving (Claude specs N while Gemini implements N-1) triggers stop guard: `notes.md` missing while Gemini is mid-run. Correct pattern: Claude specs ALL → Gemini implements ALL → Claude reviews ALL.
+- **Stop guard incompatible with cross-provider gap** — guard fires at end of Claude's turn if any feature is `implementing` but `notes.md` absent. Claude auto-creates a stub; Gemini overwrites it. Needs a cross-provider-aware mode or `--cross-provider` flag that relaxes the guard.
+- **`update-spec` requires inline brief** — without a brief, Claude prompts for one interactively. For batch speccing, always include the brief: `/lean-spec:update-spec <slug> <brief>`.
+- **Missing command: `/lean-spec:spec-all`** — batches architect passes on all `specifying` features. Without it, user must type `update-spec` N times. Logged as P14.
+- **PRD drift from brainstormer** — brainstormer inferred design tokens from ux-design.jpg that differed from hand-crafted PRD.original.md (font, sizes, colors, column width). Fix: always patch PRD.md against PRD.original.md before running architects, or pass `PRD.original.md` as binding reference to brainstormer.
+
+### Pending items from this experiment
+- P14: `/lean-spec:spec-all` command (batch architect all specifying features)
+- Fix: add "do not create git branches" guardrail to Gemini TOML `submit-implementation` port
+- Fix: bash 3.2 compatibility in P12 dependency scan (`declare -A` not available on macOS system bash)
+- Fix: cross-provider stop guard — `--cross-provider` flag or phase-gap tolerance
+
+---
+
 ## Pending implementation work
 
 | # | Item | Priority | Depends on | Notes |
@@ -109,8 +137,9 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | P7 | F12 — Marketplace publish | Medium | — | `lean-spec-marketplace` repo + install docs + plugin registry PR |
 | P8 | PR lean-spec-v3 → main | Medium | — | Branch never merged; prerequisite to marketplace |
 | P9 | Token/cost Tier 2 (subprocess exact counts) | Low | D3 Tier 1 | Only with `--precise-cost` flag |
-| P10 | Cross-provider live test | Low | — | Real Gemini CLI run picking up Claude-written spec |
+| P10 | Cross-provider live test | Low | — | In progress — todo-demo experiment (see findings above) |
 | P13 | `lean-spec:init` command | Low | — | Pre-seeds `.lean-spec/rules.yaml` + `docs/` before brainstorm; useful when team wants quality gates set before any features exist |
+| P14 | `/lean-spec:spec-all` command | Low | — | Batch architect all `specifying` features in one shot; cross-provider workflow needs this |
 
 ---
 
