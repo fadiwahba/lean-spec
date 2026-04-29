@@ -1,0 +1,19 @@
+{
+  "name": "lean-spec-local",
+  "owner": {
+    "name": "Fady Soliman",
+    "email": "fadi.wahba@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "lean-spec",
+      "source": "..",
+      "description": "Spec-driven workflow enforcement for Claude Code — spec → implement → review → close, with hard phase-gate hooks and two-model cost arbitrage.",
+      "version": "0.3.6",
+      "author": {
+        "name": "Fady Soliman",
+        "email": "fadi.wahba@gmail.com"
+      }
+    }
+  ]
+}
