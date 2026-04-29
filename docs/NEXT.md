@@ -102,14 +102,14 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | ~~P2~~ | ~~`start-spec --auto --gates-on/off` flag~~ | ~~High~~ | — | ✅ Done c525481 |
 | ~~P3~~ | ~~Token/cost heuristics in telemetry~~ | ~~High~~ | — | ✅ Done c52f1ef |
 | ~~P6~~ | ~~`/lean-spec:auto-all` command~~ | ~~Medium~~ | — | ✅ Done c525481 |
-| P4 | rules.yaml auto-generation in decompose-prd | Medium | D2 | Deferred — implement after v3 is fully stable |
-| P5 | `--no-rules` flag on phase-advancing commands | Medium | D2 | Deferred — implement after v3 is fully stable |
+| ~~P4~~ | ~~rules.yaml auto-generation in decompose-prd~~ | ~~Medium~~ | — | ✅ Done 63c5345 |
+| ~~P5~~ | ~~`--no-rules` flag on phase-advancing commands~~ | ~~Medium~~ | — | ✅ Done 63c5345 |
+| ~~P11~~ | ~~Telemetry heuristic correction multiplier (~7×)~~ | ~~Low~~ | — | ✅ Done 63c5345 |
+| ~~P12~~ | ~~`decompose-prd` dependency awareness~~ | ~~Low~~ | — | ✅ Done 63c5345 |
 | P7 | F12 — Marketplace publish | Medium | — | `lean-spec-marketplace` repo + install docs + plugin registry PR |
 | P8 | PR lean-spec-v3 → main | Medium | — | Branch never merged; prerequisite to marketplace |
 | P9 | Token/cost Tier 2 (subprocess exact counts) | Low | D3 Tier 1 | Only with `--precise-cost` flag |
 | P10 | Cross-provider live test | Low | — | Real Gemini CLI run picking up Claude-written spec |
-| P11 | Telemetry heuristic correction multiplier (~7×) | Low | Experiment data | Show `estimated × 7 ≈ total cost` note in report output |
-| P12 | `decompose-prd` dependency awareness | Low | todo-cli finding | When features are tightly coupled, let architect surface `blocks_on` in skeleton so coder doesn't absorb sibling scope |
 
 ---
 
