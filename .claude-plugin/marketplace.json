@@ -7,7 +7,11 @@
   "plugins": [
     {
       "name": "lean-spec",
-      "source": "..",
+      "source": {
+        "source": "git",
+        "url": "file:///Users/fady/sandbox/lean-spec",
+        "ref": "lean-spec-v3"
+      },
       "description": "Spec-driven workflow enforcement for Claude Code — spec → implement → review → close, with hard phase-gate hooks and two-model cost arbitrage.",
       "version": "0.3.6",
       "author": {
