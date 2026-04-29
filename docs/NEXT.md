@@ -116,9 +116,12 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 
 ### Pending items from this experiment
 - P14: `/lean-spec:spec-all` command (batch architect all specifying features)
-- Fix: add "do not create git branches" guardrail to Gemini TOML `submit-implementation` port
-- Fix: bash 3.2 compatibility in P12 dependency scan (`declare -A` not available on macOS system bash)
-- Fix: cross-provider stop guard — `--cross-provider` flag or phase-gap tolerance
+- ~~Fix: add "do not create git branches" guardrail to Gemini TOML `submit-implementation` port~~ ✅ Done
+- ~~Fix: bash 3.2 compatibility in P12 dependency scan (`declare -A` not available on macOS system bash)~~ ✅ Done (replaced with python3 subprocess)
+- ~~Fix: cross-provider stop guard — `--cross-provider` flag or phase-gap tolerance~~ ✅ Done (sentinel file `.lean-spec/cross-provider`)
+- ~~Fix: hooks/hooks.json causes Gemini hook event name warnings~~ ✅ Done (renamed to `claude-hooks.json`; Gemini no longer auto-loads it)
+- ~~Fix: superpowers extension firing in Gemini uninvited~~ ✅ Done (renamed to `superpowers.bak`)
+- ~~Fix: Gemini lacks workflow.json write guard~~ ✅ Done (wired `BeforeTool write_file|replace` in `~/.gemini/settings.json`)
 
 ---
 
@@ -170,3 +173,5 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 - **Telemetry marker must contain "on"** — empty `~/.lean-spec/telemetry` file does NOT enable telemetry. `echo "on" > ~/.lean-spec/telemetry`. Worth surfacing in install docs.
 - **chokidar v5 glob no-op** — documented in `agents/coder.md` as of v0.3.6.
 - **SSE initial frame required** — Next.js does not flush response head until first `enqueue()`. Must send `: connected\n\n` immediately in `start()` or `EventSource` stays `CONNECTING` indefinitely.
+- **Cross-provider mode requires sentinel file** — Create `.lean-spec/cross-provider` (any content) before starting a cross-provider run. This disables the stop guard's artifact checks so Claude doesn't block when Gemini's notes.md/review.md are missing mid-run. Remove it for single-provider runs.
+- **Gemini `${GEMINI_EXTENSION_DIR}` in hooks** — The lean-spec workflow guard in `~/.gemini/settings.json` uses `${GEMINI_EXTENSION_DIR}`. This resolves to the lean-spec extension's directory (e.g. `~/.gemini/extensions/lean-spec`). Verify it expands correctly in your Gemini version before relying on the guard.
