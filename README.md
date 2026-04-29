@@ -48,14 +48,73 @@ At any point: `/lean-spec:spec-status my-feature` shows current phase + next com
 
 **Starting greenfield?** Run `/lean-spec:brainstorm <one-line topic>` to draft a project-level `docs/PRD.md` (opus-tier), then `/lean-spec:decompose-prd` to emit one feature skeleton per section for the architect to fill.
 
+## Usage
+
+### Manual mode
+
+You run each command yourself. Use `/lean-spec:next` at any point to see what to run next for the most recently updated feature.
+
+**Greenfield (new project):**
+
+```text
+/lean-spec:brainstorm "your product idea"   # Opus drafts docs/PRD.md — review and edit it
+/lean-spec:decompose-prd                     # creates features/<slug>/ for each feature in the PRD
+
+# Then for each feature:
+/lean-spec:start-spec <slug>                 # Opus architect writes spec.md — review it
+/lean-spec:submit-implementation <slug>      # Haiku coder implements
+/lean-spec:submit-review <slug>              # Opus reviewer writes verdict
+/lean-spec:submit-fixes <slug>               # (only if NEEDS_FIXES) coder addresses findings
+/lean-spec:close-spec <slug>                 # close on APPROVE
+```
+
+**Brownfield (adding a feature to an existing project):**
+
+```text
+/lean-spec:start-spec <slug> "brief description"   # Opus architect writes spec.md — review it
+/lean-spec:submit-implementation <slug>
+/lean-spec:submit-review <slug>
+/lean-spec:close-spec <slug>                        # close on APPROVE
+```
+
+---
+
+### Auto mode
+
+You provide the brief; lean-spec drives the lifecycle. Two human steps are always required upfront for greenfield (brainstorm + decompose). After that, one optional gate before each close.
+
+**Greenfield:**
+
+```text
+/lean-spec:brainstorm "your product idea"   # human step — review and approve the PRD
+/lean-spec:decompose-prd                     # human step — review the feature list
+
+/lean-spec:auto-all                          # drives every feature to closed, no gates
+/lean-spec:auto-all --gates-on               # pauses before closing each feature for your sign-off
+```
+
+**Brownfield:**
+
+```text
+# Start a feature and drive it all the way through:
+/lean-spec:start-spec <slug> --auto           # architect writes spec, then drives to closed (no gate)
+/lean-spec:start-spec <slug> --auto --gates-on  # same, but pauses before close for your sign-off
+
+# Pick up a feature already in progress:
+/lean-spec:auto <slug>                        # drives from current phase to closed, no gate
+/lean-spec:auto <slug> --gates-on             # pauses before close
+```
+
+---
+
 ## What's under the hood
 
 - **4 subagents** with pinned model tiers (`agents/{architect, coder, reviewer, brainstormer}.md`)
-- **13 slash commands** (`commands/*.md`):
+- **14 slash commands** (`commands/*.md`):
   - **Lifecycle**: `/start-spec`, `/submit-implementation`, `/submit-review`, `/submit-fixes`, `/close-spec`
   - **Navigation**: `/spec-status`, `/next`, `/resume-spec`, `/update-spec`
   - **Greenfield**: `/brainstorm`, `/decompose-prd`
-  - **Drive/observe**: `/auto` (full lifecycle with optional checkpoints), `/telemetry` (opt-in phase-duration report)
+  - **Drive/observe**: `/auto` (single-feature driver, `--gates-on` pauses before close), `/auto-all` (drives all non-closed features), `/telemetry` (opt-in phase-duration + cost estimate report)
 - **6 hook scripts** that enforce the lifecycle (block hand-editing of `workflow.json`, validate phase gates, guard subagent outputs, surface next commands)
 - **6 skills** guiding each role (`skills/{writing-specs, reviewing-*, using-lean-spec}/SKILL.md`)
 - **Optional per-project rules** at `.lean-spec/rules.yaml` — `required_sections`, `max_tokens`, `required_verdict`, `require_line_references`. Enforced at phase advance. See `examples/rules.yaml`.
