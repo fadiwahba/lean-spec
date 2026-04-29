@@ -1,0 +1,35 @@
+description = "List all non-closed features and print the auto command for each (no auto-driver in Gemini — run each command manually)"
+
+prompt = """
+Arguments: `{{args}}`  (`--gates-on` flag accepted but ignored in degraded mode)
+
+!{
+PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+FEATURES_DIR="$PROJ/features"
+
+if [ ! -d "$FEATURES_DIR" ]; then
+  echo "No features/ directory found. Run /lean-spec:decompose-prd first."
+  exit 1
+fi
+
+echo "lean-spec:auto-all (Gemini degraded mode)"
+echo "No auto-driver available — SlashCommand dispatch not supported in Gemini CLI."
+echo ""
+echo "Non-closed features:"
+echo ""
+
+FOUND=0
+while IFS= read -r wf; do
+  PHASE=$(jq -r '.phase' "$wf")
+  SLUG=$(jq -r '.slug' "$wf")
+  if [ "$PHASE" != "closed" ]; then
+    FOUND=1
+    echo "  $SLUG  (phase: $PHASE)"
+    echo "  → Run: /lean-spec:auto $SLUG"
+    echo ""
+  fi
+done < <(find "$FEATURES_DIR" -name "workflow.json" 2>/dev/null)
+
+[ "$FOUND" = "0" ] && echo "  All features are already closed."
+}
+"""

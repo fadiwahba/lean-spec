@@ -153,8 +153,8 @@ EOF
   done
 }
 
-@test "ALL hosts ship EXACTLY 13 user-facing entry points (matching the Claude canon)" {
-  EXPECTED=13
+@test "ALL hosts ship EXACTLY 14 user-facing entry points (matching the Claude canon)" {
+  EXPECTED=14
   CLAUDE=$(ls "$PLUGIN_ROOT"/commands/*.md | wc -l | tr -d ' ')
   GEMINI=$(ls "$PLUGIN_ROOT"/commands/lean-spec/*.toml | wc -l | tr -d ' ')
   OPENCODE=$(ls "$PLUGIN_ROOT"/.opencode/commands/lean-spec/*.md | wc -l | tr -d ' ')
