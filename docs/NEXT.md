@@ -10,6 +10,12 @@ Living document. Updated after each session. Captures open design decisions, que
 **Branch:** `lean-spec-v3` (unmerged to `main`)  
 **All PRD milestones (M1–M4) complete.** One PRD item unfinished: F12 (marketplace publish).
 
+**Implemented this session (commits c52f1ef, c525481, 63622d6):**
+- D1 complete: semi-auto dissolved; `auto.md` 2-gate model; `start-spec --auto [--gates-on/off]`
+- D3 complete: telemetry Tier 1 — artifact sizing, token/cost estimates, report columns
+- `auto-all` shipped (14th command + cross-provider ports, count assertion updated)
+- README: Manual/Auto usage section added
+
 ---
 
 ## Agreed design decisions (ready to implement)
@@ -35,12 +41,12 @@ Living document. Updated after each session. Captures open design decisions, que
   ```
 - Greenfield continuation after decompose-prd:
   ```
-  /lean-spec:auto-all                    # drives all slugs, gates-on by default (pauses after each spec)
-  /lean-spec:auto-all --gates-off        # fully autonomous end-to-end
+  /lean-spec:auto-all                    # drives all slugs, no gates (default)
+  /lean-spec:auto-all --gates-on         # pauses before closing each feature
   ```
-- `auto` command (no slug flag) remains useful as "pick up an existing spec and drive it forward" without re-running the architect
+- `auto <slug>` remains useful for picking up a feature already in progress
 
-**Open question:** `auto-all` default gates — user said "no gates", but brainstorm+decompose only approved the feature *list*, not the individual specs. Suggestion: `auto-all` defaults to `--gates-on` (pauses after each feature's spec) and `--gates-off` is explicit. **Needs user confirmation before implementing.**
+**✅ Implemented** — `auto-all` defaults to `--gates-off` (confirmed by user).
 
 ---
 
@@ -84,12 +90,14 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 
 | # | Item | Priority | Depends on | Notes |
 |---|---|---|---|---|
-| P1 | Mode consolidation — dissolve semi-auto, update docs/commands | High | D1 | Mostly docs + command surface change |
-| P2 | `start-spec --auto --gates-on/off` flag | High | D1 | Needs auto driver chaining from start-spec |
-| P3 | Token/cost heuristics in Stop hook telemetry | High | D3 | Add artifact measurement + cost calc to `lib/telemetry.sh` |
+| # | Item | Priority | Depends on | Notes |
+|---|---|---|---|---|
+| ~~P1~~ | ~~Mode consolidation — dissolve semi-auto~~ | ~~High~~ | — | ✅ Done c525481 |
+| ~~P2~~ | ~~`start-spec --auto --gates-on/off` flag~~ | ~~High~~ | — | ✅ Done c525481 |
+| ~~P3~~ | ~~Token/cost heuristics in telemetry~~ | ~~High~~ | — | ✅ Done c52f1ef |
+| ~~P6~~ | ~~`/lean-spec:auto-all` command~~ | ~~Medium~~ | — | ✅ Done c525481 |
 | P4 | rules.yaml auto-generation in decompose-prd | Medium | D2 | Copy template to `.lean-spec/rules.yaml` if not exists |
 | P5 | `--no-rules` flag on phase-advancing commands | Medium | D2 | Hook reads flag and skips rules check |
-| P6 | `/lean-spec:auto-all` command | Medium | D1 (P2 done) | Sequential auto driver across all active slugs |
 | P7 | F12 — Marketplace publish | Medium | — | `lean-spec-marketplace` repo + install docs + plugin registry PR |
 | P8 | PR lean-spec-v3 → main | Medium | — | Branch never merged |
 | P9 | Token/cost Tier 2 (subprocess exact counts) | Low | D3 Tier 1 | Only with `--precise-cost` flag |
@@ -112,7 +120,7 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 |---|---|
 | Cross-provider live run (Gemini writes spec, Claude implements) | Validate real artifact hand-off across terminals |
 | Subprocess `--precise-cost` | Validate exact token capture; measure cold-start overhead vs heuristic estimates |
-| Multi-feature `auto-all` | Validate sequential feature driving from one command |
+| Multi-feature `auto-all` end-to-end run | Validate real lifecycle driving across multiple features (command shipped, not yet live-tested) |
 
 ---
 
