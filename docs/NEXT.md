@@ -110,6 +110,7 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | P8 | PR lean-spec-v3 → main | Medium | — | Branch never merged; prerequisite to marketplace |
 | P9 | Token/cost Tier 2 (subprocess exact counts) | Low | D3 Tier 1 | Only with `--precise-cost` flag |
 | P10 | Cross-provider live test | Low | — | Real Gemini CLI run picking up Claude-written spec |
+| P13 | `lean-spec:init` command | Low | — | Pre-seeds `.lean-spec/rules.yaml` + `docs/` before brainstorm; useful when team wants quality gates set before any features exist |
 
 ---
 
