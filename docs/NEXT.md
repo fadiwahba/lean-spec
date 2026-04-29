@@ -140,6 +140,8 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | P10 | Cross-provider live test | Low | — | In progress — todo-demo experiment (see findings above) |
 | P13 | `lean-spec:init` command | Low | — | Pre-seeds `.lean-spec/rules.yaml` + `docs/` before brainstorm; useful when team wants quality gates set before any features exist |
 | P14 | `/lean-spec:spec-all` command | Low | — | Batch architect all `specifying` features in one shot; cross-provider workflow needs this |
+| P15 | Playwright decoupled from `submit-review` | Medium | — | Text-only review by default; `--visual` flag or standalone `/lean-spec:visual-check <slug>` for opt-in Playwright pass before close. Fixes: parallel reviewer port conflicts, wasted tokens on fix cycles, non-UI feature overhead |
+| P16 | Chunky feature decomposition guidance | Medium | — | `decompose-prd` should suggest merging tightly-coupled features (same shared store = one feature). UI apps: aim for 3-5 cohesive features not 6-10 micro-features. Cross-provider cost multiplies per feature boundary |
 
 ---
 
