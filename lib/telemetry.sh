@@ -14,8 +14,17 @@
 #     "prev_phase": "<phase before this one or null for the first history entry>",
 #     "entered_at": "<ISO 8601 from workflow.json history>",
 #     "logged_at":  "<ISO 8601 when this record was written>",
-#     "elapsed_prev_ms": <ms spent in prev_phase, or null for the first entry>
+#     "elapsed_prev_ms": <ms spent in prev_phase, or null for the first entry>,
+#     "artifact_bytes": <bytes of artifact produced in prev_phase, 0 if not applicable>,
+#     "estimated_tokens": <artifact_bytes / 4, output token estimate>,
+#     "model": "<Opus|Haiku|null>",
+#     "estimated_cost_usd": <output-token cost estimate, null if not applicable>,
+#     "precision": "estimated" | null
 #   }
+#
+# Token/cost estimates are output-only and based on artifact file sizes.
+# Actual cost is typically 2-5x higher (input context not included).
+# Opus output: $75/M tokens. Haiku output: $4/M tokens.
 #
 # Sync is IDEMPOTENT — re-running never duplicates. The sync reads the current
 # JSONL (if any) to know which (slug, entered_at) tuples are already logged.
@@ -50,6 +59,9 @@ telemetry_sync() {
   local slug
   slug=$(jq -r '.slug // empty' "$wf" 2>/dev/null)
   [ -z "$slug" ] && return 0
+
+  local feature_dir
+  feature_dir=$(dirname "$wf")
 
   # Read history as tab-separated (phase, entered_at) pairs, process in order
   local prev_phase=""
@@ -91,6 +103,43 @@ except Exception:
     local prev_json="null"
     [ -n "$prev_phase" ] && prev_json="\"$prev_phase\""
 
+    # Artifact measurement for token/cost estimation
+    # Maps: prev_phase → artifact file + model tier used to produce it
+    local artifact_bytes=0
+    local estimated_tokens=0
+    local model_name=""
+    local estimated_cost_usd="null"
+
+    if [ -n "$prev_phase" ]; then
+      local artifact_file=""
+      case "$prev_phase" in
+        specifying)   artifact_file="$feature_dir/spec.md";   model_name="Opus" ;;
+        implementing) artifact_file="$feature_dir/notes.md";  model_name="Haiku" ;;
+        reviewing)    artifact_file="$feature_dir/review.md"; model_name="Opus" ;;
+      esac
+
+      if [ -n "$artifact_file" ] && [ -f "$artifact_file" ]; then
+        artifact_bytes=$(wc -c < "$artifact_file" | tr -d ' ')
+        estimated_tokens=$((artifact_bytes / 4))
+        estimated_cost_usd=$(python3 -c "
+tokens = $estimated_tokens
+prices = {'Opus': 75.0 / 1000000, 'Haiku': 4.0 / 1000000}
+cost = tokens * prices.get('$model_name', 0)
+print(f'{cost:.6f}')
+" 2>/dev/null || echo "null")
+        # Validate it's a number; fall back to null on parse failure
+        if ! [[ "$estimated_cost_usd" =~ ^[0-9]+\.[0-9]+$ ]]; then
+          estimated_cost_usd="null"
+        fi
+      fi
+    fi
+
+    # Build jq args for nullable string fields (model, precision)
+    local model_json="null"
+    local precision_json="null"
+    [ -n "$model_name" ] && model_json="\"$model_name\""
+    [ -n "$model_name" ] && [ "$estimated_cost_usd" != "null" ] && precision_json='"estimated"'
+
     jq -n -c \
       --arg slug "$slug" \
       --arg phase "$phase" \
@@ -98,13 +147,23 @@ except Exception:
       --arg entered "$entered" \
       --arg logged "$now" \
       --argjson elapsed "$elapsed" \
+      --argjson artifact_bytes "$artifact_bytes" \
+      --argjson estimated_tokens "$estimated_tokens" \
+      --argjson model "$model_json" \
+      --argjson estimated_cost_usd "$estimated_cost_usd" \
+      --argjson precision "$precision_json" \
       '{
         slug: $slug,
         phase: $phase,
         prev_phase: $prev,
         entered_at: $entered,
         logged_at: $logged,
-        elapsed_prev_ms: $elapsed
+        elapsed_prev_ms: $elapsed,
+        artifact_bytes: $artifact_bytes,
+        estimated_tokens: $estimated_tokens,
+        model: $model,
+        estimated_cost_usd: $estimated_cost_usd,
+        precision: $precision
       }' >> "$TELEMETRY_FILE"
 
     prev_phase="$phase"
@@ -124,7 +183,7 @@ telemetry_sync_all() {
   done < <(find "$root/features" -name "workflow.json" 2>/dev/null)
 }
 
-# Print a per-feature summary table.
+# Print a per-feature summary table with token/cost estimates.
 #
 # Usage: telemetry_report [slug-filter]
 telemetry_report() {
@@ -163,19 +222,38 @@ if not by_slug:
     print(f"No records for slug '{filter_slug}'" if filter_slug else "No records.")
     sys.exit(0)
 
-# Per-feature summary
-print(f"{'Feature':<30} {'Phases':<40} {'Total (s)':>10}")
-print('-' * 82)
+print(f"{'Feature':<28} {'Phases':<48} {'Total(s)':>9}  {'Est.tokens':>10}  {'Est.cost':>9}")
+print('-' * 110)
+
+total_cost_all = 0.0
+total_tokens_all = 0
 
 for slug, rs in sorted(by_slug.items()):
     rs_sorted = sorted(rs, key=lambda r: r['entered_at'])
     phases = ' → '.join(r['phase'] for r in rs_sorted)
+    if len(phases) > 47:
+        phases = phases[:44] + '...'
     elapsed_ms = sum((r.get('elapsed_prev_ms') or 0) for r in rs_sorted if r.get('elapsed_prev_ms'))
     elapsed_s = int(elapsed_ms / 1000) if elapsed_ms else 0
-    print(f"{slug:<30} {phases:<40} {elapsed_s:>10}")
 
+    tokens = sum((r.get('estimated_tokens') or 0) for r in rs_sorted)
+    cost_vals = [r['estimated_cost_usd'] for r in rs_sorted if r.get('estimated_cost_usd') is not None]
+    cost = sum(cost_vals) if cost_vals else None
+
+    cost_str = f"\${cost:.4f}" if cost is not None else "-"
+    tokens_str = f"~{tokens:,}" if tokens else "-"
+
+    if cost is not None:
+        total_cost_all += cost
+    total_tokens_all += tokens
+
+    print(f"{slug:<28} {phases:<48} {elapsed_s:>9}  {tokens_str:>10}  {cost_str:>9}")
+
+print()
+print(f"{'TOTAL':<28} {'':<48} {'':>9}  {('~'+f'{total_tokens_all:,}'):>10}  \${total_cost_all:.4f}")
 print()
 print(f"Total features tracked: {len(by_slug)}")
 print(f"Source: {path}")
+print(f"Note: estimates based on artifact output size (+-30%). Claude pricing, output tokens only.")
 PY
 }

@@ -44,15 +44,29 @@ telemetry_report "$FILTER"
 
 ## What's NOT tracked (by design)
 
-- Token counts per call — Claude Code hooks don't expose these reliably; getting them requires wrapping the `claude` CLI, out of scope for this plugin.
+- **Exact token counts** — Claude Code hooks don't expose per-call usage. Token counts are estimated from artifact file sizes (bytes ÷ 4, output tokens only). Labelled `"precision": "estimated"` in the JSONL. Input token costs (plugin context, prior artifacts) are not included — actual cost will be higher, typically 2–5× the estimate.
 - Individual prompts, agent outputs, or user messages — never written anywhere outside the project's own artifacts.
 - Hostname, user identity, or any network-addressable metadata.
 
-The record shape is exactly:
+The record shape is:
 
 ```json
-{"slug": "pomodoro", "phase": "closed", "prev_phase": "reviewing", "entered_at": "...", "logged_at": "...", "elapsed_prev_ms": 200000}
+{
+  "slug": "auth-flow",
+  "phase": "reviewing",
+  "prev_phase": "implementing",
+  "entered_at": "2026-04-29T10:00:00Z",
+  "logged_at": "2026-04-29T10:00:01Z",
+  "elapsed_prev_ms": 82000,
+  "artifact_bytes": 3420,
+  "estimated_tokens": 855,
+  "model": "Haiku",
+  "estimated_cost_usd": 0.003420,
+  "precision": "estimated"
+}
 ```
+
+`artifact_bytes` and `estimated_tokens` are 0/null for the first history entry (entering `specifying`) since no artifact has been produced yet. `model` reflects the agent tier used: Opus for architect + reviewer, Haiku for coder.
 
 ## Disabling
 
