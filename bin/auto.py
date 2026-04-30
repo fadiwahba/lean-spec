@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+import json, sys, os
+
+args_str = sys.argv[1] if len(sys.argv) > 1 else ''
+parts = args_str.split()
+slug = next((t for t in parts if not t.startswith('--')), '')
+
+if not slug:
+    print("Usage: /lean-spec:auto <slug>")
+    print("(In Gemini CLI, auto-driver dispatch is unavailable — run each command manually in order.)")
+    sys.exit(1)
+
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found. Run /lean-spec:start-spec {slug} first.")
+    sys.exit(1)
+
+with open(wf_path) as f:
+    data = json.load(f)
+
+phase = data.get('phase', '')
+print(f"Feature: {slug}  |  Phase: {phase}")
+print()
+print("Gemini CLI note: no auto-driver (SlashCommand dispatch not available).")
+print("Run the next command manually:")
+print()
+
+review_path = f"features/{slug}/review.md"
+verdict = None
+if os.path.exists(review_path):
+    with open(review_path) as f:
+        for line in f:
+            if line.startswith('verdict:'):
+                verdict = line.split(':', 1)[1].strip().replace(' ', '')
+                break
+
+if phase == 'specifying':
+    print(f"  /lean-spec:submit-implementation {slug}")
+elif phase == 'implementing':
+    print(f"  /lean-spec:submit-review {slug}")
+elif phase == 'reviewing':
+    if verdict == 'APPROVE':
+        print(f"  /lean-spec:close-spec {slug}")
+    elif verdict == 'NEEDS_FIXES':
+        print(f"  /lean-spec:submit-fixes {slug}")
+    elif verdict == 'BLOCKED':
+        print(f"  # BLOCKED — human intervention required")
+    else:
+        print(f"  /lean-spec:spec-status {slug}  # verdict unclear")
+elif phase == 'closed':
+    print(f"  # No next step — feature is closed.")

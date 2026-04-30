@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+import json, sys, os, datetime
+
+args = sys.argv[1] if len(sys.argv) > 1 else ''
+slug = args.split()[0] if args.strip() else ''
+if not slug:
+    print("Usage: /lean-spec:close-spec <slug>")
+    sys.exit(1)
+
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found.")
+    sys.exit(1)
+
+with open(wf_path) as f:
+    data = json.load(f)
+
+current = data.get('phase', '')
+if current != 'reviewing':
+    print(f"Phase gate: expected 'reviewing', got '{current}'")
+    sys.exit(1)
+
+review_path = f"features/{slug}/review.md"
+if not os.path.exists(review_path):
+    print("review.md not found.")
+    sys.exit(1)
+
+verdict = ''
+with open(review_path) as f:
+    for line in f:
+        if line.startswith('verdict:'):
+            verdict = line.split(':', 1)[1].strip().replace(' ', '')
+            break
+
+if verdict != 'APPROVE':
+    print(f"Verdict is '{verdict}' — close-spec only succeeds on APPROVE.")
+    sys.exit(1)
+
+now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+data['phase'] = 'closed'
+data['updated_at'] = now
+data['history'].append({'phase': 'closed', 'entered_at': now})
+
+tmp = wf_path + '.tmp'
+with open(tmp, 'w') as f:
+    json.dump(data, f, indent=2)
+os.replace(tmp, wf_path)
+print(f"phase advanced: reviewing → closed. Feature {slug} is complete.")
