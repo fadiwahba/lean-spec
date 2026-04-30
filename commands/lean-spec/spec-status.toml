@@ -4,54 +4,68 @@ prompt = """
 Arguments: `{{args}}`  (optional — a slug, or empty for all features)
 
 !{
-SLUG='{{args}}'
-PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+python3 << 'PYEOF'
+import json, sys, os, glob
 
-if [ -n "$SLUG" ]; then
-  WF="$PROJ/features/$SLUG/workflow.json"
-  if [ ! -f "$WF" ]; then
-    echo "Feature '$SLUG' not found."
-    exit 1
-  fi
-  echo "Slug:    $(jq -r '.slug' "$WF")"
-  echo "Phase:   $(jq -r '.phase' "$WF")"
-  echo "Updated: $(jq -r '.updated_at' "$WF")"
-  echo ""
-  echo "History:"
-  jq -r '.history[] | "  - \\(.phase)  (entered \\(.entered_at))"' "$WF"
-  echo ""
-  PHASE=$(jq -r '.phase' "$WF")
-  case "$PHASE" in
-    specifying) echo "Next: /lean-spec:submit-implementation $SLUG" ;;
-    implementing) echo "Next: /lean-spec:submit-review $SLUG" ;;
-    reviewing)
-      REVIEW="$PROJ/features/$SLUG/review.md"
-      if [ -f "$REVIEW" ]; then
-        V=$(awk '/^verdict:/ { gsub(/[[:space:]]/, ""); sub(/^verdict:/, ""); print; exit }' "$REVIEW")
-        case "$V" in
-          APPROVE)     echo "Next: /lean-spec:close-spec $SLUG" ;;
-          NEEDS_FIXES) echo "Next: /lean-spec:submit-fixes $SLUG" ;;
-          BLOCKED)     echo "Next: # BLOCKED — human intervention required" ;;
-          *)           echo "Next: # Reviewer's verdict unclear. Inspect review.md." ;;
-        esac
-      else
-        echo "Next: /lean-spec:submit-review $SLUG  # review.md not yet produced"
-      fi
-      ;;
-    closed) echo "No next step — feature is closed." ;;
-    *) echo "Unknown phase '$PHASE'." ;;
-  esac
-else
-  find "$PROJ/features" -name "workflow.json" 2>/dev/null | sort | while read wf; do
-    S=$(jq -r '.slug' "$wf")
-    P=$(jq -r '.phase' "$wf")
-    U=$(jq -r '.updated_at' "$wf")
-    echo "$S  [$P]  last updated: $U"
-  done
-  # If nothing found:
-  if [ -z "$(find "$PROJ/features" -name "workflow.json" 2>/dev/null)" ]; then
-    echo "No features found. Run /lean-spec:start-spec <slug> to begin."
-  fi
-fi
+slug = '{{args}}'.strip()
+
+def get_verdict(review_path):
+    if not os.path.exists(review_path):
+        return None
+    with open(review_path) as f:
+        for line in f:
+            if line.startswith('verdict:'):
+                return line.split(':', 1)[1].strip().replace(' ', '')
+    return None
+
+def next_cmd(slug, phase, review_path):
+    if phase == 'specifying':
+        return f"/lean-spec:submit-implementation {slug}"
+    elif phase == 'implementing':
+        return f"/lean-spec:submit-review {slug}"
+    elif phase == 'reviewing':
+        v = get_verdict(review_path)
+        if v == 'APPROVE':   return f"/lean-spec:close-spec {slug}"
+        if v == 'NEEDS_FIXES': return f"/lean-spec:submit-fixes {slug}"
+        if v == 'BLOCKED':   return "# BLOCKED — human intervention required"
+        return "# Reviewer's verdict unclear. Inspect review.md."
+    elif phase == 'closed':
+        return "# No next step — feature is closed."
+    return f"# Unknown phase '{phase}'."
+
+proj = os.getcwd()
+features_dir = os.path.join(proj, 'features')
+
+if slug:
+    wf_path = os.path.join(features_dir, slug, 'workflow.json')
+    if not os.path.exists(wf_path):
+        print(f"Feature '{slug}' not found.")
+        sys.exit(1)
+    with open(wf_path) as f:
+        data = json.load(f)
+    print(f"Slug:    {data.get('slug', slug)}")
+    print(f"Phase:   {data.get('phase', '')}")
+    print(f"Updated: {data.get('updated_at', '')}")
+    print()
+    print("History:")
+    for h in data.get('history', []):
+        print(f"  - {h.get('phase', '')}  (entered {h.get('entered_at', '')})")
+    print()
+    phase = data.get('phase', '')
+    review_path = os.path.join(features_dir, slug, 'review.md')
+    print(f"Next: {next_cmd(slug, phase, review_path)}")
+else:
+    wfs = sorted(glob.glob(os.path.join(features_dir, '*/workflow.json')))
+    if not wfs:
+        print("No features found. Run /lean-spec:start-spec <slug> to begin.")
+        sys.exit(0)
+    for wf_path in wfs:
+        with open(wf_path) as f:
+            data = json.load(f)
+        s = data.get('slug', '')
+        p = data.get('phase', '')
+        u = data.get('updated_at', '')
+        print(f"{s}  [{p}]  last updated: {u}")
+PYEOF
 }
 """

@@ -4,26 +4,33 @@ prompt = """
 Arguments: `{{args}}`  (the feature slug)
 
 !{
-SLUG='{{args}}'
-if [ -z "$SLUG" ]; then
-  echo "Usage: /lean-spec:resume-spec <slug>"
-  exit 1
-fi
-PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-WF="$PROJ/features/$SLUG/workflow.json"
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found. /lean-spec:spec-status for available features."
-  exit 1
-fi
-echo "=== workflow.json ==="
-cat "$WF" | jq .
-for f in spec.md notes.md review.md; do
-  if [ -f "$PROJ/features/$SLUG/$f" ]; then
-    echo ""
-    echo "=== $f ==="
-    cat "$PROJ/features/$SLUG/$f"
-  fi
-done
+python3 << 'PYEOF'
+import json, sys, os
+
+slug = '{{args}}'.strip()
+if not slug:
+    print("Usage: /lean-spec:resume-spec <slug>")
+    sys.exit(1)
+
+proj = os.getcwd()
+wf_path = os.path.join(proj, 'features', slug, 'workflow.json')
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found. /lean-spec:spec-status for available features.")
+    sys.exit(1)
+
+print("=== workflow.json ===")
+with open(wf_path) as f:
+    data = json.load(f)
+print(json.dumps(data, indent=2))
+
+for fname in ('spec.md', 'notes.md', 'review.md'):
+    fpath = os.path.join(proj, 'features', slug, fname)
+    if os.path.exists(fpath):
+        print()
+        print(f"=== {fname} ===")
+        with open(fpath) as f:
+            print(f.read(), end='')
+PYEOF
 }
 
 After reading the above, tell the user:

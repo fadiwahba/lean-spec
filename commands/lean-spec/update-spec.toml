@@ -4,33 +4,44 @@ prompt = """
 Arguments: `{{args}}`  (first token = slug; rest = what to change)
 
 !{
-ARGS='{{args}}'
-SLUG="${ARGS%% *}"
-BRIEF="${ARGS#"$SLUG"}"
-BRIEF="${BRIEF# }"
+python3 << 'PYEOF'
+import json, sys, os
 
-if [[ -z "$SLUG" ]]; then
-  echo "Usage: /lean-spec:update-spec <slug> [what to change]"
-  exit 1
-fi
-WF="features/$SLUG/workflow.json"
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found. Run /lean-spec:start-spec $SLUG first."
-  exit 1
-fi
-PHASE=$(jq -r '.phase' "$WF")
-if [ "$PHASE" != "specifying" ]; then
-  echo "/lean-spec:update-spec only works in 'specifying' phase. Current: '$PHASE'."
-  echo "(Once implementation has started, the spec is frozen. Close + re-open if you need a new direction.)"
-  exit 1
-fi
+args = '{{args}}'
+parts = args.split(None, 1)
+slug = parts[0] if parts else ''
+brief = parts[1] if len(parts) > 1 else ''
 
-echo "Existing spec:"
-echo "---"
-cat "features/$SLUG/spec.md" 2>/dev/null || echo "(spec.md missing)"
-echo "---"
-echo ""
-echo "Change request: $BRIEF"
+if not slug:
+    print("Usage: /lean-spec:update-spec <slug> [what to change]")
+    sys.exit(1)
+
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found. Run /lean-spec:start-spec {slug} first.")
+    sys.exit(1)
+
+with open(wf_path) as f:
+    data = json.load(f)
+
+phase = data.get('phase', '')
+if phase != 'specifying':
+    print(f"/lean-spec:update-spec only works in 'specifying' phase. Current: '{phase}'.")
+    print("(Once implementation has started, the spec is frozen. Close + re-open if you need a new direction.)")
+    sys.exit(1)
+
+spec_path = f"features/{slug}/spec.md"
+print("Existing spec:")
+print("---")
+if os.path.exists(spec_path):
+    with open(spec_path) as f:
+        print(f.read(), end='')
+else:
+    print("(spec.md missing)")
+print("---")
+print()
+print(f"Change request: {brief}")
+PYEOF
 }
 
 # Note: model overrides in rules.yaml do not apply in Gemini (fixed model).

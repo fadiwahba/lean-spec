@@ -8,37 +8,42 @@ Arguments: `{{args}}`  (first token = slug; rest = brief or `@path/to/PRD.md`)
 ## Step 1 — Create the feature directory and workflow.json
 
 !{
-ARGS='{{args}}'
-SLUG="${ARGS%% *}"
-BRIEF="${ARGS#"$SLUG"}"
-BRIEF="${BRIEF# }"
+python3 << 'PYEOF'
+import json, sys, os, datetime, re
 
-if [[ -z "$SLUG" ]]; then
-  echo 'Usage: /lean-spec:start-spec <slug> [brief or @path/to/PRD.md]'
-  exit 1
-fi
-if ! [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-  echo "Invalid slug '$SLUG': lowercase letters, digits, and hyphens only"
-  exit 1
-fi
-if [ -d "features/$SLUG" ]; then
-  echo "Feature '$SLUG' already exists. Use /lean-spec:update-spec $SLUG to revise."
-  exit 1
-fi
+args = '{{args}}'
+parts = args.split(None, 1)
+slug = parts[0] if parts else ''
+brief = parts[1] if len(parts) > 1 else ''
 
-mkdir -p "features/$SLUG"
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-cat > "features/$SLUG/workflow.json" <<EOF
-{
-  "slug": "$SLUG",
-  "phase": "specifying",
-  "created_at": "$NOW",
-  "updated_at": "$NOW",
-  "history": [{ "phase": "specifying", "entered_at": "$NOW" }],
-  "artifacts": { "spec": "spec.md", "notes": "notes.md", "review": "review.md" }
+if not slug:
+    print("Usage: /lean-spec:start-spec <slug> [brief or @path/to/PRD.md]")
+    sys.exit(1)
+
+if not re.match(r'^[a-z0-9][a-z0-9-]*$', slug):
+    print(f"Invalid slug '{slug}': lowercase letters, digits, and hyphens only")
+    sys.exit(1)
+
+if os.path.isdir(f"features/{slug}"):
+    print(f"Feature '{slug}' already exists. Use /lean-spec:update-spec {slug} to revise.")
+    sys.exit(1)
+
+os.makedirs(f"features/{slug}", exist_ok=True)
+now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+wf = {
+    "slug": slug,
+    "phase": "specifying",
+    "created_at": now,
+    "updated_at": now,
+    "history": [{"phase": "specifying", "entered_at": now}],
+    "artifacts": {"spec": "spec.md", "notes": "notes.md", "review": "review.md"}
 }
-EOF
-echo "Created features/$SLUG/ (phase=specifying) — brief: $BRIEF"
+with open(f"features/{slug}/workflow.json", 'w') as f:
+    json.dump(wf, f, indent=2)
+
+print(f"Created features/{slug}/ (phase=specifying) — brief: {brief}")
+PYEOF
 }
 
 ## Step 2 — Draft spec.md

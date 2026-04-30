@@ -4,32 +4,36 @@ prompt = """
 Arguments: `{{args}}`  (`--gates-on` flag accepted but ignored in degraded mode)
 
 !{
-PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-FEATURES_DIR="$PROJ/features"
+python3 << 'PYEOF'
+import json, sys, os, glob
 
-if [ ! -d "$FEATURES_DIR" ]; then
-  echo "No features/ directory found. Run /lean-spec:decompose-prd first."
-  exit 1
-fi
+proj = os.getcwd()
+features_dir = os.path.join(proj, 'features')
 
-echo "lean-spec:auto-all (Gemini degraded mode)"
-echo "No auto-driver available — SlashCommand dispatch not supported in Gemini CLI."
-echo ""
-echo "Non-closed features:"
-echo ""
+if not os.path.isdir(features_dir):
+    print("No features/ directory found. Run /lean-spec:decompose-prd first.")
+    sys.exit(1)
 
-FOUND=0
-while IFS= read -r wf; do
-  PHASE=$(jq -r '.phase' "$wf")
-  SLUG=$(jq -r '.slug' "$wf")
-  if [ "$PHASE" != "closed" ]; then
-    FOUND=1
-    echo "  $SLUG  (phase: $PHASE)"
-    echo "  → Run: /lean-spec:auto $SLUG"
-    echo ""
-  fi
-done < <(find "$FEATURES_DIR" -name "workflow.json" 2>/dev/null)
+print("lean-spec:auto-all (Gemini degraded mode)")
+print("No auto-driver available — SlashCommand dispatch not supported in Gemini CLI.")
+print()
+print("Non-closed features:")
+print()
 
-[ "$FOUND" = "0" ] && echo "  All features are already closed."
+found = False
+for wf_path in sorted(glob.glob(os.path.join(features_dir, '*/workflow.json'))):
+    with open(wf_path) as f:
+        data = json.load(f)
+    phase = data.get('phase', '')
+    slug = data.get('slug', '')
+    if phase != 'closed':
+        found = True
+        print(f"  {slug}  (phase: {phase})")
+        print(f"  → Run: /lean-spec:auto {slug}")
+        print()
+
+if not found:
+    print("  All features are already closed.")
+PYEOF
 }
 """

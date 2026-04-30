@@ -4,49 +4,56 @@ prompt = """
 Arguments: `{{args}}`  (slug, optionally --unattended — flag is accepted but ignored in degraded mode)
 
 !{
-ARGS='{{args}}'
-SLUG=""
-for tok in $ARGS; do
-  case "$tok" in --*) ;; *) [ -z "$SLUG" ] && SLUG="$tok" ;; esac
-done
+python3 << 'PYEOF'
+import json, sys, os
 
-if [ -z "$SLUG" ]; then
-  echo "Usage: /lean-spec:auto <slug>"
-  echo "(In Gemini CLI, auto-driver dispatch is unavailable — run each command manually in order.)"
-  exit 1
-fi
+args = '{{args}}'.split()
+slug = next((t for t in args if not t.startswith('--')), '')
 
-PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
-WF="$PROJ/features/$SLUG/workflow.json"
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found. Run /lean-spec:start-spec $SLUG first."
-  exit 1
-fi
+if not slug:
+    print("Usage: /lean-spec:auto <slug>")
+    print("(In Gemini CLI, auto-driver dispatch is unavailable — run each command manually in order.)")
+    sys.exit(1)
 
-PHASE=$(jq -r '.phase' "$WF")
-echo "Feature: $SLUG  |  Phase: $PHASE"
-echo ""
-echo "Gemini CLI note: no auto-driver (SlashCommand dispatch not available)."
-echo "Run the next command manually:"
-echo ""
-case "$PHASE" in
-  specifying)   echo "  /lean-spec:submit-implementation $SLUG" ;;
-  implementing) echo "  /lean-spec:submit-review $SLUG" ;;
-  reviewing)
-    R="$PROJ/features/$SLUG/review.md"
-    if [ -f "$R" ]; then
-      V=$(awk '/^verdict:/ { gsub(/[[:space:]]/, ""); sub(/^verdict:/, ""); print; exit }' "$R")
-      case "$V" in
-        APPROVE)     echo "  /lean-spec:close-spec $SLUG" ;;
-        NEEDS_FIXES) echo "  /lean-spec:submit-fixes $SLUG" ;;
-        BLOCKED)     echo "  # BLOCKED — human intervention required" ;;
-        *)           echo "  /lean-spec:spec-status $SLUG  # verdict unclear" ;;
-      esac
-    else
-      echo "  /lean-spec:spec-status $SLUG  # awaiting reviewer output"
-    fi
-    ;;
-  closed) echo "  # No next step — feature is closed." ;;
-esac
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found. Run /lean-spec:start-spec {slug} first.")
+    sys.exit(1)
+
+with open(wf_path) as f:
+    data = json.load(f)
+
+phase = data.get('phase', '')
+print(f"Feature: {slug}  |  Phase: {phase}")
+print()
+print("Gemini CLI note: no auto-driver (SlashCommand dispatch not available).")
+print("Run the next command manually:")
+print()
+
+review_path = f"features/{slug}/review.md"
+verdict = None
+if os.path.exists(review_path):
+    with open(review_path) as f:
+        for line in f:
+            if line.startswith('verdict:'):
+                verdict = line.split(':', 1)[1].strip().replace(' ', '')
+                break
+
+if phase == 'specifying':
+    print(f"  /lean-spec:submit-implementation {slug}")
+elif phase == 'implementing':
+    print(f"  /lean-spec:submit-review {slug}")
+elif phase == 'reviewing':
+    if verdict == 'APPROVE':
+        print(f"  /lean-spec:close-spec {slug}")
+    elif verdict == 'NEEDS_FIXES':
+        print(f"  /lean-spec:submit-fixes {slug}")
+    elif verdict == 'BLOCKED':
+        print(f"  # BLOCKED — human intervention required")
+    else:
+        print(f"  /lean-spec:spec-status {slug}  # verdict unclear")
+elif phase == 'closed':
+    print(f"  # No next step — feature is closed.")
+PYEOF
 }
 """

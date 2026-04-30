@@ -8,37 +8,59 @@ Arguments: `{{args}}`  (the feature slug)
 ## Step 1 — Validate phase + roll back
 
 !{
-SLUG='{{args}}'
-WF="features/$SLUG/workflow.json"
+python3 << 'PYEOF'
+import json, sys, os, datetime
 
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found."; exit 1
-fi
-CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
-if [ "$CURRENT" != "reviewing" ]; then
-  echo "Phase gate: expected 'reviewing', got '$CURRENT'"; exit 1
-fi
-if [ ! -f "features/$SLUG/review.md" ]; then
-  echo "review.md not found. Run /lean-spec:submit-review $SLUG first."; exit 1
-fi
+slug = '{{args}}'.split()[0] if '{{args}}'.strip() else ''
+if not slug:
+    print("Usage: /lean-spec:submit-fixes <slug>")
+    sys.exit(1)
 
-VERDICT=$(awk '/^verdict:/ { gsub(/[[:space:]]/, "", $0); sub(/^verdict:/, "", $0); print; exit }' "features/$SLUG/review.md")
-if [ "$VERDICT" != "NEEDS_FIXES" ]; then
-  echo "Verdict is '$VERDICT' — submit-fixes is only valid when review.md verdict is NEEDS_FIXES."
-  exit 1
-fi
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found.")
+    sys.exit(1)
 
-set -e
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-tmp=$(mktemp "${WF}.tmp.XXXXXX")
-jq --arg p "implementing" --arg now "$NOW" \\
-  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
-  "$WF" > "$tmp"
-mv -f "$tmp" "$WF"
-echo "phase rolled back: reviewing → implementing"
+with open(wf_path) as f:
+    data = json.load(f)
+
+current = data.get('phase', '')
+if current != 'reviewing':
+    print(f"Phase gate: expected 'reviewing', got '{current}'")
+    sys.exit(1)
+
+review_path = f"features/{slug}/review.md"
+if not os.path.exists(review_path):
+    print(f"review.md not found. Run /lean-spec:submit-review {slug} first.")
+    sys.exit(1)
+
+verdict = ''
+with open(review_path) as f:
+    for line in f:
+        if line.startswith('verdict:'):
+            verdict = line.split(':', 1)[1].strip().replace(' ', '')
+            break
+
+if verdict != 'NEEDS_FIXES':
+    print(f"Verdict is '{verdict}' — submit-fixes is only valid when review.md verdict is NEEDS_FIXES.")
+    sys.exit(1)
+
+now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+data['phase'] = 'implementing'
+data['updated_at'] = now
+data['history'].append({'phase': 'implementing', 'entered_at': now})
+
+tmp = wf_path + '.tmp'
+with open(tmp, 'w') as f:
+    json.dump(data, f, indent=2)
+os.replace(tmp, wf_path)
+print("phase rolled back: reviewing → implementing")
+PYEOF
 }
 
 ## Step 2 — Apply fixes
+
+Apply fixes with **direct file edits only** — never via generated scripts, Node.js, shell scripts, or base64 pipes.
 
 Read `features/<slug>/review.md` — every Critical and Important finding must be addressed. Read `features/<slug>/notes.md` (existing implementation notes) but DO NOT replace it.
 

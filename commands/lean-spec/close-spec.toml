@@ -4,34 +4,54 @@ prompt = """
 Arguments: `{{args}}`  (the feature slug)
 
 !{
-SLUG='{{args}}'
-WF="features/$SLUG/workflow.json"
+python3 << 'PYEOF'
+import json, sys, os, datetime
 
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found."; exit 1
-fi
-CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
-if [ "$CURRENT" != "reviewing" ]; then
-  echo "Phase gate: expected 'reviewing', got '$CURRENT'"; exit 1
-fi
-if [ ! -f "features/$SLUG/review.md" ]; then
-  echo "review.md not found."; exit 1
-fi
+slug = '{{args}}'.split()[0] if '{{args}}'.strip() else ''
+if not slug:
+    print("Usage: /lean-spec:close-spec <slug>")
+    sys.exit(1)
 
-VERDICT=$(awk '/^verdict:/ { gsub(/[[:space:]]/, "", $0); sub(/^verdict:/, "", $0); print; exit }' "features/$SLUG/review.md")
-if [ "$VERDICT" != "APPROVE" ]; then
-  echo "Verdict is '$VERDICT' — close-spec only succeeds on APPROVE."
-  exit 1
-fi
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found.")
+    sys.exit(1)
 
-set -e
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-tmp=$(mktemp "${WF}.tmp.XXXXXX")
-jq --arg p "closed" --arg now "$NOW" \\
-  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
-  "$WF" > "$tmp"
-mv -f "$tmp" "$WF"
-echo "phase advanced: reviewing → closed. Feature $SLUG is complete."
+with open(wf_path) as f:
+    data = json.load(f)
+
+current = data.get('phase', '')
+if current != 'reviewing':
+    print(f"Phase gate: expected 'reviewing', got '{current}'")
+    sys.exit(1)
+
+review_path = f"features/{slug}/review.md"
+if not os.path.exists(review_path):
+    print("review.md not found.")
+    sys.exit(1)
+
+verdict = ''
+with open(review_path) as f:
+    for line in f:
+        if line.startswith('verdict:'):
+            verdict = line.split(':', 1)[1].strip().replace(' ', '')
+            break
+
+if verdict != 'APPROVE':
+    print(f"Verdict is '{verdict}' — close-spec only succeeds on APPROVE.")
+    sys.exit(1)
+
+now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+data['phase'] = 'closed'
+data['updated_at'] = now
+data['history'].append({'phase': 'closed', 'entered_at': now})
+
+tmp = wf_path + '.tmp'
+with open(tmp, 'w') as f:
+    json.dump(data, f, indent=2)
+os.replace(tmp, wf_path)
+print(f"phase advanced: reviewing → closed. Feature {slug} is complete.")
+PYEOF
 }
 
 Tell the user: "Feature closed. Artifacts archived at `features/<slug>/`."

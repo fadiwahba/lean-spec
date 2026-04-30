@@ -10,96 +10,97 @@ Arguments: `{{args}}`  (optional path to PRD; defaults to docs/PRD.md)
 Wait for user confirmation before running the bash block below.
 
 !{
-PRD="${1:-docs/PRD.md}"
-ARGS='{{args}}'
-[ -n "$ARGS" ] && PRD="$ARGS"
+python3 << 'PYEOF'
+import json, sys, os, re, datetime
 
-if [ ! -f "$PRD" ]; then
-  echo "PRD not found at '$PRD'. Run /lean-spec:brainstorm first."
-  exit 1
-fi
+args = '{{args}}'.strip()
+prd_path = args if args else 'docs/PRD.md'
 
-# Inline slugifier (no external deps)
-slugify() {
-  local s="$1"
-  s=$(echo "$s" | sed -E 's/^[0-9]+(\\.[0-9]+)*[[:space:]]+//; s/^[0-9]+\\)[[:space:]]+//')
-  s=$(echo "$s" | tr '[:upper:]' '[:lower:]')
-  s=$(echo "$s" | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')
-  echo "$s"
-}
+if not os.path.exists(prd_path):
+    print(f"PRD not found at '{prd_path}'. Run /lean-spec:brainstorm first.")
+    sys.exit(1)
 
-# Extract feature headings from the Features section
-HEADINGS=$(awk '
-  BEGIN { in_features = 0 }
-  /^## / {
-    if (in_features) exit
-    if ($0 ~ /^##[[:space:]]+([0-9]+\\.[[:space:]]+)?Features[[:space:]]*$/) in_features = 1
-    else in_features = 0
-    next
-  }
-  in_features && /^### / { sub(/^### /, ""); print }
-' "$PRD")
+def slugify(heading):
+    s = re.sub(r'^[0-9]+(\\.[0-9]+)*\\s+', '', heading)
+    s = re.sub(r'^[0-9]+\\)\\s+', '', s)
+    s = s.lower()
+    s = re.sub(r'[^a-z0-9]+', '-', s)
+    return s.strip('-')
 
-if [ -z "$HEADINGS" ]; then
-  echo "No Features section found in $PRD (expected '## <N>. Features' with '### <N>.<M> <title>' sub-sections)."
-  exit 1
-fi
+headings = []
+in_features = False
+with open(prd_path) as f:
+    for line in f:
+        line = line.rstrip('\\n')
+        if line.startswith('## '):
+            title = line[3:].strip()
+            if re.match(r'^([0-9]+\\.\\s+)?Features\\s*$', title):
+                in_features = True
+            else:
+                if in_features:
+                    break
+                in_features = False
+        elif in_features and line.startswith('### '):
+            headings.append(line[4:].strip())
 
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-CREATED=0
-SKIPPED=0
+if not headings:
+    print(f"No Features section found in {prd_path} (expected '## <N>. Features' with '### <N>.<M> <title>' sub-sections).")
+    sys.exit(1)
 
-while IFS= read -r HEADING; do
-  [ -z "$HEADING" ] && continue
-  SLUG=$(slugify "$HEADING")
-  DIR="features/$SLUG"
-  if [ -d "$DIR" ]; then
-    echo "skip $SLUG — exists"
-    SKIPPED=$((SKIPPED + 1))
-    continue
-  fi
-  mkdir -p "$DIR"
-  cat > "$DIR/workflow.json" <<EOF
-{
-  "slug": "$SLUG",
-  "phase": "specifying",
-  "created_at": "$NOW",
-  "updated_at": "$NOW",
-  "history": [{"phase": "specifying", "entered_at": "$NOW"}],
-  "artifacts": {"spec": "spec.md", "notes": "notes.md", "review": "review.md"}
-}
-EOF
-  cat > "$DIR/spec.md" <<EOF
----
-slug: $SLUG
+now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+created = 0
+skipped = 0
+
+for heading in headings:
+    if not heading:
+        continue
+    slug = slugify(heading)
+    dir_path = f"features/{slug}"
+    if os.path.isdir(dir_path):
+        print(f"skip {slug} — exists")
+        skipped += 1
+        continue
+    os.makedirs(dir_path, exist_ok=True)
+    wf = {
+        "slug": slug, "phase": "specifying",
+        "created_at": now, "updated_at": now,
+        "history": [{"phase": "specifying", "entered_at": now}],
+        "artifacts": {"spec": "spec.md", "notes": "notes.md", "review": "review.md"}
+    }
+    with open(f"{dir_path}/workflow.json", 'w') as f:
+        json.dump(wf, f, indent=2)
+    spec = f'''---
+slug: {slug}
 phase: specifying
 handoffs:
-  next_command: /lean-spec:submit-implementation $SLUG
+  next_command: /lean-spec:submit-implementation {slug}
   blocks_on: []   # list sibling slugs this feature depends on
   consumed_by: [coder, reviewer]
 ---
 
-# $HEADING
+# {heading}
 
-> 🚧 Skeleton from /lean-spec:decompose-prd. Run /lean-spec:update-spec $SLUG to complete.
+> Skeleton from /lean-spec:decompose-prd. Run /lean-spec:update-spec {slug} to complete.
 
 ## Scope
-(see PRD §$HEADING)
+(see PRD §{heading})
 
 ## Acceptance Criteria
 ## Out of Scope
 ## Technical Notes
 ## Coder Guardrails
-EOF
-  echo "created features/$SLUG/"
-  CREATED=$((CREATED + 1))
-done <<< "$HEADINGS"
+'''
+    with open(f"{dir_path}/spec.md", 'w') as f:
+        f.write(spec)
+    print(f"created features/{slug}/")
+    created += 1
 
-echo ""
-echo "Done. $CREATED skeleton(s) created, $SKIPPED already existed."
-echo "Note: Claude Code native version also auto-generates .lean-spec/rules.yaml and warns about"
-echo "cross-feature dependencies. This degraded port omits both — check blocks_on manually."
-echo "Next: /lean-spec:update-spec <slug> per feature."
+print()
+print(f"Done. {created} skeleton(s) created, {skipped} already existed.")
+print("Note: Claude Code native version also auto-generates .lean-spec/rules.yaml and warns about")
+print("cross-feature dependencies. This degraded port omits both — check blocks_on manually.")
+print("Next: /lean-spec:update-spec <slug> per feature.")
+PYEOF
 }
 
 After the bash block, scan `docs/PRD.md` for design token definitions (colour palette table, typography scale, or Tailwind `@theme inline`). If found, emit:

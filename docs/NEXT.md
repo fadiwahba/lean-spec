@@ -123,6 +123,54 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 - ~~Fix: superpowers extension firing in Gemini uninvited~~ ✅ Done (renamed to `superpowers.bak`)
 - ~~Fix: Gemini lacks workflow.json write guard~~ ✅ Done (wired `BeforeTool write_file|replace` in `~/.gemini/settings.json`)
 
+### P10 v2 findings (todo-demo cross-provider, 2026-04-30)
+
+**Setup change:** symlink approach replaced by `--plugin-dir /path/to/lean-spec` flag (confirmed valid in Claude Code v2.1.123+). Cleaner — no symlinks needed, hooks load automatically.
+
+**Gemini TOML command substitution blocked:**
+- Gemini's shell sandbox blocks `$()` in TOML bash pre-flights (`$(jq ...)`, `$(date ...)`, `$(mktemp ...)`).
+- Consequence: `workflow.json` phase advancement fails silently in every Gemini TOML command. User must manually advance via `jq` in T1 after each Gemini step.
+- Fix (deferred): rewrite all TOML bash blocks using Python3 instead of bash+jq. Logged as P19.
+
+**Gemini BeforeTool hook format mismatch:**
+- `pre-tool-use-workflow.sh` uses `set -euo pipefail` and parses Claude's PreToolUse JSON shape. Gemini's BeforeTool event has a different JSON structure → jq parse fails → exit non-zero → "failed" warning on every write.
+- Fails-open (file writes proceed), but noisy. Fix: add defensive parse with `exit 0` on unknown format. Logged as P20.
+
+**Gemini script drift in `submit-fixes`:**
+- Gemini applied fixes via a Node.js script rather than direct file edits. Scripts have broader file access and are harder to audit — a drift vector.
+- Fix: add explicit guardrail to Gemini TOML `submit-fixes` port: "apply fixes with direct file edits only, never via generated scripts". Logged as P21.
+
+**Cross-provider workflow.json manual advance pattern:**
+- After every Gemini phase command, manually advance `workflow.json` in T1:
+  ```bash
+  jq '.phase = "<next>" | .updated_at = (now | todate) | .history += [{"phase": "<next>", "entered_at": (now | todate)}]' features/<slug>/workflow.json > /tmp/wf.json && mv /tmp/wf.json features/<slug>/workflow.json
+  ```
+- This is the correct workaround until P19 (Python3 TOML rewrite) is done.
+
+**`--plugin-dir` workaround for local plugin install:**
+- `claude plugin marketplace add <dir>` broken for local paths in v2.1.123.
+- Workaround: `claude --plugin-dir /path/to/lean-spec` loads commands + agents + skills + hooks without any symlinks or marketplace registration.
+
+**Gemini slash commands must be first on the line:**
+- Embedding `/lean-spec:command` inside prose (e.g. "now run /lean-spec:submit-fixes") causes Gemini to treat it as text and attempt shell execution — both fail. Slash commands only trigger when typed alone as the first token of the prompt.
+- Fix: add this rule to T2 handoff instructions and Gemini TOML coder contract.
+
+**P20 patch incomplete — workflow.json write guard now ineffective for Gemini:**
+- The hook was patched to `exit 0` on unparseable JSON, silencing the warnings. But Gemini sends valid JSON with different field names (not `tool_name` / `tool_input.file_path`). The guard parses it, finds empty fields, and passes through — so Gemini can freely edit `workflow.json` directly.
+- Gemini editing `workflow.json` directly (bypassing phase-gate commands) is the exact threat the guard was built for.
+- Fix: inspect actual Gemini BeforeTool payload shape and add a second branch that handles it correctly. Logged as P22.
+
+### Prerequisites before restarting P10 v3
+
+These must be done before the next cross-provider run or the experiment will hit the same blockers:
+
+| # | Fix | Why it blocks |
+|---|---|---|
+| P19 | TOML bash → Python3 rewrite | Every Gemini phase command silently fails workflow.json advancement; manual jq workaround needed after every step |
+| P22 | Fix workflow.json write guard for Gemini BeforeTool format | Guard is currently ineffective; Gemini can bypass phase gates by editing workflow.json directly |
+| P21 | Add "no scripts" guardrail to Gemini `submit-fixes` TOML | Gemini drifts to Node.js/base64 script approaches; direct file edits only |
+| — | Add slash-command-first-on-line rule to T2 handoff template | Prose-embedded slash commands cause Gemini to attempt shell execution and loop |
+
 ---
 
 ## Pending implementation work
@@ -146,6 +194,11 @@ Note: estimates based on artifact size (±30%). Claude pricing as of 2026-04.
 | ~~P15~~ | ~~Playwright decoupled from `submit-review`~~ | ~~Medium~~ | — | ✅ Done fa8450c — text-only default, `--visual` flag + `/lean-spec:visual-check` |
 | ~~P16~~ | ~~Chunky feature decomposition guidance~~ | ~~Medium~~ | — | ✅ Done fa8450c |
 | ~~P17~~ | ~~CSS token bootstrap AC in decompose-prd~~ | ~~Medium~~ | — | ✅ Done fa8450c |
+| P18 | Telemetry project scoping | Low | — | Add `project` field (git root basename) to each JSONL record + `--project` filter to `/lean-spec:telemetry`; global log currently blends all experiments |
+| P19 | Gemini TOML bash → Python3 rewrite | Medium | — | Replace all `$(jq ...)`, `$(date ...)`, `$(mktemp ...)` in TOML pre-flights; Gemini shell sandbox blocks `$()`, breaking workflow.json phase advancement |
+| P20 | `pre-tool-use-workflow.sh` Gemini-safe parse | Low | — | Hook exits non-zero on Gemini's BeforeTool JSON shape (different from Claude's PreToolUse); add defensive `exit 0` on unknown format to silence warnings |
+| P21 | Gemini `submit-fixes` script drift guardrail | Low | — | Add explicit instruction to TOML: "apply fixes with direct file edits only, never via generated scripts"; Gemini used a Node.js script in P10 v2 — broader file access, harder to audit |
+| P22 | Fix workflow.json write guard for Gemini BeforeTool format | Medium | P20 | P20 patch silenced warnings but guard is now ineffective — Gemini sends valid JSON with different field names; inspect actual Gemini BeforeTool payload and add correct field mapping |
 
 ---
 

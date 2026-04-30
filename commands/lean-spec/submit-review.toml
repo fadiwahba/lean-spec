@@ -8,52 +8,55 @@ Arguments: `{{args}}`  (first token = slug; optional `--visual` flag; rest = opt
 ## Step 1 — Parse args, validate phase, advance
 
 !{
-ARGS='{{args}}'
-SLUG="${ARGS%% *}"
-REST="${ARGS#"$SLUG"}"
-REST="${REST# }"
+python3 << 'PYEOF'
+import json, sys, os, datetime, glob
 
-# Detect --visual flag
-VISUAL=no
-EXTRAS=""
-for tok in $REST; do
-  case "$tok" in
-    --visual) VISUAL=yes ;;
-    --no-rules) ;;  # handled by hook layer
-    *) EXTRAS="$EXTRAS $tok" ;;
-  esac
-done
-EXTRAS="${EXTRAS# }"
+args_raw = '{{args}}'
+parts = args_raw.split()
+slug = next((p for p in parts if not p.startswith('--')), '')
+visual = '--visual' in parts
+extras = [p for p in parts if not p.startswith('--') and p != slug]
 
-WF="features/$SLUG/workflow.json"
+if not slug:
+    print("Usage: /lean-spec:submit-review <slug> [--visual]")
+    sys.exit(1)
 
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found."; exit 1
-fi
-CURRENT=$(jq -r '.phase // ""' "$WF" 2>/dev/null)
-if [ "$CURRENT" != "implementing" ]; then
-  echo "Phase gate: expected 'implementing', got '$CURRENT'"; exit 1
-fi
-if [ ! -f "features/$SLUG/notes.md" ]; then
-  echo "notes.md not found. Run /lean-spec:submit-implementation $SLUG first."; exit 1
-fi
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found.")
+    sys.exit(1)
 
-# Archive prior review.md if present
-REVIEW_DIR="features/$SLUG"
-if [ -f "$REVIEW_DIR/review.md" ]; then
-  PRIOR=$(ls "$REVIEW_DIR"/review-cycle-*.md 2>/dev/null | wc -l | tr -d ' ')
-  NEXT=$((PRIOR + 1))
-  mv -f "$REVIEW_DIR/review.md" "$REVIEW_DIR/review-cycle-${NEXT}.md"
-fi
+with open(wf_path) as f:
+    data = json.load(f)
 
-set -e
-NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-tmp=$(mktemp "${WF}.tmp.XXXXXX")
-jq --arg p "reviewing" --arg now "$NOW" \\
-  '.phase = $p | .updated_at = $now | .history += [{"phase": $p, "entered_at": $now}]' \\
-  "$WF" > "$tmp"
-mv -f "$tmp" "$WF"
-echo "phase advanced: implementing → reviewing (visual: $VISUAL, extras: ${EXTRAS:-none})"
+current = data.get('phase', '')
+if current != 'implementing':
+    print(f"Phase gate: expected 'implementing', got '{current}'")
+    sys.exit(1)
+
+if not os.path.exists(f"features/{slug}/notes.md"):
+    print(f"notes.md not found. Run /lean-spec:submit-implementation {slug} first.")
+    sys.exit(1)
+
+review_dir = f"features/{slug}"
+review_path = f"{review_dir}/review.md"
+if os.path.exists(review_path):
+    existing = glob.glob(f"{review_dir}/review-cycle-*.md")
+    next_num = len(existing) + 1
+    os.rename(review_path, f"{review_dir}/review-cycle-{next_num}.md")
+
+now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+data['phase'] = 'reviewing'
+data['updated_at'] = now
+data['history'].append({'phase': 'reviewing', 'entered_at': now})
+
+tmp = wf_path + '.tmp'
+with open(tmp, 'w') as f:
+    json.dump(data, f, indent=2)
+os.replace(tmp, wf_path)
+extras_str = ' '.join(extras) if extras else 'none'
+print(f"phase advanced: implementing → reviewing (visual: {'yes' if visual else 'no'}, extras: {extras_str})")
+PYEOF
 }
 
 # Note: model overrides in rules.yaml do not apply in Gemini (fixed model).

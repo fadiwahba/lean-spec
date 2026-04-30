@@ -47,10 +47,13 @@ telemetry_enabled() {
 # Sync telemetry from a workflow.json. Appends any history entries that aren't
 # already in the JSONL. Idempotent.
 #
-# Usage: telemetry_sync <workflow.json path>
+# Usage: telemetry_sync <workflow.json path> [project-root]
 telemetry_sync() {
   telemetry_enabled || return 0
   local wf="$1"
+  local project_root="${2:-}"
+  local project_name=""
+  [ -n "$project_root" ] && project_name=$(basename "$project_root")
   [ -f "$wf" ] || return 0
 
   mkdir -p "$TELEMETRY_DIR"
@@ -152,6 +155,7 @@ print(f'{cost:.6f}')
       --argjson model "$model_json" \
       --argjson estimated_cost_usd "$estimated_cost_usd" \
       --argjson precision "$precision_json" \
+      --arg project "$project_name" \
       '{
         slug: $slug,
         phase: $phase,
@@ -163,7 +167,8 @@ print(f'{cost:.6f}')
         estimated_tokens: $estimated_tokens,
         model: $model,
         estimated_cost_usd: $estimated_cost_usd,
-        precision: $precision
+        precision: $precision,
+        project: $project
       }' >> "$TELEMETRY_FILE"
 
     prev_phase="$phase"
@@ -179,7 +184,7 @@ telemetry_sync_all() {
   local root="$1"
   [ -d "$root/features" ] || return 0
   while IFS= read -r wf; do
-    telemetry_sync "$wf"
+    telemetry_sync "$wf" "$root"
   done < <(find "$root/features" -name "workflow.json" 2>/dev/null)
 }
 

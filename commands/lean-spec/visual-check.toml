@@ -4,33 +4,48 @@ prompt = """
 Arguments: `{{args}}`
 
 !{
-SLUG='{{args}}'
-WF="features/$SLUG/workflow.json"
+python3 << 'PYEOF'
+import json, sys, os
 
-if [ ! -f "$WF" ]; then
-  echo "Feature '$SLUG' not found."
-  exit 1
-fi
+slug = '{{args}}'.strip()
+if not slug:
+    print("Usage: /lean-spec:visual-check <slug>")
+    sys.exit(1)
 
-PHASE=$(jq -r '.phase' "$WF")
-if [ "$PHASE" != "reviewing" ] && [ "$PHASE" != "closed" ]; then
-  echo "Phase gate: visual-check requires 'reviewing' or 'closed', got '$PHASE'."
-  echo "Run /lean-spec:submit-review $SLUG first."
-  exit 1
-fi
+wf_path = f"features/{slug}/workflow.json"
+if not os.path.exists(wf_path):
+    print(f"Feature '{slug}' not found.")
+    sys.exit(1)
 
-if [ ! -f "features/$SLUG/review.md" ]; then
-  echo "review.md not found. Run /lean-spec:submit-review $SLUG first."
-  exit 1
-fi
+with open(wf_path) as f:
+    data = json.load(f)
 
-echo "Feature: $SLUG | Phase: $PHASE"
-echo ""
-echo "=== spec.md (first 60 lines) ==="
-head -60 "features/$SLUG/spec.md" 2>/dev/null || echo "(spec.md not found)"
-echo ""
-echo "=== review.md (current) ==="
-cat "features/$SLUG/review.md" 2>/dev/null || echo "(review.md not found)"
+phase = data.get('phase', '')
+if phase not in ('reviewing', 'closed'):
+    print(f"Phase gate: visual-check requires 'reviewing' or 'closed', got '{phase}'.")
+    print(f"Run /lean-spec:submit-review {slug} first.")
+    sys.exit(1)
+
+review_path = f"features/{slug}/review.md"
+if not os.path.exists(review_path):
+    print(f"review.md not found. Run /lean-spec:submit-review {slug} first.")
+    sys.exit(1)
+
+spec_path = f"features/{slug}/spec.md"
+print(f"Feature: {slug} | Phase: {phase}")
+print()
+print("=== spec.md (first 60 lines) ===")
+if os.path.exists(spec_path):
+    with open(spec_path) as f:
+        lines = f.readlines()
+    print(''.join(lines[:60]), end='')
+else:
+    print("(spec.md not found)")
+print()
+print("=== review.md (current) ===")
+with open(review_path) as f:
+    print(f.read(), end='')
+PYEOF
 }
 
 Run a visual fidelity check for the feature above:

@@ -4,59 +4,72 @@ prompt = """
 Arguments: `{{args}}`  (optional — specific slug, or empty to auto-pick the active feature)
 
 !{
-SLUG='{{args}}'
-PROJ="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+python3 << 'PYEOF'
+import json, sys, os, glob
 
-pick_active() {
-  local best="" best_time=""
-  while IFS= read -r wf; do
-    local phase updated
-    phase=$(jq -r '.phase // ""' "$wf" 2>/dev/null)
-    updated=$(jq -r '.updated_at // ""' "$wf" 2>/dev/null)
-    [ "$phase" = "closed" ] && continue
-    [ -z "$phase" ] && continue
-    if [ -z "$best_time" ] || [[ "$updated" > "$best_time" ]]; then
-      best="$wf"; best_time="$updated"
-    fi
-  done < <(find "$PROJ/features" -name "workflow.json" 2>/dev/null)
-  echo "$best"
-}
+slug = '{{args}}'.strip()
 
-if [ -z "$SLUG" ]; then
-  WF=$(pick_active)
-  if [ -z "$WF" ]; then
-    echo "No in-progress features. Run /lean-spec:start-spec <slug> to begin."
-    exit 0
-  fi
-  SLUG=$(jq -r '.slug' "$WF")
-else
-  WF="$PROJ/features/$SLUG/workflow.json"
-  [ -f "$WF" ] || { echo "Feature '$SLUG' not found."; exit 1; }
-fi
+def get_verdict(review_path):
+    if not os.path.exists(review_path):
+        return None
+    with open(review_path) as f:
+        for line in f:
+            if line.startswith('verdict:'):
+                return line.split(':', 1)[1].strip().replace(' ', '')
+    return None
 
-PHASE=$(jq -r '.phase' "$WF")
-echo "Feature: $SLUG"
-echo "Phase:   $PHASE"
-echo ""
+proj = os.getcwd()
 
-case "$PHASE" in
-  specifying)   echo "Next: /lean-spec:submit-implementation $SLUG" ;;
-  implementing) echo "Next: /lean-spec:submit-review $SLUG" ;;
-  reviewing)
-    REVIEW="$PROJ/features/$SLUG/review.md"
-    if [ -f "$REVIEW" ]; then
-      V=$(awk '/^verdict:/ { gsub(/[[:space:]]/, ""); sub(/^verdict:/, ""); print; exit }' "$REVIEW")
-      case "$V" in
-        APPROVE)     echo "Next: /lean-spec:close-spec $SLUG" ;;
-        NEEDS_FIXES) echo "Next: /lean-spec:submit-fixes $SLUG" ;;
-        BLOCKED)     echo "Next: # BLOCKED — human intervention required" ;;
-        *)           echo "Next: /lean-spec:spec-status $SLUG  # verdict unclear" ;;
-      esac
-    else
-      echo "Next: /lean-spec:spec-status $SLUG  # awaiting reviewer output"
-    fi
-    ;;
-  closed) echo "No next step — feature is closed." ;;
-esac
+if slug:
+    wf_path = os.path.join(proj, 'features', slug, 'workflow.json')
+    if not os.path.exists(wf_path):
+        print(f"Feature '{slug}' not found.")
+        sys.exit(1)
+else:
+    best_wf = None
+    best_time = ''
+    for wf_path in glob.glob(os.path.join(proj, 'features/*/workflow.json')):
+        with open(wf_path) as f:
+            data = json.load(f)
+        phase = data.get('phase', '')
+        updated = data.get('updated_at', '')
+        if phase == 'closed' or not phase:
+            continue
+        if not best_time or updated > best_time:
+            best_wf = wf_path
+            best_time = updated
+    if not best_wf:
+        print("No in-progress features. Run /lean-spec:start-spec <slug> to begin.")
+        sys.exit(0)
+    wf_path = best_wf
+
+with open(wf_path) as f:
+    data = json.load(f)
+
+slug = data.get('slug', '')
+phase = data.get('phase', '')
+print(f"Feature: {slug}")
+print(f"Phase:   {phase}")
+print()
+
+review_path = os.path.join(proj, 'features', slug, 'review.md')
+verdict = get_verdict(review_path)
+
+if phase == 'specifying':
+    print(f"Next: /lean-spec:submit-implementation {slug}")
+elif phase == 'implementing':
+    print(f"Next: /lean-spec:submit-review {slug}")
+elif phase == 'reviewing':
+    if verdict == 'APPROVE':
+        print(f"Next: /lean-spec:close-spec {slug}")
+    elif verdict == 'NEEDS_FIXES':
+        print(f"Next: /lean-spec:submit-fixes {slug}")
+    elif verdict == 'BLOCKED':
+        print(f"Next: # BLOCKED — human intervention required")
+    else:
+        print(f"Next: /lean-spec:spec-status {slug}  # verdict unclear")
+elif phase == 'closed':
+    print("No next step — feature is closed.")
+PYEOF
 }
 """
