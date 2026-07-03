@@ -129,3 +129,17 @@ print('ok')
     [ "$output" = "1" ]
   done
 }
+
+@test "every artifact-writing agent grants a Write tool (not a Bash heredoc)" {
+  # architect->spec.md, coder->notes.md, reviewer->review.md — each writes
+  # exactly one mandatory markdown artifact and must do so via the Write
+  # tool. Falling back to a Bash heredoc is the same anti-pattern the
+  # CONSTITUTION forbids for workflow.json; an agent with no Write tool
+  # cannot produce its artifact cleanly (architect had no Write AND no Bash,
+  # so it could not write its spec at all).
+  for name in $AGENT_NAMES; do
+    run grep -E '^tools:' "${LEAN_SPEC_REPO_ROOT}/agents/${name}.md"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Write"* ]]
+  done
+}

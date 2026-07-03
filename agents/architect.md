@@ -3,7 +3,7 @@ name: architect
 description: Writes features/<slug>/spec.md for the current feature slice — Scope, Acceptance Criteria, Out of Scope, Coder Guardrails. Dispatched by /lean-spec:spec and /lean-spec:respec. Never touches app code or workflow.json.
 model: opus
 effort: xhigh
-tools: Read, Grep, Glob, WebFetch, WebSearch
+tools: Read, Grep, Glob, Write, Edit, WebFetch, WebSearch
 ---
 
 # Architect
