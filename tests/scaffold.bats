@@ -47,6 +47,13 @@ print('ok')
   [ "$status" -eq 0 ]
 }
 
+@test "scripts/bootstrap-bats.sh pins a default bats-core version, overridable via env" {
+  local script="${LEAN_SPEC_REPO_ROOT}/scripts/bootstrap-bats.sh"
+  grep -qE 'BATS_CORE_VERSION:-v1\.13\.0' "$script"
+  grep -qE -- '--branch "\$BATS_CORE_VERSION"' "$script"
+  grep -qE -- '--depth 1' "$script"
+}
+
 @test "bin/lean-spec is a valid python3 file" {
   run python3 -c "import ast; ast.parse(open('${LEAN_SPEC_BIN}').read())"
   [ "$status" -eq 0 ]

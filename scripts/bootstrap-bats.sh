@@ -4,6 +4,10 @@
 # actionable message. Idempotent: safe to re-run once .tools/bin/bats exists.
 set -euo pipefail
 
+# Pin to a known tag for deterministic CI; override with BATS_CORE_VERSION
+# (e.g. BATS_CORE_VERSION=v1.11.0 ./scripts/bootstrap-bats.sh).
+BATS_CORE_VERSION="${BATS_CORE_VERSION:-v1.13.0}"
+
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tools_dir="${root_dir}/.tools"
 bats_src="${tools_dir}/bats-core"
@@ -21,8 +25,8 @@ fi
 mkdir -p "${tools_dir}" "${bin_dir}"
 
 if [ ! -d "${bats_src}" ]; then
-  if ! git clone --depth 1 https://github.com/bats-core/bats-core "${bats_src}" >&2; then
-    echo "bootstrap-bats: failed to clone bats-core — check network access to github.com" >&2
+  if ! git clone --branch "$BATS_CORE_VERSION" --depth 1 https://github.com/bats-core/bats-core "${bats_src}" >&2; then
+    echo "bootstrap-bats: failed to clone bats-core@${BATS_CORE_VERSION} — check network access to github.com or BATS_CORE_VERSION" >&2
     exit 1
   fi
 fi
