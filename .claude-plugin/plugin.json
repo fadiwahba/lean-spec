@@ -1,0 +1,68 @@
+{
+  "name": "lean-spec",
+  "version": "0.1.0",
+  "description": "Deterministic, spec-driven development lifecycle for Claude Code: interview -> PRD -> spec -> implement (TDD) -> review -> fix -> close. Discipline is enforced by a state CLI and hooks, never by prompt obedience.",
+  "author": {
+    "name": "Fady Soliman"
+  },
+  "homepage": "https://github.com/fadiwahba/lean-spec",
+  "license": "MIT",
+  "keywords": [
+    "spec-driven-development",
+    "tdd",
+    "workflow",
+    "lifecycle"
+  ],
+  "agents": [
+    "./agents/architect.md",
+    "./agents/coder.md",
+    "./agents/reviewer.md"
+  ],
+  "skills": [
+    "./skills/init",
+    "./skills/plan",
+    "./skills/spec",
+    "./skills/respec",
+    "./skills/implement",
+    "./skills/review",
+    "./skills/fix",
+    "./skills/close",
+    "./skills/auto",
+    "./skills/auto-all",
+    "./skills/next",
+    "./skills/status"
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use-guard.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/subagent-stop-gate.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/stop-auto-driver.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

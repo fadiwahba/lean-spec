@@ -1,0 +1,502 @@
+#!/usr/bin/env python3
+"""lean-spec state CLI — the only writer of features/<slug>/workflow.json.
+
+Layer rule (see docs/CONSTITUTION.md): skills describe, hooks enforce, this
+CLI mutates. Nothing outside this file may write workflow.json.
+
+Subcommands:
+    ensure <slug>                  create workflow.json if absent (idempotent)
+    advance <slug> <from> <to>     atomic phase transition (tmp + os.replace)
+    assert <slug> <phase>          exit 2 if current phase != <phase>
+    validate <slug> <artifact>     rules.toml-driven artifact checks
+    next <slug>|--all [--json]     phase -> next-skill resolver
+    status [<slug>] [--json]       read-only report
+
+Exit codes:
+    0   success
+    1   usage / environment error (bad args, missing python floor, not a
+        git repo, missing files that should have been created by `ensure`)
+    2   gate failure (illegal transition, assert mismatch, validate failure,
+        close attempted without APPROVE)
+    3   `next` has no actionable skill (BLOCKED verdict, missing verdict) —
+        distinct from 0 (closed: nothing to do) so drivers can stop looping.
+
+Token approximation: artifact "tokens" are approximated as whitespace-split
+word count (len(text.split())). This is a conservative proxy chosen for
+determinism without a tokenizer dependency (stdlib only) — it is not exact
+LLM-token accounting, just a cheap cap to catch runaway artifacts.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+
+PROG = "lean-spec"
+
+# ---------------------------------------------------------------------------
+# Preflight (CONSTITUTION principle 8: fail loudly, one-line actionable msg)
+# ---------------------------------------------------------------------------
+
+def fail(msg, code=1):
+    sys.stderr.write(f"{PROG}: {msg}\n")
+    sys.exit(code)
+
+
+def check_python_version():
+    if sys.version_info < (3, 11):
+        v = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        fail(f"python3 >= 3.11 required (found {v}) — install a newer python3 and retry", 1)
+
+
+def find_git_root():
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=10,
+        )
+    except FileNotFoundError:
+        fail("git not found on PATH — install git and retry", 1)
+    if out.returncode != 0:
+        fail("not inside a git repo — run lean-spec from within your project's git repository", 1)
+    return out.stdout.strip()
+
+
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+
+def now_iso():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def feature_dir(root, slug):
+    return os.path.join(root, "features", slug)
+
+
+def workflow_path(root, slug):
+    return os.path.join(feature_dir(root, slug), "workflow.json")
+
+
+def atomic_write_json(path, data):
+    """tmp file (same dir, X-suffix per portability convention) + os.replace."""
+    d = os.path.dirname(path)
+    os.makedirs(d, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=".workflowXXXXXX", dir=d)
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2, sort_keys=True)
+            f.write("\n")
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def load_workflow(root, slug, required=True):
+    path = workflow_path(root, slug)
+    if not os.path.isfile(path):
+        if required:
+            fail(f"no such feature '{slug}' (missing {path}) — run `lean-spec ensure {slug}` first", 1)
+        return None
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        fail(f"corrupt workflow.json for '{slug}': {e}", 1)
+
+
+VALID_PHASES = ("specifying", "implementing", "reviewing", "closed")
+ALLOWED_TRANSITIONS = {
+    ("specifying", "implementing"),
+    ("implementing", "reviewing"),
+    ("reviewing", "implementing"),
+    ("reviewing", "closed"),
+}
+
+
+# ---------------------------------------------------------------------------
+# ensure
+# ---------------------------------------------------------------------------
+
+def cmd_ensure(root, args):
+    if len(args) != 1:
+        fail("usage: lean-spec ensure <slug>", 1)
+    slug = args[0]
+    path = workflow_path(root, slug)
+    if os.path.isfile(path):
+        return 0  # idempotent no-op
+    ts = now_iso()
+    data = {
+        "phase": "specifying",
+        "history": [],
+        "created_at": ts,
+        "updated_at": ts,
+    }
+    atomic_write_json(path, data)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# advance
+# ---------------------------------------------------------------------------
+
+def _gate_close_requires_verdict(root, slug):
+    """CONSTITUTION quality bar: close requires verdict == required_verdict
+    (default APPROVE); no manual override path exists. Enforced here (the
+    CLI), never as skill prose logic."""
+    rules = load_rules(root)
+    required = rules["defaults"].get("required_verdict", "APPROVE")
+    review_path = os.path.join(feature_dir(root, slug), "review.md")
+    if not os.path.isfile(review_path):
+        fail(f"cannot close '{slug}': review.md not found — run /lean-spec:review first", 2)
+    with open(review_path) as f:
+        verdict = extract_verdict(f.read())
+    if verdict != required:
+        fail(f"cannot close '{slug}': review.md verdict is '{verdict}', required '{required}'", 2)
+
+
+def cmd_advance(root, args):
+    if len(args) != 3:
+        fail("usage: lean-spec advance <slug> <from> <to>", 1)
+    slug, frm, to = args
+    for p in (frm, to):
+        if p not in VALID_PHASES:
+            fail(f"unknown phase '{p}' — valid phases: {', '.join(VALID_PHASES)}", 1)
+    wf = load_workflow(root, slug)
+    current = wf.get("phase")
+    if current != frm:
+        fail(f"'{slug}' is in phase '{current}', not '{frm}' — cannot advance from '{frm}'", 2)
+    if (frm, to) not in ALLOWED_TRANSITIONS:
+        fail(f"illegal transition '{frm}' -> '{to}' for '{slug}'", 2)
+    if (frm, to) == ("reviewing", "closed"):
+        _gate_close_requires_verdict(root, slug)
+    ts = now_iso()
+    wf["phase"] = to
+    wf["updated_at"] = ts
+    wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
+    path = workflow_path(root, slug)
+    atomic_write_json(path, wf)
+    # post-advance assertion (defensive: re-read from disk)
+    reread = load_workflow(root, slug)
+    if reread.get("phase") != to:
+        fail(f"post-advance assertion failed for '{slug}': expected phase '{to}', found '{reread.get('phase')}'", 2)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# assert
+# ---------------------------------------------------------------------------
+
+def cmd_assert(root, args):
+    if len(args) != 2:
+        fail("usage: lean-spec assert <slug> <phase>", 1)
+    slug, phase = args
+    wf = load_workflow(root, slug)
+    current = wf.get("phase")
+    if current != phase:
+        fail(f"assert failed: '{slug}' phase is '{current}', expected '{phase}'", 2)
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# rules.toml loading (additive: absent file/keys enforce nothing)
+# ---------------------------------------------------------------------------
+
+DEFAULT_RULES = {
+    "defaults": {"tdd": True, "required_verdict": "APPROVE"},
+    "required_sections": {},
+    "max_tokens": {},
+}
+
+
+def load_rules(root):
+    import tomllib
+    path = os.path.join(root, ".lean-spec", "rules.toml")
+    rules = {
+        "defaults": dict(DEFAULT_RULES["defaults"]),
+        "required_sections": {},
+        "max_tokens": {},
+    }
+    if not os.path.isfile(path):
+        return rules
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as e:
+        fail(f"invalid .lean-spec/rules.toml: {e}", 1)
+    rules["defaults"].update(data.get("defaults", {}))
+    rules["required_sections"].update(data.get("required_sections", {}))
+    rules["max_tokens"].update(data.get("max_tokens", {}))
+    return rules
+
+
+VERDICT_RE = re.compile(r"^verdict:\s*(APPROVE|NEEDS_FIXES|BLOCKED)\s*$", re.IGNORECASE)
+
+
+def extract_verdict(text):
+    for line in text.splitlines():
+        m = VERDICT_RE.match(line.strip())
+        if m:
+            return m.group(1).upper()
+    return None
+
+
+def approx_tokens(text):
+    return len(text.split())
+
+
+# Built-in baseline sections for the two project-level docs (docs/PRD.md,
+# docs/CONSTITUTION.md), matching templates/{PRD,CONSTITUTION}.md. These are
+# not part of the per-feature rules.toml surface documented in PRD §7 (which
+# only covers spec.md/notes.md/review.md); the plan skill still needs a CLI
+# check (layer rule: no gate logic in skill prompts), so this baseline
+# applies unconditionally for --project validation and rules.toml may only
+# extend it (never required to define it — zero-config still works).
+PROJECT_DOC_SECTIONS = {
+    "PRD.md": ["Problem & Users", "Features", "Constraints", "Quality Bar", "Non-Goals"],
+    "CONSTITUTION.md": ["Stack", "Principles", "Delegation", "Quality Bars", "Process", "Non-Goals"],
+}
+
+
+def validate_artifact(root, slug, artifact, rules, project=False):
+    """Returns list of error strings; empty list means valid."""
+    errors = []
+    if project:
+        path = os.path.join(root, "docs", artifact)
+    else:
+        path = os.path.join(feature_dir(root, slug), artifact)
+    if not os.path.isfile(path):
+        return [f"{artifact} not found at {path}"]
+    with open(path) as f:
+        text = f.read()
+
+    headings = {
+        line[3:].strip()
+        for line in text.splitlines()
+        if line.startswith("## ")
+    }
+
+    if project:
+        required = list(PROJECT_DOC_SECTIONS.get(artifact, []))
+        for extra in rules["required_sections"].get(artifact, []):
+            if extra not in required:
+                required.append(extra)
+    else:
+        required = list(rules["required_sections"].get(artifact, []))
+        if artifact == "notes.md" and rules["defaults"].get("tdd", True):
+            if "TDD" not in required:
+                required.append("TDD")
+
+    missing = [s for s in required if s not in headings]
+    if missing:
+        errors.append(f"{artifact} missing required section(s): {', '.join(missing)}")
+
+    cap = rules["max_tokens"].get(artifact)
+    if cap is not None:
+        n = approx_tokens(text)
+        if n > cap:
+            errors.append(f"{artifact} exceeds max_tokens cap: {n} > {cap} (approx. word count)")
+
+    if artifact == "review.md":
+        verdict = extract_verdict(text)
+        if verdict is None:
+            errors.append("review.md missing a 'verdict: APPROVE|NEEDS_FIXES|BLOCKED' line")
+
+    return errors
+
+
+def cmd_validate(root, args):
+    if len(args) == 2 and args[0] == "--project":
+        artifact = args[1]
+        rules = load_rules(root)
+        errors = validate_artifact(root, None, artifact, rules, project=True)
+        label = f"docs/{artifact}"
+    elif len(args) == 2:
+        slug, artifact = args
+        rules = load_rules(root)
+        errors = validate_artifact(root, slug, artifact, rules)
+        label = f"{slug}/{artifact}"
+    else:
+        fail("usage: lean-spec validate <slug> <artifact> | validate --project <artifact>", 1)
+    if errors:
+        for e in errors:
+            sys.stderr.write(f"{PROG}: validate: {e}\n")
+        return 2
+    print(f"{PROG}: validate: {label} OK")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# next
+# ---------------------------------------------------------------------------
+
+def resolve_next(root, slug):
+    """Returns dict: {slug, phase, action, skill, reason}."""
+    wf = load_workflow(root, slug)
+    phase = wf.get("phase")
+    result = {"slug": slug, "phase": phase, "action": None, "skill": None, "reason": None}
+    if phase == "specifying":
+        result["action"] = "skill"
+        result["skill"] = "/lean-spec:implement"
+    elif phase == "implementing":
+        result["action"] = "skill"
+        result["skill"] = "/lean-spec:review"
+    elif phase == "reviewing":
+        review_path = os.path.join(feature_dir(root, slug), "review.md")
+        if not os.path.isfile(review_path):
+            result["action"] = "blocked"
+            result["reason"] = "review.md not found"
+        else:
+            with open(review_path) as f:
+                verdict = extract_verdict(f.read())
+            if verdict == "APPROVE":
+                result["action"] = "skill"
+                result["skill"] = "/lean-spec:close"
+            elif verdict == "NEEDS_FIXES":
+                result["action"] = "skill"
+                result["skill"] = "/lean-spec:fix"
+            elif verdict == "BLOCKED":
+                result["action"] = "blocked"
+                result["reason"] = "review.md verdict is BLOCKED — escalate"
+            else:
+                result["action"] = "blocked"
+                result["reason"] = "review.md missing a valid verdict line"
+    elif phase == "closed":
+        result["action"] = "closed"
+    else:
+        result["action"] = "blocked"
+        result["reason"] = f"unknown phase '{phase}'"
+    return result
+
+
+def format_next_text(r):
+    if r["action"] == "skill":
+        return f"{r['skill']} {r['slug']}"
+    if r["action"] == "closed":
+        return f"{r['slug']}: closed — nothing to do"
+    return f"{r['slug']}: blocked — {r['reason']}"
+
+
+def list_feature_slugs(root):
+    features_root = os.path.join(root, "features")
+    if not os.path.isdir(features_root):
+        return []
+    slugs = []
+    for name in sorted(os.listdir(features_root)):
+        if os.path.isfile(os.path.join(features_root, name, "workflow.json")):
+            slugs.append(name)
+    return slugs
+
+
+def cmd_next(root, args):
+    as_json = "--json" in args
+    args = [a for a in args if a != "--json"]
+    if len(args) != 1:
+        fail("usage: lean-spec next <slug>|--all [--json]", 1)
+    target = args[0]
+    if target == "--all":
+        slugs = list_feature_slugs(root)
+        results = [resolve_next(root, s) for s in slugs]
+        if as_json:
+            print(json.dumps(results, indent=2, sort_keys=True))
+        else:
+            if not results:
+                print("no features found")
+            for r in results:
+                print(format_next_text(r))
+        # --all is a report; never fails the invocation on individual blocks
+        return 0
+    r = resolve_next(root, target)
+    if as_json:
+        print(json.dumps(r, indent=2, sort_keys=True))
+    else:
+        print(format_next_text(r))
+    if r["action"] == "blocked":
+        return 3
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# status
+# ---------------------------------------------------------------------------
+
+def feature_status(root, slug):
+    wf = load_workflow(root, slug)
+    info = {
+        "slug": slug,
+        "phase": wf.get("phase"),
+        "created_at": wf.get("created_at"),
+        "updated_at": wf.get("updated_at"),
+        "history_len": len(wf.get("history", [])),
+    }
+    if wf.get("phase") == "reviewing":
+        review_path = os.path.join(feature_dir(root, slug), "review.md")
+        if os.path.isfile(review_path):
+            with open(review_path) as f:
+                info["verdict"] = extract_verdict(f.read())
+        else:
+            info["verdict"] = None
+    return info
+
+
+def cmd_status(root, args):
+    as_json = "--json" in args
+    args = [a for a in args if a != "--json"]
+    if len(args) > 1:
+        fail("usage: lean-spec status [<slug>] [--json]", 1)
+    if args:
+        info = feature_status(root, args[0])
+        if as_json:
+            print(json.dumps(info, indent=2, sort_keys=True))
+        else:
+            for k, v in info.items():
+                print(f"{k}: {v}")
+        return 0
+    slugs = list_feature_slugs(root)
+    infos = [feature_status(root, s) for s in slugs]
+    if as_json:
+        print(json.dumps(infos, indent=2, sort_keys=True))
+    else:
+        if not infos:
+            print("no features found")
+        for info in infos:
+            print(f"{info['slug']}: {info['phase']} (updated {info['updated_at']})")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+COMMANDS = {
+    "ensure": cmd_ensure,
+    "advance": cmd_advance,
+    "assert": cmd_assert,
+    "validate": cmd_validate,
+    "next": cmd_next,
+    "status": cmd_status,
+}
+
+
+def main(argv):
+    check_python_version()
+    if not argv:
+        fail(f"usage: lean-spec <{'|'.join(COMMANDS)}> ...", 1)
+    cmd, rest = argv[0], argv[1:]
+    if cmd in ("-h", "--help"):
+        print(f"usage: lean-spec <{'|'.join(COMMANDS)}> ...")
+        return 0
+    if cmd not in COMMANDS:
+        fail(f"unknown command '{cmd}' — usage: lean-spec <{'|'.join(COMMANDS)}> ...", 1)
+    root = find_git_root()
+    return COMMANDS[cmd](root, rest)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

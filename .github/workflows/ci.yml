@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pin the runner to the declared floor (CONSTITUTION: python3 >= 3.11)
+      # instead of trusting ubuntu-latest's ambient python3, which drifts as
+      # the image changes. Testing on 3.11 exactly also catches accidental
+      # use of newer-than-floor stdlib.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: bash -n over all shell scripts
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r -d '' f; do
+            echo "bash -n $f"
+            bash -n "$f" || fail=1
+          done < <(find . -type f -name '*.sh' -not -path './.tools/*' -print0)
+          exit $fail
+
+      - name: plugin.json is valid JSON
+        run: python3 -m json.tool .claude-plugin/plugin.json > /dev/null
+
+      - name: examples/rules.toml is valid TOML
+        run: python3 -c "import tomllib; tomllib.load(open('examples/rules.toml','rb'))"
+
+      - name: Bootstrap bats-core
+        run: ./scripts/bootstrap-bats.sh
+
+      - name: Run BATS suite
+        run: ./.tools/bin/bats tests/
