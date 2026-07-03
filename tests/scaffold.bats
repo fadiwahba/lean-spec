@@ -95,11 +95,13 @@ print('ok')
 @test "examples/gitignore seeds evidence, secrets, and common-ecosystem artifacts" {
   gi="${LEAN_SPEC_REPO_ROOT}/examples/gitignore"
   [ -f "$gi" ]
-  grep -q 'features/\*/evidence/' "$gi"   # lean-spec
-  grep -qx '.env' "$gi"                    # secrets (constitution mandate)
-  grep -qx 'node_modules/' "$gi"           # Node / React / Vite
-  grep -qx 'dist/' "$gi"                    # build artifacts
-  grep -qx '.next/' "$gi"                   # Next.js
-  grep -qx '__pycache__/' "$gi"            # Python
-  grep -qx '.venv/' "$gi"                   # Python
+  # Fixed-string, whole-line matches (-xF): entries like .env/.next/.venv
+  # contain a literal '.', which regex mode would treat as a wildcard.
+  grep -qxF 'features/*/evidence/' "$gi"   # lean-spec
+  grep -qxF '.env' "$gi"                    # secrets (constitution mandate)
+  grep -qxF 'node_modules/' "$gi"           # Node / React / Vite
+  grep -qxF 'dist/' "$gi"                    # build artifacts
+  grep -qxF '.next/' "$gi"                   # Next.js
+  grep -qxF '__pycache__/' "$gi"            # Python
+  grep -qxF '.venv/' "$gi"                   # Python
 }
