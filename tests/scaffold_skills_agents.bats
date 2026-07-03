@@ -85,6 +85,12 @@ print('ok')
   done
 }
 
+@test "spec skill feeds the architect the delivered ACs of closed slices" {
+  grep -q 'closed slice' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+  grep -qi 'already delivered' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+  grep -qi 'already delivered' "${LEAN_SPEC_REPO_ROOT}/agents/architect.md"
+}
+
 @test "no SKILL.md contains a bash phase-gate block (no fenced bash/sh code)" {
   for name in $SKILL_NAMES; do
     run grep -c '```bash\|```sh' "${LEAN_SPEC_REPO_ROOT}/skills/${name}/SKILL.md"
