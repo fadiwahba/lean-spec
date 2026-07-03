@@ -6,7 +6,6 @@
   <a href="https://github.com/fadiwahba/lean-spec-v4/actions/workflows/ci.yml"><img src="https://github.com/fadiwahba/lean-spec-v4/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-3776AB" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-8A63D2" alt="Claude Code plugin" />
-  <img src="https://img.shields.io/badge/tests-139%20passing-2ea44f" alt="139 tests passing" />
 </p>
 
 <p align="center"><em>A Claude Code plugin that turns AI-assisted development into a disciplined lifecycle the model can't skip its way around.</em></p>
@@ -155,8 +154,9 @@ claude -p "/lean-spec:auto <slug>"          # headless / CI
 See the whole lifecycle run against a throwaway project — real CLI, real hooks, model steps simulated from a fixture so it's fully deterministic:
 
 ```bash
-./scripts/demo.sh            # drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
-.tools/bin/bats tests/       # the full suite (139 tests) incl. the CI-enforced e2e drive
+./scripts/demo.sh            # needs only python3 + git — drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
+scripts/bootstrap-bats.sh    # one-time: vendors bats-core into .tools/ (gitignored)
+.tools/bin/bats tests/       # the full suite, incl. the CI-enforced e2e drive
 ```
 
 Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
