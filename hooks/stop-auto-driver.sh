@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# Stop hook: the shipped `/lean-spec:auto` driver (PRD R4). While
+# .lean-spec/auto.json is present and the feature isn't closed/BLOCKED/capped,
+# block the turn-end with a reason instructing the model to run
+# `bin/lean-spec next <slug>` (and dispatch the resulting skill). Cycle count
+# is mutated atomically (tmp + os.replace), matching the CLI's own state
+# discipline even though this file lives outside features/*/workflow.json.
+set -euo pipefail
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
+
+payload="$(cat)"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+AUTO_PATH="${PROJECT_ROOT}/.lean-spec/auto.json"
+
+stop_hook_active="$(printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except (json.JSONDecodeError, ValueError):
+    data = {}
+print("true" if data.get("stop_hook_active") else "false")
+')"
+
+# Guard against infinite loops: never block again on a stop that is itself
+# the continuation of a previous block from this hook.
+if [ "$stop_hook_active" = "true" ]; then
+  exit 0
+fi
+
+if [ ! -f "$AUTO_PATH" ]; then
+  exit 0
+fi
+
+slug="$(python3 -c '
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        print(json.load(f).get("slug", ""))
+except (OSError, json.JSONDecodeError):
+    print("")
+' "$AUTO_PATH")"
+
+if [ -z "$slug" ]; then
+  rm -f "$AUTO_PATH"
+  exit 0
+fi
+
+set +e
+next_json="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" next "$slug" --json 2>/dev/null)"
+set -e
+
+action="$(printf '%s' "$next_json" | python3 -c 'import json,sys
+try:
+    print(json.load(sys.stdin).get("action",""))
+except Exception:
+    print("")
+' 2>/dev/null || true)"
+
+# Read/update cycle bookkeeping atomically. `chain_all` (set by
+# /lean-spec:auto-all) makes a "closed" outcome pick the next non-closed
+# feature and keep driving, instead of stopping — per PRD R9 / "auto-all
+# drains every non-closed feature, one auto.json at a time". A BLOCKED
+# verdict or the cycle cap always stops the whole chain (CONSTITUTION:
+# "BLOCKED verdicts stop the line and escalate").
+decision="$(python3 - "$AUTO_PATH" "$action" "$PROJECT_ROOT" <<'PYEOF'
+import json
+import os
+import sys
+import tempfile
+
+auto_path, action, project_root = sys.argv[1], sys.argv[2], sys.argv[3]
+
+
+def atomic_write(path, data):
+    d = os.path.dirname(path)
+    fd, tmp_path = tempfile.mkstemp(prefix=".autoXXXXXX", dir=d)
+    with os.fdopen(fd, "w") as f:
+        json.dump(data, f, indent=2, sort_keys=True)
+        f.write("\n")
+    os.replace(tmp_path, path)
+
+
+def next_non_closed_slug(root):
+    features_root = os.path.join(root, "features")
+    if not os.path.isdir(features_root):
+        return None
+    for name in sorted(os.listdir(features_root)):
+        wf_path = os.path.join(features_root, name, "workflow.json")
+        if not os.path.isfile(wf_path):
+            continue
+        try:
+            with open(wf_path) as f:
+                phase = json.load(f).get("phase")
+        except (OSError, json.JSONDecodeError):
+            continue
+        if phase != "closed":
+            return name
+    return None
+
+
+try:
+    with open(auto_path) as f:
+        auto = json.load(f)
+except (OSError, json.JSONDecodeError):
+    print("stop")
+    sys.exit(0)
+
+max_cycles = auto.get("max_cycles", 20)
+cycles = auto.get("cycles", 0)
+
+if action == "blocked" or cycles >= max_cycles:
+    try:
+        os.remove(auto_path)
+    except OSError:
+        pass
+    print("stop")
+    sys.exit(0)
+
+if action == "closed":
+    if auto.get("chain_all"):
+        nxt = next_non_closed_slug(project_root)
+        if nxt is not None:
+            auto["slug"] = nxt
+            auto["cycles"] = 0
+            atomic_write(auto_path, auto)
+            print(f"chained:{nxt}")
+            sys.exit(0)
+    try:
+        os.remove(auto_path)
+    except OSError:
+        pass
+    print("stop")
+    sys.exit(0)
+
+auto["cycles"] = cycles + 1
+atomic_write(auto_path, auto)
+print("continue")
+PYEOF
+)"
+
+if [ "$decision" = "stop" ]; then
+  exit 0
+fi
+
+case "$decision" in
+  chained:*)
+    slug="${decision#chained:}"
+    set +e
+    next_json="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" next "$slug" --json 2>/dev/null)"
+    set -e
+    ;;
+esac
+
+reason="$(printf '%s' "$next_json" | python3 -c '
+import json, sys
+try:
+    r = json.load(sys.stdin)
+except Exception:
+    r = {}
+skill = r.get("skill")
+slug = r.get("slug", "")
+if skill:
+    print(f"lean-spec auto: run `{skill} {slug}` (via bin/lean-spec next {slug}) to continue the lifecycle.")
+else:
+    print(f"lean-spec auto: run \`bin/lean-spec next {slug}\` to determine the next step.")
+')"
+
+python3 -c 'import json, sys; print(json.dumps({"decision": "block", "reason": sys.argv[1]}))' "$reason"
+
+exit 0
