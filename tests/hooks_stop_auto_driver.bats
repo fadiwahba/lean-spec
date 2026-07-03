@@ -46,24 +46,52 @@ EOF
   [ "$output" = "1" ]
 }
 
-@test "respects stop_hook_active to prevent infinite loop (no block)" {
+@test "keeps driving when stop_hook_active is true and auto.json is live (PRD R4)" {
+  # stop_hook_active is true on EVERY stop after the first hook-driven
+  # continuation; exiting on it would cap auto mode at one cycle per user
+  # prompt. The max_cycles cap is the runaway guard, not this flag.
   lean_spec ensure demo
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0}
 EOF
   run driver '{"stop_hook_active": true}'
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  [[ "$output" == *'"decision": "block"'* ]]
+  [[ "$output" == *"/lean-spec:implement demo"* ]]
 }
 
-@test "stop_hook_active guard does not increment cycles" {
+@test "stop_hook_active continuation still increments cycles toward the cap" {
   lean_spec ensure demo
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0}
 EOF
   driver '{"stop_hook_active": true}' >/dev/null
   run python3 -c "import json; print(json.load(open('.lean-spec/auto.json'))['cycles'])"
-  [ "$output" = "0" ]
+  [ "$output" = "1" ]
+}
+
+@test "cycle cap still stops the loop when stop_hook_active is true" {
+  lean_spec ensure demo
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":2,"cycles":2}
+EOF
+  run driver '{"stop_hook_active": true}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f .lean-spec/auto.json ]
+}
+
+@test "disarms and allows stop when next-resolution fails (unknown slug)" {
+  # auto.json points at a feature with no workflow.json: `lean-spec next`
+  # errors, so the driver must disarm loudly instead of burning cycles
+  # blocking on a step it can never resolve.
+  write_auto <<'EOF'
+{"slug":"ghost","gates_on":false,"max_cycles":20,"cycles":0}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'"decision"'* ]]
+  [ ! -f .lean-spec/auto.json ]
 }
 
 @test "stops and removes auto.json once feature is closed" {

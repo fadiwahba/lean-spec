@@ -14,6 +14,10 @@ gate() {
   echo '{}' | bash "${LEAN_SPEC_HOOKS}/subagent-stop-gate.sh"
 }
 
+gate_with() {
+  echo "$1" | bash "${LEAN_SPEC_HOOKS}/subagent-stop-gate.sh"
+}
+
 @test "allows when no features exist at all" {
   run gate
   [ "$status" -eq 0 ]
@@ -92,6 +96,17 @@ gate() {
   echo "verdict: APPROVE" > features/demo/review.md
   lean_spec advance demo reviewing closed
   run gate
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "respects stop_hook_active — does not re-block a hook-driven continuation" {
+  # The gate blocks an invalid artifact once (one retry for the agent); a
+  # continuation that still fails passes through here and is caught by the
+  # phase-gate backstop (CONSTITUTION principle 4). Without this, an agent
+  # that can never satisfy validation would be re-blocked forever.
+  lean_spec ensure demo
+  run gate_with '{"stop_hook_active": true}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
