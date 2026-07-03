@@ -84,9 +84,12 @@ The lifecycle, with its gates:
 lean-spec is a local Claude Code plugin (not yet on a marketplace). Point Claude Code at the repo:
 
 ```bash
-git clone https://github.com/fadiwahba/lean-spec-v4.git
-cd your-project            # the project you want to build, a git repo
-claude --plugin-dir /path/to/lean-spec-v4
+# 1. Get the plugin (clone it anywhere)
+git clone https://github.com/fadiwahba/lean-spec-v4.git ~/tools/lean-spec-v4
+
+# 2. From inside YOUR project (any git repo), launch Claude Code with the plugin
+cd ~/path/to/your-project
+claude --plugin-dir ~/tools/lean-spec-v4
 ```
 
 Then drive the lifecycle from inside Claude Code:
@@ -154,7 +157,7 @@ claude -p "/lean-spec:auto <slug>"          # headless / CI
 See the whole lifecycle run against a throwaway project — real CLI, real hooks, model steps simulated from a fixture so it's fully deterministic:
 
 ```bash
-./scripts/demo.sh            # needs only python3 + git — drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
+./scripts/demo.sh            # needs python3, git, and bash — drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
 scripts/bootstrap-bats.sh    # one-time: vendors bats-core into .tools/ (gitignored)
 .tools/bin/bats tests/       # the full suite, incl. the CI-enforced e2e drive
 ```
@@ -180,6 +183,7 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 
 - **Claude Code** (a recent version; exact floor pinned at release)
 - **Python 3 ≥ 3.11** — stdlib only, no pip packages
+- **bash** — the hooks and scripts are bash
 - **git**
 
 ---
