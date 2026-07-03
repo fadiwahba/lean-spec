@@ -10,24 +10,14 @@ set -euo pipefail
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
 
-payload="$(cat)"
+# Drain stdin; stop_hook_active is deliberately NOT an exit condition here.
+# It is true on every stop after the first hook-driven continuation, so
+# exiting on it would cap auto mode at one cycle per user prompt. PRD R4:
+# block turn-end until closed/BLOCKED/cap — the max_cycles cap (incremented
+# below on every block) is the runaway guard.
+cat >/dev/null || true
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 AUTO_PATH="${PROJECT_ROOT}/.lean-spec/auto.json"
-
-stop_hook_active="$(printf '%s' "$payload" | python3 -c '
-import json, sys
-try:
-    data = json.load(sys.stdin)
-except (json.JSONDecodeError, ValueError):
-    data = {}
-print("true" if data.get("stop_hook_active") else "false")
-')"
-
-# Guard against infinite loops: never block again on a stop that is itself
-# the continuation of a previous block from this hook.
-if [ "$stop_hook_active" = "true" ]; then
-  exit 0
-fi
 
 if [ ! -f "$AUTO_PATH" ]; then
   exit 0
@@ -110,6 +100,16 @@ except (OSError, json.JSONDecodeError):
 max_cycles = auto.get("max_cycles", 20)
 cycles = auto.get("cycles", 0)
 
+if action not in ("skill", "blocked", "closed"):
+    # `lean-spec next` failed or returned garbage — the driver can never
+    # resolve a step, so disarm instead of burning cycles (fail loudly).
+    try:
+        os.remove(auto_path)
+    except OSError:
+        pass
+    print("disarm")
+    sys.exit(0)
+
 if action == "blocked" or cycles >= max_cycles:
     try:
         os.remove(auto_path)
@@ -141,6 +141,11 @@ PYEOF
 )"
 
 if [ "$decision" = "stop" ]; then
+  exit 0
+fi
+
+if [ "$decision" = "disarm" ]; then
+  echo "lean-spec auto: could not resolve next step for '${slug}' — auto mode disarmed" >&2
   exit 0
 fi
 

@@ -8,9 +8,23 @@ set -euo pipefail
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
 
-# consume (and ignore) stdin payload — active feature is resolved from
-# on-disk state, not from the hook payload.
-cat >/dev/null || true
+# Active feature is resolved from on-disk state; the payload is only
+# consulted for stop_hook_active: an invalid artifact is blocked once (one
+# retry for the agent), and a continuation that still fails passes through —
+# the phase gate is the backstop (CONSTITUTION principle 4). Without this,
+# an agent that can never satisfy validation would be re-blocked forever.
+payload="$(cat || true)"
+stop_hook_active="$(python3 -c '
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+except (json.JSONDecodeError, ValueError, IndexError):
+    data = {}
+print("true" if data.get("stop_hook_active") else "false")
+' "$payload")"
+if [ "$stop_hook_active" = "true" ]; then
+  exit 0
+fi
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
