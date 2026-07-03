@@ -98,6 +98,86 @@ claude -p "/lean-spec:auto <slug>"          # headless / CI
 - **Zero-config first run** — no `rules.toml` needed to complete a full cycle; every key is additive.
 - **Dogfooded** — v4's own features are built through the v4 lifecycle as soon as the pipeline stands.
 
+## Demo / end-to-end walkthrough
+
+F9 (PRD §11, M3) proves the deterministic pipeline works end-to-end — the
+harness spine, not a model. Everything below runs the REAL `bin/lean-spec`
+CLI and the REAL hooks against a throwaway project; only the model-authored
+artifacts (the "interview" output, `spec.md`, `notes.md`, `review.md`) are
+simulated from a checked-in fixture, so the walkthrough is fully
+deterministic and needs no API key or live model call.
+
+```
+interview (simulated) → docs/PRD.md + docs/CONSTITUTION.md
+        │
+        ▼
+   ensure <slug>            phase: specifying
+        │  architect writes spec.md (simulated)
+        │  bin/lean-spec validate  → SubagentStop gate → advance
+        ▼
+   implementing              coder writes notes.md + ## TDD evidence (simulated)
+        │  validate → gate → advance
+        ▼
+   reviewing                 reviewer writes review.md, verdict: APPROVE (simulated)
+        │  validate → gate → next → /lean-spec:close
+        ▼
+   closed                    advance reviewing→closed (CLI refuses without verdict: APPROVE)
+```
+
+Run it yourself:
+
+```console
+$ ./scripts/demo.sh
+lean-spec F9 demo — driving 'hello-cli' through the full lifecycle
+temp project: /tmp/lean-spec-demoXXXXXX (removed on exit)
+
+=== init: scaffold .lean-spec/rules.toml + docs/ (as /lean-spec:init would) ===
+...
+=== close: advance reviewing -> closed (CLI enforces verdict: APPROVE) ===
+slug: hello-cli
+phase: closed
+...
+demo complete: 'hello-cli' reached 'closed' via the real CLI + hooks, zero live model calls.
+
+=== bonus: a second slice shows the gates really enforce the lifecycle ===
+-- attempting a hand-edit of workflow.json mid-flow (should be denied) --
+{ "hookSpecificOutput": { ... "permissionDecision": "deny" ... } }
+-- attempting to close with a NEEDS_FIXES verdict (should be rejected) --
+lean-spec: cannot close 'second-slice': review.md verdict is 'NEEDS_FIXES', required 'APPROVE'
+rejected as expected — next step:
+/lean-spec:fix second-slice
+```
+
+The script fails loudly on a missing `python3 >= 3.11` or `git`, creates
+its own `mktemp` temp project, and cleans up on exit — safe to re-run any
+number of times.
+
+The automated, CI-enforced version of the same drive lives in
+[`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats): it exercises the
+identical happy path plus a **negative path** — a `NEEDS_FIXES` verdict
+correctly blocks `advance reviewing closed` and routes `next` to
+`/lean-spec:fix` instead of `/lean-spec:close`, and the `PreToolUse` guard
+denies a hand-edit of `workflow.json` mid-lifecycle — proving the gates
+bite, not just that the happy path runs. Run it with:
+
+```console
+$ .tools/bin/bats tests/e2e_lifecycle.bats
+1..2
+ok 1 e2e: full lifecycle interview(simulated) -> spec -> implement -> review -> closed
+ok 2 e2e negative: NEEDS_FIXES verdict blocks close and routes to fix; hand-edit of workflow.json is denied mid-flow
+```
+
+Both the script and the test source the same fixture content —
+[`tests/fixtures/demo-project/`](tests/fixtures/demo-project/) (a minimal
+`hello-cli` target project: scaffolded `docs/`, one feature slice's
+`spec.md`/`notes.md`/`review.md`) — through the shared helper library
+[`scripts/lib/demo-lifecycle.sh`](scripts/lib/demo-lifecycle.sh), so the
+human-readable walkthrough and the CI-enforced proof can never drift apart.
+
+> **TODO (human):** an asciinema recording or terminal GIF of `./scripts/demo.sh`
+> would make a nicer visual walkthrough than the console transcript above —
+> not yet recorded.
+
 ## Documents
 
 - [`docs/PRD.md`](docs/PRD.md) — **what** we are building: architecture, skill surface, milestones F1–F14, resolved decisions

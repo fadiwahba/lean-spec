@@ -85,6 +85,12 @@ print('ok')
   done
 }
 
+@test "spec skill feeds the architect the delivered ACs of closed slices" {
+  grep -q 'closed slice' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+  grep -qi 'already delivered' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+  grep -qi 'already delivered' "${LEAN_SPEC_REPO_ROOT}/agents/architect.md"
+}
+
 @test "no SKILL.md contains a bash phase-gate block (no fenced bash/sh code)" {
   for name in $SKILL_NAMES; do
     run grep -c '```bash\|```sh' "${LEAN_SPEC_REPO_ROOT}/skills/${name}/SKILL.md"
@@ -127,5 +133,19 @@ print('ok')
   for name in $AGENT_NAMES; do
     run grep -c '## Never does' "${LEAN_SPEC_REPO_ROOT}/agents/${name}.md"
     [ "$output" = "1" ]
+  done
+}
+
+@test "every artifact-writing agent grants a Write tool (not a Bash heredoc)" {
+  # architect->spec.md, coder->notes.md, reviewer->review.md — each writes
+  # exactly one mandatory markdown artifact and must do so via the Write
+  # tool. Falling back to a Bash heredoc is the same anti-pattern the
+  # CONSTITUTION forbids for workflow.json; an agent with no Write tool
+  # cannot produce its artifact cleanly (architect had no Write AND no Bash,
+  # so it could not write its spec at all).
+  for name in $AGENT_NAMES; do
+    run grep -E '^tools:' "${LEAN_SPEC_REPO_ROOT}/agents/${name}.md"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Write"* ]]
   done
 }

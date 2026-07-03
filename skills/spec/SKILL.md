@@ -9,10 +9,12 @@ disable-model-invocation: true
 ## Determine the slug
 
 - **No argument:** dispatch the `architect` agent (Task tool) to read
-  `docs/PRD.md` plus every `features/*/workflow.json` phase (via
-  `bin/lean-spec status`) and propose the *next* slice: a slug and one-line
-  scope. Present the proposal to the user for confirmation before writing
-  anything.
+  `docs/PRD.md`, every `features/*/workflow.json` phase (via
+  `bin/lean-spec status`), **and the `## Acceptance Criteria` of every
+  closed slice's `spec.md`** — then propose the *next* slice (a slug and
+  one-line scope) covering only PRD scope **not already delivered by a
+  closed slice**. Present the proposal to the user for confirmation before
+  writing anything.
 - **`<slug>` given:** spec that named slice directly.
 - **`--refine`:** the slug must already exist and have a `spec.md`; dispatch
   the architect to revise it in place (same slug, same file).
@@ -23,7 +25,9 @@ disable-model-invocation: true
    `specifying` phase if this is a new feature.
 2. Dispatch the `architect` agent via Task, with `docs/CONSTITUTION.md`'s
    content injected into the prompt, plus `docs/PRD.md`, current feature
-   status, and (on `--refine`) the reason for revision. The architect
+   status, **the `## Acceptance Criteria` of every closed slice's `spec.md`
+   (the "already delivered" ledger, so the architect never re-specs shipped
+   work),** and (on `--refine`) the reason for revision. The architect
    writes `features/<slug>/spec.md`.
 3. The `SubagentStop` hook validates `spec.md` automatically the moment
    the architect finishes (early gate). As a backstop, also run:

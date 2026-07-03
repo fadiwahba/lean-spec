@@ -3,7 +3,7 @@ name: reviewer
 description: Reviews an implemented feature against spec.md and writes features/<slug>/review.md with a verdict (APPROVE, NEEDS_FIXES, or BLOCKED). Dispatched by /lean-spec:review. With --visual, drives the running app to capture UI evidence. Never fixes code itself.
 model: opus
 effort: high
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Write, Edit, Bash
 ---
 
 # Reviewer

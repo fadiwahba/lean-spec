@@ -121,7 +121,10 @@ cycles = coerce_int(auto.get("cycles", 0), 0)
 if max_cycles is None or cycles is None:
     # Corrupted/hand-edited auto.json with non-numeric cycle bookkeeping —
     # the driver can never safely compare cycles >= max_cycles, so disarm
-    # instead of raising (fail loudly, don't crash the Stop hook).
+    # instead of raising (fail loudly, do not crash the Stop hook).
+    # NOTE: keep comments in this $()-embedded heredoc free of the
+    # single-quote character; bash 3.2 (macOS /bin/bash) mis-parses one
+    # inside a $(...) body and dies with an EOF-looking-for-quote error.
     try:
         os.remove(auto_path)
     except OSError:
