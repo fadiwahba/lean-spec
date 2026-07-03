@@ -145,6 +145,41 @@ EOF
   [ ! -f .lean-spec/auto.json ]
 }
 
+@test "coerces string-numeric cycles/max_cycles and still blocks and increments" {
+  lean_spec ensure demo
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":"20","cycles":"0"}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"decision": "block"'* ]]
+  [[ "$output" == *"/lean-spec:implement demo"* ]]
+  run python3 -c "import json; print(json.load(open('.lean-spec/auto.json'))['cycles'])"
+  [ "$output" = "1" ]
+}
+
+@test "disarms and removes auto.json when cycles is null (nonsensical)" {
+  lean_spec ensure demo
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":null}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'"decision"'* ]]
+  [ ! -f .lean-spec/auto.json ]
+}
+
+@test "disarms and removes auto.json when max_cycles is garbage text" {
+  lean_spec ensure demo
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":"abc","cycles":0}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'"decision"'* ]]
+  [ ! -f .lean-spec/auto.json ]
+}
+
 @test "chain_all: closing one feature chains to the next non-closed feature" {
   lean_spec ensure demo
   lean_spec ensure second

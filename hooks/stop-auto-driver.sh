@@ -97,8 +97,37 @@ except (OSError, json.JSONDecodeError):
     print("stop")
     sys.exit(0)
 
-max_cycles = auto.get("max_cycles", 20)
-cycles = auto.get("cycles", 0)
+def coerce_int(value, default):
+    """Coerce a cleanly-numeric value (int, float, or numeric string) to
+    int; anything nonsensical (None, "abc", non-numeric types) returns
+    None so the caller can disarm instead of crashing on comparison."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+max_cycles = coerce_int(auto.get("max_cycles", 20), 20)
+cycles = coerce_int(auto.get("cycles", 0), 0)
+
+if max_cycles is None or cycles is None:
+    # Corrupted/hand-edited auto.json with non-numeric cycle bookkeeping —
+    # the driver can never safely compare cycles >= max_cycles, so disarm
+    # instead of raising (fail loudly, don't crash the Stop hook).
+    try:
+        os.remove(auto_path)
+    except OSError:
+        pass
+    print("disarm")
+    sys.exit(0)
 
 if action not in ("skill", "blocked", "closed"):
     # `lean-spec next` failed or returned garbage — the driver can never
