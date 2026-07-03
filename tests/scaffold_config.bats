@@ -39,6 +39,11 @@ print('ok')
   grep -q 'bats tests/' "${LEAN_SPEC_REPO_ROOT}/.github/workflows/ci.yml"
 }
 
-@test "CI workflow checks python3 >= 3.11" {
-  grep -q '3, 11' "${LEAN_SPEC_REPO_ROOT}/.github/workflows/ci.yml"
+@test "CI workflow pins the runner Python to the 3.11 floor via setup-python" {
+  # Pin the runner rather than assert on ubuntu-latest's ambient python3,
+  # which drifts as the image changes (mirrors the bats-core version pin).
+  # Testing on the declared floor (3.11) also catches accidental use of
+  # newer-than-floor stdlib.
+  grep -q 'setup-python' "${LEAN_SPEC_REPO_ROOT}/.github/workflows/ci.yml"
+  grep -q "3.11" "${LEAN_SPEC_REPO_ROOT}/.github/workflows/ci.yml"
 }

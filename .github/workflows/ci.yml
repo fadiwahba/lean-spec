@@ -10,8 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check python3 >= 3.11
-        run: python3 -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+      # Pin the runner to the declared floor (CONSTITUTION: python3 >= 3.11)
+      # instead of trusting ubuntu-latest's ambient python3, which drifts as
+      # the image changes. Testing on 3.11 exactly also catches accidental
+      # use of newer-than-floor stdlib.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: bash -n over all shell scripts
         run: |
