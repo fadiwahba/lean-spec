@@ -6,25 +6,38 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Enforce the CONSTITUTION's "macOS + Linux portable" bar in CI. macOS
+    # ships bash 3.2.57 as /bin/bash, whose $(...) parser is stricter than
+    # bash 5.x on ubuntu — a portability gap that is invisible on Linux alone.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       # Pin the runner to the declared floor (CONSTITUTION: python3 >= 3.11)
-      # instead of trusting ubuntu-latest's ambient python3, which drifts as
-      # the image changes. Testing on 3.11 exactly also catches accidental
-      # use of newer-than-floor stdlib.
+      # instead of trusting the image's ambient python3, which drifts as the
+      # image changes. Testing on 3.11 exactly also catches accidental use of
+      # newer-than-floor stdlib.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: bash -n over all shell scripts
+      # Parse every script with the platform's SYSTEM /bin/bash. On macOS that
+      # is bash 3.2.57 — this deterministically catches 3.2-only syntax errors
+      # (e.g. a single-quote in a comment inside a $(...) body) that bash 5.x
+      # accepts. This is the check that would have caught the stop-auto-driver
+      # regression before it shipped.
+      - name: bash -n over all shell scripts (system /bin/bash)
         run: |
           set -euo pipefail
+          /bin/bash --version | head -1
           fail=0
           while IFS= read -r -d '' f; do
             echo "bash -n $f"
-            bash -n "$f" || fail=1
+            /bin/bash -n "$f" || fail=1
           done < <(find . -type f -name '*.sh' -not -path './.tools/*' -print0)
           exit $fail
 
