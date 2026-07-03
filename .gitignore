@@ -7,3 +7,6 @@ features/*/evidence/
 # backups & scratch
 *.bak
 tmp/
+
+# vendored test harness — bootstrapped by scripts/bootstrap-bats.sh
+.tools/

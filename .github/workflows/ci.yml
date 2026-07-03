@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check python3 >= 3.11
+        run: python3 -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+
+      - name: bash -n over all shell scripts
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r -d '' f; do
+            echo "bash -n $f"
+            bash -n "$f" || fail=1
+          done < <(find . -type f -name '*.sh' -not -path './.tools/*' -print0)
+          exit $fail
+
+      - name: plugin.json is valid JSON
+        run: python3 -m json.tool .claude-plugin/plugin.json > /dev/null
+
+      - name: examples/rules.toml is valid TOML
+        run: python3 -c "import tomllib; tomllib.load(open('examples/rules.toml','rb'))"
+
+      - name: Bootstrap bats-core
+        run: ./scripts/bootstrap-bats.sh
+
+      - name: Run BATS suite
+        run: ./.tools/bin/bats tests/
