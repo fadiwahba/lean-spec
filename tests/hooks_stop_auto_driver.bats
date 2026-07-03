@@ -216,17 +216,14 @@ EOF
   [ ! -f .lean-spec/auto.json ]
 }
 
-@test "chain_all: fallback reason (no skill) uses plain backticks with no backslash" {
-  # Reachable path for the skill-less fallback branch in the Python reason
-  # printer: after a chain_all "closed" -> chained hop, the driver re-runs
-  # `lean-spec next` on the newly chained slug WITHOUT re-checking its
-  # action against blocked/closed (see the `chained:*)` case in
-  # stop-auto-driver.sh). If the chained-to feature resolves to a
-  # "blocked" action (e.g. it's in "reviewing" with no review.md yet), the
-  # reason JSON has skill=null and the fallback string prints. Verify it
-  # renders with plain backticks and no stray backslashes (PR review
-  # finding: `\`` is not a Python escape, so the backslashes were leaking
-  # into the user-facing reason).
+@test "chain_all: chaining to a blocked feature stops the chain and escalates" {
+  # After a chain_all "closed" -> chained hop, the driver re-resolves
+  # `lean-spec next` on the newly chained slug and must re-check its action.
+  # A chained-to feature that is not actionable (here "second" is in
+  # "reviewing" with no review.md, so `next` -> action "blocked") stops the
+  # whole chain and disarms auto mode — per the CONSTITUTION ("BLOCKED
+  # verdicts stop the line and escalate") — instead of emitting a block
+  # round pointing at a step that cannot run.
   lean_spec ensure demo
   lean_spec ensure second
   lean_spec advance demo specifying implementing
@@ -236,17 +233,23 @@ EOF
   lean_spec advance demo reviewing closed
   lean_spec advance second specifying implementing
   lean_spec advance second implementing reviewing
-  # No features/second/review.md written: `lean-spec next second` resolves
-  # to action "blocked" (skill is null), which is what the bash driver's
-  # post-chain re-resolution does not guard against.
+  # No features/second/review.md: `lean-spec next second` -> action "blocked".
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":3,"chain_all":true}
 EOF
   run driver '{}'
   [ "$status" -eq 0 ]
-  [[ "$output" == *'"decision": "block"'* ]]
-  [[ "$output" == *'run `bin/lean-spec next second` to determine the next step.'* ]]
-  [[ "$output" != *'\'* ]]
+  [[ "$output" != *'"decision"'* ]]
+  [ ! -f .lean-spec/auto.json ]
+}
+
+@test "block reason contains no stray backslash-backtick (regression guard)" {
+  # `\`` is not a Python escape; leaving it in the reason f-strings leaked
+  # literal backslashes into the user-facing block reason. Guard statically
+  # so the fix holds even though the defensive fallback branch is no longer
+  # reachable on the happy path (chained-to-blocked now stops the chain).
+  run grep -F '\`' "${LEAN_SPEC_HOOKS}/stop-auto-driver.sh"
+  [ "$status" -ne 0 ]
 }
 
 @test "chain_all: a BLOCKED verdict stops the whole chain (does not skip to next feature)" {

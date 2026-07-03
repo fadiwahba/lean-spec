@@ -184,6 +184,23 @@ case "$decision" in
     set +e
     next_json="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" next "$slug" --json 2>/dev/null)"
     set -e
+    # Re-check the chained-to feature. auto.json was already repointed to it
+    # by the Python block, but "next non-closed" is not the same as
+    # "actionable": only a "skill" action drives. A blocked (or unresolved)
+    # chained feature stops the whole chain and disarms auto mode — per the
+    # CONSTITUTION ("BLOCKED verdicts stop the line and escalate") — rather
+    # than emitting a block round that points at a step which cannot run.
+    chained_action="$(printf '%s' "$next_json" | python3 -c 'import json,sys
+try:
+    print(json.load(sys.stdin).get("action",""))
+except Exception:
+    print("")
+' 2>/dev/null || true)"
+    if [ "$chained_action" != "skill" ]; then
+      rm -f "$AUTO_PATH"
+      echo "lean-spec auto: chained feature '${slug}' is not actionable (${chained_action:-unresolved}) — auto mode stopped, escalate" >&2
+      exit 0
+    fi
     ;;
 esac
 
@@ -198,6 +215,9 @@ slug = r.get("slug", "")
 if skill:
     print(f"lean-spec auto: run `{skill} {slug}` (via bin/lean-spec next {slug}) to continue the lifecycle.")
 else:
+    # Defensive: the driver now only reaches this printer for an actionable
+    # ("skill") feature, so skill is normally set. This fallback keeps the
+    # hook from emitting a broken reason if next-resolution ever regresses.
     print(f"lean-spec auto: run `bin/lean-spec next {slug}` to determine the next step.")
 ')"
 
