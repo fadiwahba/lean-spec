@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# lean-spec review evidence (local audit aid — review.md citations are the durable record)
+features/*/evidence/
+
+# backups & scratch
+*.bak
+tmp/
