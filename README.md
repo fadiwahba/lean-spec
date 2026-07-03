@@ -1,89 +1,148 @@
 <p align="center">
-  <img src="images/logo-trans.svg" alt="lean-spec" width="360" />
+  <img src="images/header.svg" alt="lean-spec — deterministic, spec-driven development for Claude Code" width="880" />
 </p>
 
-<h1 align="center">lean-spec v4</h1>
+<p align="center">
+  <a href="https://github.com/fadiwahba/lean-spec-v4/actions/workflows/ci.yml"><img src="https://github.com/fadiwahba/lean-spec-v4/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/python-3.11%2B-3776AB" alt="Python 3.11+" />
+  <img src="https://img.shields.io/badge/Claude%20Code-plugin-8A63D2" alt="Claude Code plugin" />
+  <img src="https://img.shields.io/badge/tests-139%20passing-2ea44f" alt="139 tests passing" />
+</p>
 
-<p align="center"><strong>Deterministic, spec-driven development for Claude Code.</strong><br/>
-One phase, one owner, one artifact, one gate — enforced by the harness, not by prompt obedience.</p>
-
-<p align="center"><code>Status: design approved · implementation starting · nothing installable yet</code></p>
+<p align="center"><em>A Claude Code plugin that turns AI-assisted development into a disciplined lifecycle the model can't skip its way around.</em></p>
 
 ---
 
-## What it is
+## What is lean-spec?
 
-lean-spec is a Claude Code plugin that turns daily software work into a disciplined lifecycle:
+**lean-spec** gives your AI coding agent a rulebook it has to follow.
 
-```
-(first run)   init → plan (interview → PRD + CONSTITUTION)
-(per feature) spec → implement (TDD) → review → fix → review → close
-```
-
-Every phase is owned by a configured agent (model + effort per phase), produces a mandatory validated artifact, and advances through a state machine the model **cannot bypass** — hooks block direct state edits, artifact gates block empty work, and a verdict gate blocks closing anything a reviewer didn't approve.
-
-## Why v4
-
-v4 is a greenfield rebuild of [lean-spec v3](https://github.com/fadiwahba/lean-spec)'s proven concept on a stricter architecture:
-
-| | v3 | v4 |
-|---|---|---|
-| Gate logic | bash duplicated across 16 command files | one state CLI (`bin/lean-spec`), hooks own all gates |
-| Plugin surface | `commands/` (deprecated) | `skills/` (model-invocable, `/loop`-schedulable) |
-| Spec strategy | decompose PRD into all specs upfront | **one spec at a time**, next slice derived from PRD + what's closed |
-| Providers | hand-ported command copies (Gemini TOML, OpenCode, Codex) | Claude-only 1.0; external CLIs later as thin headless adapters |
-| Config | YAML (no stdlib parser) | **TOML** (`tomllib`, comments) for config · JSON for state |
-| TDD | none | default ON — RED/GREEN commits + evidence gate |
-| Autonomy | prompt-protocol driver loop | **Stop-hook driver** (deterministic JSON check); `/goal` & `/loop` recipes |
-
-## The three layers
+Instead of asking Claude to "build a feature" and hoping it plans, tests, and reviews along the way, lean-spec runs every feature through a fixed lifecycle:
 
 ```
-bin/lean-spec     MUTATES   — the only writer of workflow.json (ensure/advance/assert/validate/next/status)
-hooks/            ENFORCES  — PreToolUse guard · SubagentStop artifact gates · Stop auto-driver
-skills/           DESCRIBES — thin prompts that dispatch agents; zero gate logic lives here
+init → plan → spec → implement → review → close
+ └ once ┘      └────── repeat per feature ──────┘
 ```
 
-A skill instruction the model ignores can never corrupt state, because state and gates don't live in skills.
+Each phase has **one owner** (a specific model + effort level), produces **one mandatory artifact** (a validated markdown file), and passes through **one gate** before the next phase can start. The rules aren't polite suggestions in a prompt — they're enforced by the harness: a state machine, file-write guards, and validation hooks that **block** the model when it tries to cut a corner.
 
-## Agent delegation (defaults)
+The result: a repeatable, auditable trail for every change, where `git log` and the `features/` folder tell the whole story.
 
-| Phase | Agent | Model · effort |
-|---|---|---|
-| plan (interview) | session model | — |
-| spec | architect | Opus 4.8 · xhigh |
-| implement / fix | coder | Sonnet 5 · high · **TDD** |
-| review | reviewer | Opus 4.8 · high (switchable to Sonnet 5) |
+## Why it exists
 
-All overridable per project in `.lean-spec/rules.toml`:
+AI agents are fast but undisciplined. Left to a single prompt, they'll skip the plan, write code before tests, mark their own work "done," and leave you reconstructing what happened. Prompt instructions like *"always write tests first"* fail the moment the model forgets — and a skipped step is a gate that never ran.
+
+lean-spec makes discipline **structural instead of aspirational**:
+
+- **The model can't bypass the process** — phase transitions live in a state CLI and are guarded by hooks, not in prose the model can ignore.
+- **The right model does each job** — cheap models code, stronger models spec and review, all configurable per phase.
+- **Every step leaves evidence** — a spec, TDD run output, a review verdict — committed as you go.
+- **Reviews actually gate** — a feature can't close unless a reviewer (a *different* model than the coder) approves it.
+
+## How it works
+
+Three layers with strictly separated jobs — this is the load-bearing idea:
+
+```
+skills/       DESCRIBE   thin prompts that dispatch agents · zero gate logic
+hooks/        ENFORCE    block workflow.json edits · gate artifacts · drive auto mode
+bin/lean-spec MUTATE     the only thing allowed to write workflow.json
+```
+
+A skill instruction the model ignores can never corrupt state, because **state and gates don't live in skills.** Skills just describe work and hand it to an agent; hooks enforce the rules; the CLI is the single source of truth for where each feature is in its lifecycle.
+
+The lifecycle, with its gates:
+
+```
+   /lean-spec:spec          architect writes spec.md        ─┐
+        │                   (Scope · ACs · Guardrails)       │ validated
+        ▼                                                    │ at every
+   /lean-spec:implement     coder writes code + tests        │ SubagentStop
+        │                   RED → GREEN, evidence in notes.md │ AND at the
+        ▼                                                    │ phase gate
+   /lean-spec:review        reviewer writes review.md ───────┤
+        │                   verdict: APPROVE│NEEDS_FIXES│BLOCKED
+        │                        │
+        │   NEEDS_FIXES ──► /lean-spec:fix ──► back to review
+        ▼
+   /lean-spec:close         refuses unless verdict == APPROVE
+```
+
+## Features
+
+- 🔒 **Bypass-proof lifecycle** — hooks block direct state edits and empty artifacts; the model literally can't skip or fake a phase.
+- 🎯 **Right model per phase** — spec on Opus, code on Sonnet, review on Opus (or any mix), set in one config file.
+- 🧪 **TDD by default** — RED then GREEN, both runs captured as evidence; `review` is blocked without it. Opt out per-feature with `--no-tdd`.
+- 📝 **Artifacts as the audit trail** — `spec.md`, `notes.md`, `review.md` per feature; the whole history is in `git log`.
+- 🧭 **One spec at a time** — the next slice is derived from the PRD plus what's already shipped, so specs never go stale from being written too early.
+- 🖼️ **Visual reviews** — `review --visual` drives the running app via Playwright and captures UI evidence for design specs.
+- 🤖 **Hands-free autonomy** — a Stop-hook driver runs a feature (or all of them) to done with no babysitting.
+- 💥 **Fail-loud** — every entry point preflights its environment and exits with a one-line, actionable error. No silent fallbacks.
+- 🪶 **No runtime dependencies** — pure `python3` stdlib (≥ 3.11) + bash. No Node, no pip, no `jq`/`yq`, no YAML.
+
+## Getting started
+
+lean-spec is a local Claude Code plugin (not yet on a marketplace). Point Claude Code at the repo:
+
+```bash
+git clone https://github.com/fadiwahba/lean-spec-v4.git
+cd your-project            # the project you want to build, a git repo
+claude --plugin-dir /path/to/lean-spec-v4
+```
+
+Then drive the lifecycle from inside Claude Code:
+
+```
+/lean-spec:init                  scaffold .lean-spec/, docs/, features/, .gitignore  (run once)
+/lean-spec:plan "<your idea>"    short interview → docs/PRD.md + docs/CONSTITUTION.md
+/lean-spec:spec                  architect proposes & specs the NEXT slice
+/lean-spec:implement <slug>      coder implements it, RED → GREEN TDD
+/lean-spec:review <slug>         reviewer gives a verdict  (--visual for UI specs)
+/lean-spec:fix <slug>            address NEEDS_FIXES, loop back to review
+/lean-spec:close <slug>          APPROVE-gated — closes the feature
+/lean-spec:next · :status        read-only: where am I, what's next
+```
+
+Repeat `spec → implement → review → close` for each feature. That's the whole loop.
+
+## Configuration
+
+Everything is optional — a zero-config project completes a full cycle. Tune per project in `.lean-spec/rules.toml`:
 
 ```toml
-[agents]
+[agents]                                 # who runs each phase
 spec      = { model = "opus",   effort = "xhigh" }
 implement = { model = "sonnet", effort = "high" }
-review    = { model = "opus",   effort = "high" }
+review    = { model = "opus",   effort = "high" }   # switch to "sonnet" to cut cost
 
 [defaults]
-tdd = true
-constitution = "docs/CONSTITUTION.md"
+tdd = true                               # RED/GREEN enforced; false or --no-tdd to opt out
+required_verdict = "APPROVE"             # what `close` demands
+
+[required_sections]                      # additive artifact checks
+"spec.md"   = ["Scope", "Acceptance Criteria", "Out of Scope", "Coder Guardrails"]
+"review.md" = ["Verdict", "Spec Compliance", "Code Quality"]
 ```
 
-## Planned command surface (1.0)
+## Who does what
+
+| Phase | Owner | Default model · effort | Writes |
+|---|---|---|---|
+| plan | your session | — | `PRD.md`, `CONSTITUTION.md` |
+| spec | **architect** | Opus 4.8 · xhigh | `spec.md` |
+| implement / fix | **coder** | Sonnet 5 · high · **TDD** | `notes.md` (+ TDD evidence) |
+| review | **reviewer** | Opus 4.8 · high | `review.md` (+ verdict) |
+
+The coder is always reviewed by a *different* model family — no rubber-stamping your own work.
+
+## Hands-free mode
 
 ```
-/lean-spec:init                    scaffold config, docs/, features/ (fail-loud preflight)
-/lean-spec:plan "<idea>"           interview → docs/PRD.md + docs/CONSTITUTION.md
-/lean-spec:spec                    architect proposes & specs the NEXT slice (or: spec <slug>)
-/lean-spec:implement <slug>        coder implements, RED→GREEN TDD (--no-tdd to opt out)
-/lean-spec:review <slug>           reviewer → verdict; --visual = Playwright evidence for UI specs
-/lean-spec:fix <slug>              NEEDS_FIXES loop
-/lean-spec:close <slug>            APPROVE-gated close
-/lean-spec:auto <slug>             hands-free: Stop hook drives phases until closed
-/lean-spec:auto-all                drain every non-closed feature
-/lean-spec:next · status           read-only navigation
+/lean-spec:auto <slug>        drive one feature to closed; a Stop hook runs each phase
+/lean-spec:auto-all           drain every open feature, one at a time
 ```
 
-Autonomy alternatives using Claude Code built-ins (no plugin code involved):
+Or use Claude Code built-ins directly — no plugin code involved:
 
 ```
 /goal features/<slug>/workflow.json has "phase": "closed", or stop after 20 turns
@@ -91,114 +150,38 @@ Autonomy alternatives using Claude Code built-ins (no plugin code involved):
 claude -p "/lean-spec:auto <slug>"          # headless / CI
 ```
 
-## Design principles
+## Try the demo (no API key needed)
 
-- **Fail loudly** — every entry point preflights its environment (python3 ≥ 3.11, Claude Code version floor, git repo) and exits with a one-line actionable error. No silent fallbacks.
-- **Artifacts are the audit trail** — `spec.md`, `notes.md` (with TDD evidence), `review.md` (with verdict); `git log` tells the whole story.
-- **Zero-config first run** — no `rules.toml` needed to complete a full cycle; every key is additive.
-- **Dogfooded** — v4's own features are built through the v4 lifecycle as soon as the pipeline stands.
+See the whole lifecycle run against a throwaway project — real CLI, real hooks, model steps simulated from a fixture so it's fully deterministic:
 
-## Demo / end-to-end walkthrough
-
-F9 (PRD §11, M3) proves the deterministic pipeline works end-to-end — the
-harness spine, not a model. Everything below runs the REAL `bin/lean-spec`
-CLI and the REAL hooks against a throwaway project; only the model-authored
-artifacts (the "interview" output, `spec.md`, `notes.md`, `review.md`) are
-simulated from a checked-in fixture, so the walkthrough is fully
-deterministic and needs no API key or live model call.
-
-```
-interview (simulated) → docs/PRD.md + docs/CONSTITUTION.md
-        │
-        ▼
-   ensure <slug>            phase: specifying
-        │  architect writes spec.md (simulated)
-        │  bin/lean-spec validate  → SubagentStop gate → advance
-        ▼
-   implementing              coder writes notes.md + ## TDD evidence (simulated)
-        │  validate → gate → advance
-        ▼
-   reviewing                 reviewer writes review.md, verdict: APPROVE (simulated)
-        │  validate → gate → next → /lean-spec:close
-        ▼
-   closed                    advance reviewing→closed (CLI refuses without verdict: APPROVE)
+```bash
+./scripts/demo.sh            # drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
+.tools/bin/bats tests/       # the full suite (139 tests) incl. the CI-enforced e2e drive
 ```
 
-Run it yourself:
+Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
 
-```console
-$ ./scripts/demo.sh
-lean-spec F9 demo — driving 'hello-cli' through the full lifecycle
-temp project: /tmp/lean-spec-demoXXXXXX (removed on exit)
+## Documentation
 
-=== init: scaffold .lean-spec/rules.toml + docs/ (as /lean-spec:init would) ===
-...
-=== close: advance reviewing -> closed (CLI enforces verdict: APPROVE) ===
-slug: hello-cli
-phase: closed
-...
-demo complete: 'hello-cli' reached 'closed' via the real CLI + hooks, zero live model calls.
-
-=== bonus: a second slice shows the gates really enforce the lifecycle ===
--- attempting a hand-edit of workflow.json mid-flow (should be denied) --
-{ "hookSpecificOutput": { ... "permissionDecision": "deny" ... } }
--- attempting to close with a NEEDS_FIXES verdict (should be rejected) --
-lean-spec: cannot close 'second-slice': review.md verdict is 'NEEDS_FIXES', required 'APPROVE'
-rejected as expected — next step:
-/lean-spec:fix second-slice
-```
-
-The script fails loudly on a missing `python3 >= 3.11` or `git`, creates
-its own `mktemp` temp project, and cleans up on exit — safe to re-run any
-number of times.
-
-The automated, CI-enforced version of the same drive lives in
-[`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats): it exercises the
-identical happy path plus a **negative path** — a `NEEDS_FIXES` verdict
-correctly blocks `advance reviewing closed` and routes `next` to
-`/lean-spec:fix` instead of `/lean-spec:close`, and the `PreToolUse` guard
-denies a hand-edit of `workflow.json` mid-lifecycle — proving the gates
-bite, not just that the happy path runs. Run it with:
-
-```console
-$ .tools/bin/bats tests/e2e_lifecycle.bats
-1..2
-ok 1 e2e: full lifecycle interview(simulated) -> spec -> implement -> review -> closed
-ok 2 e2e negative: NEEDS_FIXES verdict blocks close and routes to fix; hand-edit of workflow.json is denied mid-flow
-```
-
-Both the script and the test source the same fixture content —
-[`tests/fixtures/demo-project/`](tests/fixtures/demo-project/) (a minimal
-`hello-cli` target project: scaffolded `docs/`, one feature slice's
-`spec.md`/`notes.md`/`review.md`) — through the shared helper library
-[`scripts/lib/demo-lifecycle.sh`](scripts/lib/demo-lifecycle.sh), so the
-human-readable walkthrough and the CI-enforced proof can never drift apart.
-
-> **TODO (human):** an asciinema recording or terminal GIF of `./scripts/demo.sh`
-> would make a nicer visual walkthrough than the console transcript above —
-> not yet recorded.
-
-## Documents
-
-- [`docs/PRD.md`](docs/PRD.md) — **what** we are building: architecture, skill surface, milestones F1–F14, resolved decisions
-- [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) — **how** we build it: stack, invariants, delegation ladder, TDD policy, quality bars
+- [`docs/PRD.md`](docs/PRD.md) — **what** we're building: architecture, skill surface, milestones, decisions.
+- [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) — **how** we build it: stack, invariants, delegation ladder, TDD policy, quality bars.
 
 ## Roadmap
 
 | Milestone | Scope | Status |
 |---|---|---|
-| M0 | scaffold, BATS harness, CI | next |
-| M1 | state CLI + enforcement hooks | — |
-| M2 | lifecycle skills + agents | — |
-| M3 | e2e demo, headless CI smoke, marketplace publish, final ship review → **1.0** | — |
-| M5 | external provider adapters (Gemini / OpenCode / Codex), telemetry | post-1.0 |
+| M0 | scaffold · BATS harness · CI | ✅ done |
+| M1 | state CLI + enforcement hooks | ✅ done |
+| M2 | lifecycle skills + agents | ✅ done |
+| M3 | e2e demo ✅ · headless CI smoke · marketplace publish · ship review → **1.0** | 🚧 in progress |
+| M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
 
 ## Requirements
 
-- Claude Code (version floor pinned at F11)
-- Python 3 ≥ 3.11 (stdlib only — no pip packages)
-- git
+- **Claude Code** (a recent version; exact floor pinned at release)
+- **Python 3 ≥ 3.11** — stdlib only, no pip packages
+- **git**
 
 ---
 
-<p align="center"><sub>lean-spec — for solos & small teams who want their AI agents disciplined.</sub></p>
+<p align="center"><sub><strong>lean-spec</strong> — for solo devs & small teams who want their AI agents disciplined.</sub></p>
