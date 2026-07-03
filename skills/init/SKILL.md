@@ -1,6 +1,6 @@
 ---
 name: init
-description: One-time project bootstrap for lean-spec — scaffolds .lean-spec/rules.toml, docs/, features/, and the evidence .gitignore entry. Fail-loud preflight; idempotent (safe to re-run).
+description: One-time project bootstrap for lean-spec — scaffolds .lean-spec/rules.toml, docs/, features/, and a multi-ecosystem .gitignore. Fail-loud preflight; idempotent (safe to re-run).
 disable-model-invocation: true
 ---
 
@@ -31,8 +31,15 @@ safe to re-run (idempotent — never overwrites existing files).
    absent (features are created individually by `/lean-spec:spec` via
    `bin/lean-spec ensure <slug>`; nothing to pre-populate here).
 
-5. **`.gitignore`** — ensure a line matching `features/*/evidence/` is
-   present; append it if missing. Never duplicate an existing entry.
+5. **`.gitignore`** — ensure the project ignores build artifacts,
+   dependency directories, and secrets across common ecosystems
+   (Node/React/Vite, Next.js, Python) plus the lean-spec
+   `features/*/evidence/` evidence dir, so the coder never has to touch
+   `.gitignore` (a spec Coder Guardrail) whatever the stack. Merge the
+   plugin's `examples/gitignore` into the project's `.gitignore`: create
+   it from the template if absent; otherwise, for each non-comment,
+   non-blank line in the template, append it only if that exact entry is
+   not already present. Never duplicate an existing entry.
 
 6. **Report** what was created vs. already present, then tell the user to
    run `/lean-spec:plan` next.

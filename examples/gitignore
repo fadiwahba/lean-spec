@@ -1,0 +1,35 @@
+# Seeded by /lean-spec:init. Covers common ecosystems so the coder never has
+# to touch .gitignore (a spec Coder Guardrail). Add project-specific entries below.
+
+# lean-spec: --visual review evidence (local audit aid, not the durable record)
+features/*/evidence/
+
+# Secrets — never commit (see CONSTITUTION)
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# Node / JS / TS / React / Vite
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
