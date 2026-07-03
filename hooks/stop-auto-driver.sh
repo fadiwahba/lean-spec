@@ -198,7 +198,7 @@ slug = r.get("slug", "")
 if skill:
     print(f"lean-spec auto: run `{skill} {slug}` (via bin/lean-spec next {slug}) to continue the lifecycle.")
 else:
-    print(f"lean-spec auto: run \`bin/lean-spec next {slug}\` to determine the next step.")
+    print(f"lean-spec auto: run `bin/lean-spec next {slug}` to determine the next step.")
 ')"
 
 python3 -c 'import json, sys; print(json.dumps({"decision": "block", "reason": sys.argv[1]}))' "$reason"
