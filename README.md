@@ -79,7 +79,7 @@ The lifecycle, with its gates:
 - 🖼️ **Visual reviews** — `review --visual` drives the running app via Playwright and captures UI evidence for design specs.
 - 🤖 **Hands-free autonomy** — a Stop-hook driver runs a feature (or all of them) to done with no babysitting.
 - 💥 **Fail-loud** — every entry point preflights its environment and exits with a one-line, actionable error. No silent fallbacks.
-- 🪶 **No runtime dependencies** — pure `python3` stdlib (≥ 3.11) + bash. No Node, no pip, no `jq`/`yq`, no YAML.
+- 🪶 **A dependency-free core** — the harness is pure `python3` stdlib (≥ 3.11) + bash: no Node, no pip, no `jq`/`yq`, no YAML. (Only the optional `review --visual` step reaches for extra tooling — Playwright/Chrome.)
 
 ## Getting started
 
