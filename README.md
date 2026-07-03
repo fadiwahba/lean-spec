@@ -8,6 +8,8 @@
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-8A63D2" alt="Claude Code plugin" />
 </p>
 
+<h1 align="center">lean-spec</h1>
+
 <p align="center"><em>A Claude Code plugin that turns AI-assisted development into a disciplined lifecycle the model can't skip its way around.</em></p>
 
 ---
