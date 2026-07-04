@@ -188,3 +188,17 @@ print('ok')
 "
   [ "$output" = "ok" ]
 }
+
+@test "e2e negative: spec preflight refuses placeholder project docs" {
+  # Exactly what /lean-spec:init leaves behind — no simulated /plan fill —
+  # proving the /lean-spec:spec preflight would stop the flow here.
+  mkdir -p docs
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" docs/PRD.md
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" docs/CONSTITUTION.md
+
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 2 ]
+
+  lean_spec validate --project CONSTITUTION.md
+  [ "$status" -eq 2 ]
+}

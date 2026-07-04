@@ -316,6 +316,31 @@ def approx_tokens(text):
     return len(text.split())
 
 
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def _section_bodies(text):
+    """Map '## heading' -> raw body text beneath it (up to the next '## ').
+    Used only for project-doc placeholder detection."""
+    bodies, current, buf = {}, None, []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if current is not None:
+                bodies[current] = "\n".join(buf)
+            current, buf = line[3:].strip(), []
+        elif current is not None:
+            buf.append(line)
+    if current is not None:
+        bodies[current] = "\n".join(buf)
+    return bodies
+
+
+def _is_unfilled(body):
+    """True when a section is empty once the template HTML-comment
+    placeholder and whitespace are stripped."""
+    return HTML_COMMENT_RE.sub("", body).strip() == ""
+
+
 # Built-in baseline sections for the two project-level docs (docs/PRD.md,
 # docs/CONSTITUTION.md), matching templates/{PRD,CONSTITUTION}.md. These are
 # not part of the per-feature rules.toml surface documented in PRD §7 (which
@@ -361,6 +386,18 @@ def validate_artifact(root, slug, artifact, rules, project=False):
     missing = [s for s in required if s not in headings]
     if missing:
         errors.append(f"{artifact} missing required section(s): {', '.join(missing)}")
+
+    if project:
+        bodies = _section_bodies(text)
+        unfilled = [
+            s for s in required
+            if s in headings and _is_unfilled(bodies.get(s, ""))
+        ]
+        if unfilled:
+            errors.append(
+                f"{artifact} has unfilled placeholder section(s): "
+                f"{', '.join(unfilled)} — run /lean-spec:plan to fill them"
+            )
 
     cap = rules["max_tokens"].get(artifact)
     if cap is not None:

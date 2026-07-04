@@ -6,6 +6,22 @@ disable-model-invocation: true
 
 # /lean-spec:spec [<slug>] [--refine]
 
+## Preflight (fail-loud)
+
+Before proposing or speccing any slice, verify the project docs the
+architect depends on exist and are actually filled (not the
+`/lean-spec:init` placeholder skeletons):
+
+```
+bin/lean-spec validate --project PRD.md
+bin/lean-spec validate --project CONSTITUTION.md
+```
+
+If either `validate --project` call exits non-zero, STOP and show the
+CLI's one-line message verbatim. Do not dispatch the architect against a
+missing or placeholder PRD/CONSTITUTION — run `/lean-spec:init` then
+`/lean-spec:plan` first.
+
 ## Determine the slug
 
 - **No argument:** dispatch the `architect` agent (Task tool) to read
@@ -46,3 +62,5 @@ disable-model-invocation: true
   the only state mutation this skill performs. Phase advances to
   `implementing` at `/lean-spec:implement`.
 - Spec more than one slice per invocation (R8: no upfront decomposition).
+- Dispatch the architect when `validate --project` fails for PRD.md or
+  CONSTITUTION.md — the preflight is mandatory.
