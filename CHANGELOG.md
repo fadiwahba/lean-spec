@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-04
+
+### Fixed
+
+- `Stop` auto-driver: the block reason told the model to "run" a skill
+  that has `disable-model-invocation: true`, a dead end it has no tool
+  path for. It now points at the actual `skills/<name>/SKILL.md` to
+  reread and follow by hand. Also drops `ensure_ascii` so a non-ASCII
+  plugin install path can't reintroduce backslash escapes into the JSON
+  reason.
+- `/lean-spec:plan`: the interview now asks about TDD explicitly and
+  syncs `.lean-spec/rules.toml`'s `tdd` flag in the same step, instead of
+  letting the Constitution's Quality Bar contradict the CLI-enforced
+  default until a coder cycle discovers it mid-implementation.
+- `/lean-spec:close`: corrected step 3's wording, which conflated the
+  no-op `--gates-on` flag with `auto-all`'s actual chaining (`chain_all`)
+  and implied plain `/lean-spec:auto` keeps going after a close (it
+  always stops there).
+
 ## [1.0.0] - 2026-07-04
 
 First public release. Requires **Claude Code ≥ 2.1.198**, **Python 3 ≥ 3.11**
@@ -41,5 +60,6 @@ First public release. Requires **Claude Code ≥ 2.1.198**, **Python 3 ≥ 3.11*
 - The `PreToolUse` guard reads its payload from stdin so large writes cannot
   make it fail open.
 
-[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/fadiwahba/lean-spec/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/fadiwahba/lean-spec/releases/tag/v1.0.0
