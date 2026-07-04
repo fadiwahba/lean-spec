@@ -20,6 +20,22 @@ model = "session" }`) — no Task dispatch. You are the planner here.
 - **`--regenerate`** — discard and redo the full interview, overwriting
   both docs. Confirm with the user before overwriting non-empty files.
 
+## Ground the interview in the existing repo (before round 1)
+
+If the project already contains code, read what is there before you ask —
+do not interview a brownfield repo as if it were greenfield:
+
+- Detect the stack from the manifests actually present (`package.json`,
+  `pyproject.toml`/`requirements.txt`, `go.mod`, `Cargo.toml`, `Gemfile`,
+  …), the test runner / CI config, and `README`.
+- Skim `git log` for the commit convention and branching already in use.
+
+Propose the `Stack`, `Principles`, and `Delegation` sections pre-filled
+from what you found and ask the user to confirm or correct — rather than
+asking them to describe from scratch what the repo already states. On an
+empty (greenfield) repo this finds nothing and the interview proceeds as
+normal.
+
 ## Interview (≤3 rounds, default mode)
 
 Use `AskUserQuestion` to cover, across up to three rounds:

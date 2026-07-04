@@ -196,10 +196,12 @@ Dogfood rule: from F6 onward, every feature is built through the v4 pipeline its
 | R12 | `--visual` review evidence lives in `features/<slug>/evidence/visual/`, **gitignored** | co-located local audit aid without binary repo bloat; review.md citations are the durable record |
 | R13 | Fail loudly | every entry point preflights (python3 ≥ 3.11, Claude Code floor, git repo) and exits with a one-line actionable error; no silent fallbacks (CONSTITUTION principle 8) |
 | R14 | TOML for config, JSON for state — YAML eliminated | stdlib has no YAML parser; `tomllib` (3.11+) keeps comments and determinism; state stays `json` |
+| R15 | `/lean-spec:spec` fail-loud-preflights project-doc readiness via `validate --project`; the check now rejects **unfilled placeholder** sections, not just missing headings | a user could `init` then jump straight to `spec` (or run brownfield without ever `plan`ning), feeding the architect an empty/skeleton PRD + CONSTITUTION — defeating the "discipline enforced by the CLI, never prompt obedience" premise; the gate is a CLI check (layer rule), invoked as a preflight exactly like `init`'s and `plan`'s |
+| R16 | `/lean-spec:plan` grounds its interview in the existing repo (reads manifests / test+CI config / README / `git log`) before asking, rather than interviewing greenfield-only | brownfield adoption: `Stack`/`Principles`/`Delegation` are usually already evident in-repo; asking from scratch yields a Constitution that ignores what's actually there — done in the session model directly, no CLI stack-detection heuristic |
 
 ## 13. Open questions
 
-None. Resolved 2026-07-03: reviewer = Opus default with Sonnet switch (R11) · `decompose` removed in favour of one-spec-at-a-time (R8) · `auto-all` in 1.0 (R9) · evidence gitignored (R12) · fail-loud preflights (R13) · TOML config / JSON state (R14).
+None. Resolved 2026-07-03: reviewer = Opus default with Sonnet switch (R11) · `decompose` removed in favour of one-spec-at-a-time (R8) · `auto-all` in 1.0 (R9) · evidence gitignored (R12) · fail-loud preflights (R13) · TOML config / JSON state (R14). Resolved 2026-07-05: `spec` preflights project-doc readiness and `validate --project` rejects unfilled placeholders (R15) · `plan` grounds its interview in the existing repo for brownfield (R16).
 
 ## 14. Approval
 

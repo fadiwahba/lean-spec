@@ -227,6 +227,117 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "validate --project rejects an unfilled placeholder PRD.md" {
+  mkdir -p docs
+  cat > docs/PRD.md <<'EOF'
+## Problem & Users
+<!-- Who has this problem, why now. -->
+## Features
+<!-- The feature list. -->
+## Constraints
+<!-- Non-negotiables. -->
+## Quality Bar
+<!-- What "done" means. -->
+## Non-Goals
+<!-- Explicitly out of scope. -->
+EOF
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"placeholder"* ]]
+}
+
+@test "validate --project rejects a partially-filled PRD.md" {
+  mkdir -p docs
+  cat > docs/PRD.md <<'EOF'
+## Problem & Users
+Real users hit a real problem.
+## Features
+<!-- The feature list. -->
+## Constraints
+<!-- Non-negotiables. -->
+## Quality Bar
+<!-- What "done" means. -->
+## Non-Goals
+<!-- Explicitly out of scope. -->
+EOF
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Features"* ]]
+}
+
+@test "validate --project rejects an unfilled CONSTITUTION.md" {
+  mkdir -p docs
+  cat > docs/CONSTITUTION.md <<'EOF'
+## Stack
+<!-- Languages, frameworks. -->
+## Principles
+<!-- Non-negotiable rules. -->
+## Delegation
+<!-- Who owns which phase. -->
+## Quality Bars
+<!-- Test coverage expectations. -->
+## Process
+<!-- Commit conventions. -->
+## Non-Goals
+<!-- Things this project will not build. -->
+EOF
+  lean_spec validate --project CONSTITUTION.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"placeholder"* ]]
+}
+
+@test "validate --project treats a whitespace-only section as unfilled" {
+  mkdir -p docs
+  cat > docs/PRD.md <<'EOF'
+## Problem & Users
+
+## Features
+x
+## Constraints
+x
+## Quality Bar
+x
+## Non-Goals
+x
+EOF
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Problem & Users"* ]]
+}
+
+@test "validate --project passes a section that keeps the template comment and adds prose" {
+  mkdir -p docs
+  cat > docs/PRD.md <<'EOF'
+## Problem & Users
+<!-- Who has this problem, why now. -->
+Real users hit a real problem.
+## Features
+x
+## Constraints
+x
+## Quality Bar
+x
+## Non-Goals
+x
+EOF
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 0 ]
+}
+
+@test "the copied templates fail --project until filled" {
+  mkdir -p docs
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" docs/PRD.md
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" docs/CONSTITUTION.md
+
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"placeholder"* ]]
+
+  lean_spec validate --project CONSTITUTION.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"placeholder"* ]]
+}
+
 @test "validate rejects wrong argument count" {
   lean_spec validate demo
   [ "$status" -eq 1 ]

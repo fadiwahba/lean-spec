@@ -91,6 +91,15 @@ print('ok')
   grep -qi 'already delivered' "${LEAN_SPEC_REPO_ROOT}/agents/architect.md"
 }
 
+@test "spec skill preflights the project docs before dispatch" {
+  grep -q 'validate --project PRD.md' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+  grep -q 'validate --project CONSTITUTION.md' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+}
+
+@test "plan skill grounds the interview in the existing repo" {
+  grep -qi 'existing repo' "${LEAN_SPEC_REPO_ROOT}/skills/plan/SKILL.md"
+}
+
 @test "no SKILL.md contains a bash phase-gate block (no fenced bash/sh code)" {
   for name in $SKILL_NAMES; do
     run grep -c '```bash\|```sh' "${LEAN_SPEC_REPO_ROOT}/skills/${name}/SKILL.md"
