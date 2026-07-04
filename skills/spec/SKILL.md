@@ -17,9 +17,10 @@ bin/lean-spec validate --project PRD.md
 bin/lean-spec validate --project CONSTITUTION.md
 ```
 
-If either exits non-zero, STOP and show the CLI's one-line message
-verbatim. Do not dispatch the architect against a missing or placeholder
-PRD/CONSTITUTION — run `/lean-spec:init` then `/lean-spec:plan` first.
+If either `validate --project` call exits non-zero, STOP and show the
+CLI's one-line message verbatim. Do not dispatch the architect against a
+missing or placeholder PRD/CONSTITUTION — run `/lean-spec:init` then
+`/lean-spec:plan` first.
 
 ## Determine the slug
 
