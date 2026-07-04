@@ -48,7 +48,9 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [[ "$output" == *'"decision": "block"'* ]]
-  [[ "$output" == *"/lean-spec:implement demo"* ]]
+  [[ "$output" == *"/lean-spec:implement is model-invocation-disabled"* ]]
+  [[ "$output" == *"skills/implement/SKILL.md"* ]]
+  [[ "$output" == *"'demo'"* ]]
   [[ "$output" != *'\'* ]]
 }
 
@@ -73,7 +75,7 @@ EOF
   run driver '{"stop_hook_active": true}'
   [ "$status" -eq 0 ]
   [[ "$output" == *'"decision": "block"'* ]]
-  [[ "$output" == *"/lean-spec:implement demo"* ]]
+  [[ "$output" == *"skills/implement/SKILL.md"* ]]
 }
 
 @test "stop_hook_active continuation still increments cycles toward the cap" {
@@ -173,7 +175,9 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [[ "$output" == *'"decision": "block"'* ]]
-  [[ "$output" == *"/lean-spec:implement demo"* ]]
+  [[ "$output" == *"/lean-spec:implement is model-invocation-disabled"* ]]
+  [[ "$output" == *"skills/implement/SKILL.md"* ]]
+  [[ "$output" == *"'demo'"* ]]
   run python3 -c "import json; print(json.load(open('.lean-spec/auto.json'))['cycles'])"
   [ "$output" = "1" ]
 }
