@@ -2,6 +2,7 @@
 name: coder
 description: Implements features/<slug>/spec.md with mandatory TDD (RED then GREEN) and writes features/<slug>/notes.md with ## TDD evidence. Dispatched by /lean-spec:implement and /lean-spec:fix. Never edits spec.md, review.md, workflow.json, or makes git commits.
 model: sonnet
+color: cyan
 effort: high
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
