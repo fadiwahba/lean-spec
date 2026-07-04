@@ -83,7 +83,14 @@ The lifecycle, with its gates:
 
 ## Getting started
 
-lean-spec is a local Claude Code plugin (not yet on a marketplace). Point Claude Code at the repo:
+**Install from the marketplace** (recommended) — inside Claude Code:
+
+```
+/plugin marketplace add fadiwahba/lean-spec
+/plugin install lean-spec@lean-spec
+```
+
+**Or run it locally** (for development / trying an unreleased checkout):
 
 ```bash
 # 1. Get the plugin (clone it anywhere)
@@ -178,12 +185,12 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 | M0 | scaffold · BATS harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
-| M3 | e2e demo ✅ · headless CI smoke · marketplace publish · ship review → **1.0** | 🚧 in progress |
+| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | 🚧 shipping |
 | M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
 
 ## Requirements
 
-- **Claude Code** (a recent version; exact floor pinned at release)
+- **Claude Code ≥ 2.1.198**
 - **Python 3 ≥ 3.11** — stdlib only, no pip packages
 - **bash** — the hooks and scripts are bash
 - **git**

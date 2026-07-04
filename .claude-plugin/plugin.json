@@ -1,11 +1,12 @@
 {
   "name": "lean-spec",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Deterministic, spec-driven development lifecycle for Claude Code: interview -> PRD -> spec -> implement (TDD) -> review -> fix -> close. Discipline is enforced by a state CLI and hooks, never by prompt obedience.",
   "author": {
     "name": "Fady Soliman"
   },
   "homepage": "https://github.com/fadiwahba/lean-spec",
+  "repository": "https://github.com/fadiwahba/lean-spec",
   "license": "MIT",
   "keywords": [
     "spec-driven-development",
