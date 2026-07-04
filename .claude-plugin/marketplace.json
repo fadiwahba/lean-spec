@@ -1,0 +1,27 @@
+{
+  "name": "lean-spec",
+  "owner": {
+    "name": "Fady Soliman"
+  },
+  "description": "Deterministic, spec-driven development lifecycle for Claude Code.",
+  "plugins": [
+    {
+      "name": "lean-spec",
+      "source": ".",
+      "description": "Turns AI-assisted development into a disciplined init -> plan -> spec -> implement -> review -> close lifecycle the model cannot skip, enforced by a state CLI and hooks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Fady Soliman"
+      },
+      "homepage": "https://github.com/fadiwahba/lean-spec",
+      "repository": "https://github.com/fadiwahba/lean-spec",
+      "license": "MIT",
+      "keywords": [
+        "spec-driven-development",
+        "tdd",
+        "workflow",
+        "lifecycle"
+      ]
+    }
+  ]
+}

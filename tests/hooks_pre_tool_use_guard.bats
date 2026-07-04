@@ -66,3 +66,29 @@ guard() {
   run guard ''
   [ "$status" -eq 0 ]
 }
+
+@test "allows a ~200KB Write to a normal path without failing open (payload exceeds argv limits)" {
+  payload_file="$(mktemp "${BATS_TEST_TMPDIR:-${TMPDIR:-/tmp}}/payloadXXXXXX")"
+  python3 -c "
+import json
+content = 'x' * 200000
+print(json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': 'README.md', 'content': content}}))
+" > "$payload_file"
+  run bash -c "cat '${payload_file}' | bash '${LEAN_SPEC_HOOKS}/pre-tool-use-guard.sh'"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  rm -f "$payload_file"
+}
+
+@test "still denies a ~200KB Write targeting features/x/workflow.json (does not fail open)" {
+  payload_file="$(mktemp "${BATS_TEST_TMPDIR:-${TMPDIR:-/tmp}}/payloadXXXXXX")"
+  python3 -c "
+import json
+content = 'x' * 200000
+print(json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': 'features/x/workflow.json', 'content': content}}))
+" > "$payload_file"
+  run bash -c "cat '${payload_file}' | bash '${LEAN_SPEC_HOOKS}/pre-tool-use-guard.sh'"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+  rm -f "$payload_file"
+}

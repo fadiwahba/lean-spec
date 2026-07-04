@@ -26,6 +26,9 @@ print('ok')
 }
 
 @test "status --json (no slug) emits a JSON array covering every feature" {
+  lean_spec_write_artifact second spec.md <<'EOF'
+# spec
+EOF
   lean_spec advance second specifying implementing
   lean_spec status --json
   [ "$status" -eq 0 ]

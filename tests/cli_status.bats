@@ -19,6 +19,9 @@ teardown() {
 @test "status lists all features with phase" {
   lean_spec ensure demo
   lean_spec ensure second
+  lean_spec_write_artifact second spec.md <<'EOF'
+# spec
+EOF
   lean_spec advance second specifying implementing
   lean_spec status
   [ "$status" -eq 0 ]
@@ -50,7 +53,17 @@ print('ok')
 
 @test "status <slug> in reviewing phase reports verdict field" {
   lean_spec ensure demo
+  lean_spec_write_artifact demo spec.md <<'EOF'
+# spec
+EOF
   lean_spec advance demo specifying implementing
+  lean_spec_write_artifact demo notes.md <<'EOF'
+## What was built
+stuff
+
+## TDD
+red/green
+EOF
   lean_spec advance demo implementing reviewing
   lean_spec_write_artifact demo review.md <<'EOF'
 verdict: APPROVE

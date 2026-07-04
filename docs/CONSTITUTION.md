@@ -26,13 +26,13 @@
 
 | Role | Model / effort | Owns | Never does |
 |---|---|---|---|
-| **Orchestrator & planner** | **Fable 5** (session) | PRD, CONSTITUTION, next-slice arbitration, phase advances, git commits, unblocking decisions | writing specs, implementation code, per-feature reviews |
+| **Orchestrator & planner** | **Opus 4.8 · effort xhigh** (session) | PRD, CONSTITUTION, next-slice arbitration, phase advances, git commits, unblocking decisions | writing specs, implementation code, per-feature reviews |
 | **Architect (spec writer)** | **Opus 4.8 · effort xhigh** | `features/<slug>/spec.md` (Scope, ACs, Out of Scope, Coder Guardrails) | touching app code or state |
 | **Coder (implementer)** | **Sonnet 5 · effort high** | implementation **with TDD (mandatory)**, `notes.md` + `## TDD` evidence | editing spec.md, review.md, workflow.json, git commits |
 | **Per-feature reviewer** | **Opus 4.8 · effort high** (project may downshift to Sonnet 5 via rules.toml) | `review.md` with `verdict: APPROVE\|NEEDS_FIXES\|BLOCKED`; with `--visual`: Playwright evidence in `features/<slug>/evidence/visual/` | fixing code itself |
-| **Final ship reviewer** | **Fable 5 · effort high** | F12 whole-project review before 1.0: bug sweep, invariant audit, ship/no-ship verdict | rubber-stamping — findings block release |
+| **Final ship reviewer** | **Opus 4.8 · effort xhigh** | F12 whole-project review before 1.0: bug sweep, invariant audit, ship/no-ship verdict | rubber-stamping — findings block release |
 
-Rationale: Fable tokens are the most expensive — spend them only where judgment concentrates (planning, arbitration, the final gate). Everything delegable is delegated. Same-model self-review is forbidden: coder (Sonnet) is always reviewed by a different family (Opus), and the final gate is a third pair of eyes (Fable).
+Rationale: spend the strongest configuration where judgment concentrates — planning/arbitration and the final ship gate both run on **Opus 4.8 at xhigh effort**. Everything delegable is delegated. Same-model self-review within a feature is forbidden: the coder (Sonnet) is always reviewed by a different family (Opus). The final ship gate is a distinct pass — a fresh agent and context at **higher effort (xhigh)** than the per-feature reviewer (Opus · high), reviewing the whole project rather than one slice — so it stays an independent set of eyes even though it shares the Opus family.
 
 ## TDD policy (mandatory for all v4 features)
 

@@ -92,6 +92,12 @@ print('ok')
   grep -q '.tools/' "${LEAN_SPEC_REPO_ROOT}/.gitignore"
 }
 
+@test "gitignore excludes crash-leftover atomic temp files (features/*/.workflow* and .lean-spec/.auto*)" {
+  gi="${LEAN_SPEC_REPO_ROOT}/.gitignore"
+  grep -qxF 'features/*/.workflow*' "$gi"
+  grep -qxF '.lean-spec/.auto*' "$gi"
+}
+
 @test "examples/gitignore seeds evidence, secrets, and common-ecosystem artifacts" {
   gi="${LEAN_SPEC_REPO_ROOT}/examples/gitignore"
   [ -f "$gi" ]
@@ -104,4 +110,10 @@ print('ok')
   grep -qxF '.next/' "$gi"                   # Next.js
   grep -qxF '__pycache__/' "$gi"            # Python
   grep -qxF '.venv/' "$gi"                   # Python
+}
+
+@test "examples/gitignore excludes crash-leftover atomic temp files (features/*/.workflow* and .lean-spec/.auto*)" {
+  gi="${LEAN_SPEC_REPO_ROOT}/examples/gitignore"
+  grep -qxF 'features/*/.workflow*' "$gi"
+  grep -qxF '.lean-spec/.auto*' "$gi"
 }

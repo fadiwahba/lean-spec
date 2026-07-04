@@ -60,7 +60,7 @@ Same minimal schema as v3 (phase, history[], timestamps). Single-sourced: no `ph
 ## 5. Architecture — three layers
 
 ```
-lean-spec-v4/
+lean-spec/
 ├── .claude-plugin/plugin.json      # manifest
 ├── bin/lean-spec                   # LAYER 1 — state CLI (python3 stdlib, single file)
 │   #  ensure <slug>        create workflow.json if absent (idempotent)
@@ -170,7 +170,7 @@ One adapter contract, not command ports: resolve prompt → write to tmp file �
 - **F9** e2e demo: fixture project driven interview→closed, recorded walkthrough in README.
 - **F10** headless CI smoke: `claude -p` full cycle on release tags.
 - **F11** marketplace publish + compatibility floor pinned (min Claude Code version).
-- **F12** final ship review (Fable, per CONSTITUTION §Delegation) → 1.0.
+- **F12** final ship review (Opus 4.8 · xhigh, per CONSTITUTION §Delegation) → 1.0.
 
 ### M5 — Post-1.0
 - **F13** external provider adapters (gemini/opencode/codex/claude-headless).
