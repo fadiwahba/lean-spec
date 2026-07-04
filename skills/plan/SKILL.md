@@ -27,7 +27,13 @@ Use `AskUserQuestion` to cover, across up to three rounds:
 1. Problem & users — what problem, who has it, why now.
 2. Features — the feature list (no upfront per-feature detail — that's
    what `/lean-spec:spec` derives later, one slice at a time).
-3. Constraints, quality bar, and non-goals.
+3. Constraints, quality bar, and non-goals — explicitly ask whether this
+   project wants TDD (`.lean-spec/rules.toml` defaults `tdd = true`, i.e.
+   every `/lean-spec:implement`/`fix` run demands a RED-then-GREEN test
+   suite). Do not let the answer land only in prose: a Quality Bar that
+   says "no test suite" while `rules.toml` still enforces TDD is a
+   contradiction the coder agent will hit mid-implementation, not
+   something to resolve later.
 
 Keep it to what's needed to fill `templates/PRD.md` and
 `templates/CONSTITUTION.md`'s sections — don't over-interview.
@@ -38,14 +44,18 @@ Keep it to what's needed to fill `templates/PRD.md` and
    into `docs/PRD.md` and `docs/CONSTITUTION.md`, filling every section
    from the interview answers. Keep `docs/CONSTITUTION.md` short — it is
    injected into every agent dispatch.
-2. Validate both, via the CLI (never eyeball this):
+2. If the TDD answer is "no automated tests," set `tdd = false` under
+   `[defaults]` in `.lean-spec/rules.toml` in this same step — the
+   Constitution's Quality Bar and the CLI's actual gate must agree from
+   the start, not after a coder cycle discovers the mismatch.
+3. Validate both, via the CLI (never eyeball this):
    ```
    bin/lean-spec validate --project PRD.md
    bin/lean-spec validate --project CONSTITUTION.md
    ```
    If either fails, add the missing section(s) and re-run — do not
    proceed with a failing validate.
-3. Tell the orchestrator (you) to commit:
+4. Tell the orchestrator (you) to commit:
    `docs: write PRD and CONSTITUTION` (first run) or
    `docs: refine PRD/CONSTITUTION — <blocker>` (`--refine`).
 

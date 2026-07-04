@@ -16,9 +16,13 @@ disable-model-invocation: true
    path exists." If it fails, stop and show the CLI's message; there is
    no prompt-level override.
 2. Commit: `chore(<slug>): close`.
-3. Report closure to the user. If driven by `/lean-spec:auto` /
-   `/lean-spec:auto-all`, the Stop hook takes it from here (chains to the
-   next feature under `--gates-on` auto-all, or stops).
+3. Report closure to the user. If driven by `/lean-spec:auto`, the Stop
+   hook removes `.lean-spec/auto.json` here and stops — auto mode drives
+   exactly one feature to `closed`, then ends; do not tell the user
+   another slice will start on its own. Only `/lean-spec:auto-all` (which
+   sets `chain_all: true`, independent of `--gates-on`) picks the next
+   non-closed feature and keeps driving. Otherwise: tell the user to run
+   `/lean-spec:spec` for the next slice.
 
 ## Never does
 

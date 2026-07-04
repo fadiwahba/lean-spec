@@ -207,6 +207,13 @@ except Exception:
     ;;
 esac
 
+# The named skill (e.g. /lean-spec:implement) has disable-model-invocation:
+# true (scaffold_skills_agents.bats enforces this for every mutating skill),
+# so the model has no Skill-tool path to "run" it — that phrasing was a
+# dead end the driving model had to discover by trial and error. Point it
+# at the actual SKILL.md instead: read it fresh and perform its Steps by
+# hand, rather than improvising from memory of a prior cycle (the real
+# source of auto-mode drift).
 reason="$(printf '%s' "$next_json" | python3 -c '
 import json, sys
 try:
@@ -215,15 +222,21 @@ except Exception:
     r = {}
 skill = r.get("skill")
 slug = r.get("slug", "")
+plugin_root = sys.argv[1]
 if skill:
-    print(f"lean-spec auto: run `{skill} {slug}` (via bin/lean-spec next {slug}) to continue the lifecycle.")
+    name = skill.rsplit(":", 1)[-1]
+    print(
+        f"lean-spec auto: {skill} is model-invocation-disabled -- read "
+        f"{plugin_root}/skills/{name}/SKILL.md now (not from memory) and "
+        f"perform its Steps yourself for \x27{slug}\x27 to continue the lifecycle."
+    )
 else:
     # Defensive: the driver now only reaches this printer for an actionable
     # ("skill") feature, so skill is normally set. This fallback keeps the
     # hook from emitting a broken reason if next-resolution ever regresses.
     print(f"lean-spec auto: run `bin/lean-spec next {slug}` to determine the next step.")
-')"
+' "$PLUGIN_ROOT")"
 
-python3 -c 'import json, sys; print(json.dumps({"decision": "block", "reason": sys.argv[1]}))' "$reason"
+python3 -c 'import json, sys; print(json.dumps({"decision": "block", "reason": sys.argv[1]}, ensure_ascii=False))' "$reason"
 
 exit 0
