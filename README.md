@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/fadiwahba/lean-spec-v4/actions/workflows/ci.yml"><img src="https://github.com/fadiwahba/lean-spec-v4/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/fadiwahba/lean-spec/actions/workflows/ci.yml"><img src="https://github.com/fadiwahba/lean-spec/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-3776AB" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-8A63D2" alt="Claude Code plugin" />
 </p>
@@ -87,11 +87,11 @@ lean-spec is a local Claude Code plugin (not yet on a marketplace). Point Claude
 
 ```bash
 # 1. Get the plugin (clone it anywhere)
-git clone https://github.com/fadiwahba/lean-spec-v4.git ~/tools/lean-spec-v4
+git clone https://github.com/fadiwahba/lean-spec.git ~/tools/lean-spec
 
 # 2. From inside YOUR project (any git repo), launch Claude Code with the plugin
 cd ~/path/to/your-project
-claude --plugin-dir ~/tools/lean-spec-v4
+claude --plugin-dir ~/tools/lean-spec
 ```
 
 Then drive the lifecycle from inside Claude Code:

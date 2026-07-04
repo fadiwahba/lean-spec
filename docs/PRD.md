@@ -60,7 +60,7 @@ Same minimal schema as v3 (phase, history[], timestamps). Single-sourced: no `ph
 ## 5. Architecture — three layers
 
 ```
-lean-spec-v4/
+lean-spec/
 ├── .claude-plugin/plugin.json      # manifest
 ├── bin/lean-spec                   # LAYER 1 — state CLI (python3 stdlib, single file)
 │   #  ensure <slug>        create workflow.json if absent (idempotent)
