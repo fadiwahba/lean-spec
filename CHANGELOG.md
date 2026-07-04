@@ -6,6 +6,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-05
+
+### Added
+
+- `bin/lean-spec validate --project` now rejects a section whose body is
+  still just the template's HTML-comment placeholder (previously it only
+  checked that the `## ` heading existed, so a freshly-`init`ed skeleton
+  passed clean).
+- `/lean-spec:spec` fail-loud-preflights `docs/PRD.md` and
+  `docs/CONSTITUTION.md` via `validate --project` before proposing or
+  writing any spec — closes the brownfield gap where a user could
+  `init` then jump straight to `spec` (or use lean-spec in an existing
+  repo that never ran `plan`), feeding the architect an empty or
+  placeholder PRD/Constitution.
+- `/lean-spec:plan`'s interview now grounds itself in the existing repo
+  (manifests, test/CI config, README, `git log`) before asking, proposing
+  `Stack`/`Principles`/`Delegation` pre-filled for confirmation instead of
+  interviewing a brownfield codebase as if it were greenfield.
+
 ## [1.0.1] - 2026-07-04
 
 ### Fixed
@@ -60,6 +79,7 @@ First public release. Requires **Claude Code ≥ 2.1.198**, **Python 3 ≥ 3.11*
 - The `PreToolUse` guard reads its payload from stdin so large writes cannot
   make it fail open.
 
-[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/fadiwahba/lean-spec/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/fadiwahba/lean-spec/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/fadiwahba/lean-spec/releases/tag/v1.0.0
