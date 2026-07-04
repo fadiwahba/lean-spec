@@ -14,3 +14,7 @@ features/*/.workflow*
 
 # vendored test harness — bootstrapped by scripts/bootstrap-bats.sh
 .tools/
+
+# python bytecode (e.g. from `py_compile bin/lean-spec`)
+__pycache__/
+*.pyc
