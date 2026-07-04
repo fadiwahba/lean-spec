@@ -55,13 +55,13 @@ A skill instruction the model ignores can never corrupt state, because **state a
 The lifecycle, with its gates:
 
 ```
-   /lean-spec:spec          architect writes spec.md        ─┐
-        │                   (Scope · ACs · Guardrails)       │ validated
-        ▼                                                    │ at every
-   /lean-spec:implement     coder writes code + tests        │ SubagentStop
+   /lean-spec:spec          architect writes spec.md  ────────┐
+        │                   (Scope · ACs · Guardrails)        │ validated
+        ▼                                                     │ at every
+   /lean-spec:implement     coder writes code + tests         │ SubagentStop
         │                   RED → GREEN, evidence in notes.md │ AND at the
-        ▼                                                    │ phase gate
-   /lean-spec:review        reviewer writes review.md ───────┤
+        ▼                                                     │ phase gate
+   /lean-spec:review        reviewer writes review.md ────────┤
         │                   verdict: APPROVE│NEEDS_FIXES│BLOCKED
         │                        │
         │   NEEDS_FIXES ──► /lean-spec:fix ──► back to review
@@ -114,16 +114,16 @@ Repeat `spec → implement → review → close` for each feature. That's the wh
 Everything is optional — a zero-config project completes a full cycle. Tune per project in `.lean-spec/rules.toml`:
 
 ```toml
-[agents]                                 # who runs each phase
+[agents]                                              # who runs each phase
 spec      = { model = "opus",   effort = "xhigh" }
 implement = { model = "sonnet", effort = "high" }
-review    = { model = "opus",   effort = "high" }   # switch to "sonnet" to cut cost
+review    = { model = "opus",   effort = "high" }     # switch to "sonnet" to cut cost
 
 [defaults]
-tdd = true                               # RED/GREEN enforced; false or --no-tdd to opt out
-required_verdict = "APPROVE"             # what `close` demands
+tdd = true                                            # RED/GREEN enforced; false or --no-tdd to opt out
+required_verdict = "APPROVE"                          # what `close` demands
 
-[required_sections]                      # additive artifact checks
+[required_sections]                                   # additive artifact checks
 "spec.md"   = ["Scope", "Acceptance Criteria", "Out of Scope", "Coder Guardrails"]
 "review.md" = ["Verdict", "Spec Compliance", "Code Quality"]
 ```
