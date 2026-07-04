@@ -72,6 +72,22 @@ def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
+
+
+def validate_slug(slug):
+    """CONSTITUTION principle 8 (fail loudly): reject any slug that is not
+    a plain path segment before it ever reaches os.path.join, so a
+    malicious/careless slug (path traversal like '../evil', an absolute
+    path like '/tmp/x', or an empty string) can never escape features/."""
+    if not SLUG_RE.match(slug):
+        fail(
+            f"invalid slug '{slug}' — slugs must match ^[a-z0-9][a-z0-9._-]*$ "
+            "(lowercase alphanumeric, '.', '_', '-'; no path separators)",
+            1,
+        )
+
+
 def feature_dir(root, slug):
     return os.path.join(root, "features", slug)
 
@@ -106,9 +122,12 @@ def load_workflow(root, slug, required=True):
         return None
     try:
         with open(path) as f:
-            return json.load(f)
+            data = json.load(f)
     except json.JSONDecodeError as e:
         fail(f"corrupt workflow.json for '{slug}': {e}", 1)
+    if not isinstance(data, dict):
+        fail(f"corrupt workflow.json for '{slug}': not a JSON object", 1)
+    return data
 
 
 VALID_PHASES = ("specifying", "implementing", "reviewing", "closed")
@@ -128,6 +147,7 @@ def cmd_ensure(root, args):
     if len(args) != 1:
         fail("usage: lean-spec ensure <slug>", 1)
     slug = args[0]
+    validate_slug(slug)
     path = workflow_path(root, slug)
     if os.path.isfile(path):
         return 0  # idempotent no-op
@@ -161,10 +181,33 @@ def _gate_close_requires_verdict(root, slug):
         fail(f"cannot close '{slug}': review.md verdict is '{verdict}', required '{required}'", 2)
 
 
+SOURCE_PHASE_ARTIFACT = {"specifying": "spec.md", "implementing": "notes.md"}
+
+
+def _gate_source_artifact(root, slug, frm):
+    """CONSTITUTION principle 4: an invalid artifact blocks the advance.
+    Validates the artifact belonging to the phase being left (spec.md when
+    leaving specifying, notes.md when leaving implementing) before the
+    transition is committed. reviewing->closed has its own, stricter verdict
+    gate (_gate_close_requires_verdict); reviewing->implementing (fix loop)
+    has no source artifact to validate here."""
+    artifact = SOURCE_PHASE_ARTIFACT.get(frm)
+    if artifact is None:
+        return
+    rules = load_rules(root)
+    errors = validate_artifact(root, slug, artifact, rules)
+    if errors:
+        fail(
+            f"cannot advance '{slug}' out of '{frm}': " + "; ".join(errors),
+            2,
+        )
+
+
 def cmd_advance(root, args):
     if len(args) != 3:
         fail("usage: lean-spec advance <slug> <from> <to>", 1)
     slug, frm, to = args
+    validate_slug(slug)
     for p in (frm, to):
         if p not in VALID_PHASES:
             fail(f"unknown phase '{p}' — valid phases: {', '.join(VALID_PHASES)}", 1)
@@ -174,6 +217,7 @@ def cmd_advance(root, args):
         fail(f"'{slug}' is in phase '{current}', not '{frm}' — cannot advance from '{frm}'", 2)
     if (frm, to) not in ALLOWED_TRANSITIONS:
         fail(f"illegal transition '{frm}' -> '{to}' for '{slug}'", 2)
+    _gate_source_artifact(root, slug, frm)
     if (frm, to) == ("reviewing", "closed"):
         _gate_close_requires_verdict(root, slug)
     ts = now_iso()
@@ -197,6 +241,7 @@ def cmd_assert(root, args):
     if len(args) != 2:
         fail("usage: lean-spec assert <slug> <phase>", 1)
     slug, phase = args
+    validate_slug(slug)
     wf = load_workflow(root, slug)
     current = wf.get("phase")
     if current != phase:
@@ -233,10 +278,30 @@ def load_rules(root):
     rules["defaults"].update(data.get("defaults", {}))
     rules["required_sections"].update(data.get("required_sections", {}))
     rules["max_tokens"].update(data.get("max_tokens", {}))
+
+    # CONSTITUTION principle 8 (fail loudly): a malformed rules.toml value
+    # must never reach the comparison/iteration code as a crash-inducing
+    # traceback — validate shapes here, once, at load time.
+    for key, cap in rules["max_tokens"].items():
+        if isinstance(cap, bool) or not isinstance(cap, int):
+            fail(
+                f"invalid .lean-spec/rules.toml: max_tokens.\"{key}\" must be "
+                f"an integer (found {cap!r})",
+                1,
+            )
+    for key, sections in rules["required_sections"].items():
+        if not isinstance(sections, list) or not all(
+            isinstance(s, str) for s in sections
+        ):
+            fail(
+                f"invalid .lean-spec/rules.toml: required_sections.\"{key}\" "
+                f"must be a list of strings (found {sections!r})",
+                1,
+            )
     return rules
 
 
-VERDICT_RE = re.compile(r"^verdict:\s*(APPROVE|NEEDS_FIXES|BLOCKED)\s*$", re.IGNORECASE)
+VERDICT_RE = re.compile(r"^verdict:\s*(APPROVE|NEEDS_FIXES|BLOCKED)\b", re.IGNORECASE)
 
 
 def extract_verdict(text):
@@ -319,6 +384,7 @@ def cmd_validate(root, args):
         label = f"docs/{artifact}"
     elif len(args) == 2:
         slug, artifact = args
+        validate_slug(slug)
         rules = load_rules(root)
         errors = validate_artifact(root, slug, artifact, rules)
         label = f"{slug}/{artifact}"
@@ -412,6 +478,7 @@ def cmd_next(root, args):
                 print(format_next_text(r))
         # --all is a report; never fails the invocation on individual blocks
         return 0
+    validate_slug(target)
     r = resolve_next(root, target)
     if as_json:
         print(json.dumps(r, indent=2, sort_keys=True))
@@ -451,6 +518,7 @@ def cmd_status(root, args):
     if len(args) > 1:
         fail("usage: lean-spec status [<slug>] [--json]", 1)
     if args:
+        validate_slug(args[0])
         info = feature_status(root, args[0])
         if as_json:
             print(json.dumps(info, indent=2, sort_keys=True))

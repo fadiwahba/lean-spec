@@ -19,6 +19,21 @@ write_auto() {
   cat > .lean-spec/auto.json
 }
 
+# advance now validates the artifact of the phase being left (CONSTITUTION
+# principle 4), so any advance driven from these tests needs a valid
+# spec.md/notes.md first.
+write_valid_spec() {
+  local slug="$1"
+  mkdir -p "features/${slug}"
+  echo "# spec" > "features/${slug}/spec.md"
+}
+
+write_valid_notes() {
+  local slug="$1"
+  mkdir -p "features/${slug}"
+  printf '## What was built\nstuff\n## TDD\nred/green\n' > "features/${slug}/notes.md"
+}
+
 @test "allows stop when no auto.json exists" {
   run driver '{}'
   [ "$status" -eq 0 ]
@@ -97,7 +112,9 @@ EOF
 
 @test "stops and removes auto.json once feature is closed" {
   lean_spec ensure demo
+  write_valid_spec demo
   lean_spec advance demo specifying implementing
+  write_valid_notes demo
   lean_spec advance demo implementing reviewing
   mkdir -p features/demo
   echo "verdict: APPROVE" > features/demo/review.md
@@ -113,7 +130,9 @@ EOF
 
 @test "stops and removes auto.json when review verdict is BLOCKED" {
   lean_spec ensure demo
+  write_valid_spec demo
   lean_spec advance demo specifying implementing
+  write_valid_notes demo
   lean_spec advance demo implementing reviewing
   mkdir -p features/demo
   echo "verdict: BLOCKED" > features/demo/review.md
@@ -184,7 +203,9 @@ EOF
 @test "chain_all: closing one feature chains to the next non-closed feature" {
   lean_spec ensure demo
   lean_spec ensure second
+  write_valid_spec demo
   lean_spec advance demo specifying implementing
+  write_valid_notes demo
   lean_spec advance demo implementing reviewing
   mkdir -p features/demo
   echo "verdict: APPROVE" > features/demo/review.md
@@ -202,7 +223,9 @@ EOF
 
 @test "chain_all: stops entirely once every feature is closed" {
   lean_spec ensure demo
+  write_valid_spec demo
   lean_spec advance demo specifying implementing
+  write_valid_notes demo
   lean_spec advance demo implementing reviewing
   mkdir -p features/demo
   echo "verdict: APPROVE" > features/demo/review.md
@@ -226,12 +249,16 @@ EOF
   # round pointing at a step that cannot run.
   lean_spec ensure demo
   lean_spec ensure second
+  write_valid_spec demo
   lean_spec advance demo specifying implementing
+  write_valid_notes demo
   lean_spec advance demo implementing reviewing
   mkdir -p features/demo
   echo "verdict: APPROVE" > features/demo/review.md
   lean_spec advance demo reviewing closed
+  write_valid_spec second
   lean_spec advance second specifying implementing
+  write_valid_notes second
   lean_spec advance second implementing reviewing
   # No features/second/review.md: `lean-spec next second` -> action "blocked".
   write_auto <<'EOF'
@@ -255,7 +282,9 @@ EOF
 @test "chain_all: a BLOCKED verdict stops the whole chain (does not skip to next feature)" {
   lean_spec ensure demo
   lean_spec ensure second
+  write_valid_spec demo
   lean_spec advance demo specifying implementing
+  write_valid_notes demo
   lean_spec advance demo implementing reviewing
   mkdir -p features/demo
   echo "verdict: BLOCKED" > features/demo/review.md

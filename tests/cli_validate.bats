@@ -104,6 +104,22 @@ EOF
   [ "$status" -eq 0 ]
 }
 
+@test "validate review.md accepts verdict: APPROVE with trailing text on the line" {
+  lean_spec_write_artifact demo review.md <<'EOF'
+verdict: APPROVE (all ACs met)
+EOF
+  lean_spec validate demo review.md
+  [ "$status" -eq 0 ]
+}
+
+@test "validate review.md rejects the typo verdict: APPROVED (not a valid token)" {
+  lean_spec_write_artifact demo review.md <<'EOF'
+verdict: APPROVED
+EOF
+  lean_spec validate demo review.md
+  [ "$status" -eq 2 ]
+}
+
 @test "validate review.md accepts verdict: NEEDS_FIXES" {
   lean_spec_write_artifact demo review.md <<'EOF'
 verdict: NEEDS_FIXES
@@ -215,6 +231,20 @@ EOF
   lean_spec validate demo
   [ "$status" -eq 1 ]
   [[ "$output" == *"usage"* ]]
+}
+
+@test "validate fails loudly (not a Python traceback) on a non-int max_tokens cap" {
+  write_rules <<'EOF'
+[max_tokens]
+"spec.md" = "abc"
+EOF
+  lean_spec_write_artifact demo spec.md <<'EOF'
+# spec
+EOF
+  lean_spec validate demo spec.md
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"max_tokens"* ]]
+  [[ "$output" != *"Traceback"* ]]
 }
 
 @test "validate fails loudly on invalid TOML" {

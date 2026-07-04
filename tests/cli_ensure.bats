@@ -34,6 +34,8 @@ print('ok')
 
 @test "ensure is idempotent: re-running does not error or reset state" {
   lean_spec ensure demo
+  mkdir -p features/demo
+  echo "# spec" > features/demo/spec.md
   lean_spec advance demo specifying implementing
   lean_spec ensure demo
   [ "$status" -eq 0 ]

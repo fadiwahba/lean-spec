@@ -11,23 +11,70 @@ teardown() {
   lean_spec_teardown_repo
 }
 
+# CONSTITUTION principle 4: "an invalid artifact blocks the advance" — since
+# advance now validates the artifact of the phase being left (spec.md
+# leaving specifying, notes.md leaving implementing), every test below that
+# drives a real transition must first write a valid artifact.
+
+write_valid_spec() {
+  lean_spec_write_artifact demo spec.md <<'EOF'
+# Spec: demo
+
+## Scope
+things
+EOF
+}
+
+write_valid_notes() {
+  lean_spec_write_artifact demo notes.md <<'EOF'
+## What was built
+stuff
+
+## TDD
+red/green evidence
+EOF
+}
+
 @test "advance specifying -> implementing succeeds" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
   [ "$status" -eq 0 ]
   run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
   [ "$output" = "implementing" ]
 }
 
-@test "advance implementing -> reviewing succeeds" {
+@test "advance specifying -> implementing fails when spec.md is missing (exit 2)" {
   lean_spec advance demo specifying implementing
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"spec.md"* ]]
+  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  [ "$output" = "specifying" ]
+}
+
+@test "advance implementing -> reviewing succeeds" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
   lean_spec advance demo implementing reviewing
   [ "$status" -eq 0 ]
   run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
   [ "$output" = "reviewing" ]
 }
 
-@test "advance reviewing -> closed succeeds when verdict is APPROVE" {
+@test "advance implementing -> reviewing fails when notes.md is missing (exit 2)" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
+  lean_spec advance demo implementing reviewing
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"notes.md"* ]]
+  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  [ "$output" = "implementing" ]
+}
+
+@test "advance reviewing -> closed succeeds when verdict is APPROVE" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
   lean_spec advance demo implementing reviewing
   lean_spec_write_artifact demo review.md <<'EOF'
 verdict: APPROVE
@@ -38,8 +85,24 @@ EOF
   [ "$output" = "closed" ]
 }
 
-@test "advance reviewing -> closed is rejected without an APPROVE verdict" {
+@test "advance reviewing -> closed succeeds when verdict has trailing text (APPROVE ...)" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
+  write_valid_notes
+  lean_spec advance demo implementing reviewing
+  lean_spec_write_artifact demo review.md <<'EOF'
+verdict: APPROVE — LGTM
+EOF
+  lean_spec advance demo reviewing closed
+  [ "$status" -eq 0 ]
+  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  [ "$output" = "closed" ]
+}
+
+@test "advance reviewing -> closed is rejected without an APPROVE verdict" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
   lean_spec advance demo implementing reviewing
   lean_spec advance demo reviewing closed
   [ "$status" -eq 2 ]
@@ -47,7 +110,9 @@ EOF
 }
 
 @test "advance reviewing -> closed is rejected when verdict is NEEDS_FIXES" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
+  write_valid_notes
   lean_spec advance demo implementing reviewing
   lean_spec_write_artifact demo review.md <<'EOF'
 verdict: NEEDS_FIXES
@@ -60,7 +125,9 @@ EOF
 }
 
 @test "advance reviewing -> implementing (fix loop) succeeds" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
+  write_valid_notes
   lean_spec advance demo implementing reviewing
   lean_spec advance demo reviewing implementing
   [ "$status" -eq 0 ]
@@ -69,6 +136,7 @@ EOF
 }
 
 @test "advance records history entry with from/to/at" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
   run python3 -c "
 import json
@@ -89,6 +157,7 @@ print('ok')
 }
 
 @test "advance rejects illegal transition specifying -> reviewing (exit 2)" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
   lean_spec advance demo implementing specifying
   [ "$status" -eq 2 ]
@@ -101,7 +170,9 @@ print('ok')
 }
 
 @test "advance rejects transitions out of closed" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
+  write_valid_notes
   lean_spec advance demo implementing reviewing
   lean_spec_write_artifact demo review.md <<'EOF'
 verdict: APPROVE
@@ -130,6 +201,7 @@ EOF
 }
 
 @test "advance is atomic: workflow.json is never left partially written" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
   # simulate re-reading immediately after; file must be valid JSON always
   run python3 -c "import json; json.load(open('features/demo/workflow.json')); print('valid')"
@@ -137,6 +209,7 @@ EOF
 }
 
 @test "advance leaves no stray tmp files behind in the feature directory" {
+  write_valid_spec
   lean_spec advance demo specifying implementing
   run bash -c "ls -1 features/demo | grep -c '^\.workflow'"
   [ "$output" = "0" ]

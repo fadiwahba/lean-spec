@@ -11,16 +11,19 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && p
 
 payload="$(cat)"
 
-# NOTE: pass payload as argv, not stdin — a heredoc script body occupies
-# python3's stdin, so piping the payload in would be silently discarded.
-decision="$(python3 - "$payload" <<'PYEOF'
+# NOTE: pass payload on stdin, not argv — a Write/Edit tool_input.content
+# can be arbitrarily large, and Linux caps a single argv string at roughly
+# 128KB (MAX_ARG_STRLEN). A large payload passed as an argument makes
+# python3 abort with Argument list too long, which under set -euo pipefail
+# kills this hook (no JSON output, fails OPEN). Stdin has no such limit.
+decision="$(printf '%s' "$payload" | python3 -c '
 import json
 import re
 import sys
 
 try:
-    data = json.loads(sys.argv[1])
-except (json.JSONDecodeError, ValueError, IndexError):
+    data = json.loads(sys.stdin.read())
+except (json.JSONDecodeError, ValueError):
     print("allow")
     sys.exit(0)
 
@@ -38,8 +41,7 @@ if pattern.search(file_path):
     print("deny")
 else:
     print("allow")
-PYEOF
-)"
+')"
 
 if [ "$decision" = "deny" ]; then
   cat <<JSON

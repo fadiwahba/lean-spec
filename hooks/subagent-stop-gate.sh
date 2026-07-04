@@ -14,14 +14,19 @@ LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
 # the phase gate is the backstop (CONSTITUTION principle 4). Without this,
 # an agent that can never satisfy validation would be re-blocked forever.
 payload="$(cat || true)"
-stop_hook_active="$(python3 -c '
+# NOTE: pass payload on stdin, not argv — the SubagentStop payload can be
+# arbitrarily large (transcript-derived fields), and Linux caps a single
+# argv string at roughly 128KB (MAX_ARG_STRLEN). A large payload passed as
+# an argument makes python3 abort with Argument list too long, which under
+# set -euo pipefail kills this hook (fails OPEN). Stdin has no such limit.
+stop_hook_active="$(printf '%s' "$payload" | python3 -c '
 import json, sys
 try:
-    data = json.loads(sys.argv[1])
-except (json.JSONDecodeError, ValueError, IndexError):
+    data = json.loads(sys.stdin.read())
+except (json.JSONDecodeError, ValueError):
     data = {}
 print("true" if data.get("stop_hook_active") else "false")
-' "$payload")"
+')"
 if [ "$stop_hook_active" = "true" ]; then
   exit 0
 fi
@@ -90,12 +95,14 @@ status=$?
 set -e
 
 if [ "$status" -ne 0 ]; then
-  python3 - "$validator_output" <<'PYEOF'
+  # Same stdin-not-argv fix as above: the validator output is bounded in
+  # practice but is not exempt from the argv limit, so route it the same way.
+  printf '%s' "$validator_output" | python3 -c '
 import json
 import sys
 
-print(json.dumps({"decision": "block", "reason": sys.argv[1]}))
-PYEOF
+print(json.dumps({"decision": "block", "reason": sys.stdin.read()}))
+'
 fi
 
 exit 0

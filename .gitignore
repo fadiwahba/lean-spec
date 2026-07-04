@@ -8,5 +8,9 @@ features/*/evidence/
 *.bak
 tmp/
 
+# crash-leftover atomic-write temp files (tmp + os.replace never completed)
+features/*/.workflow*
+.lean-spec/.auto*
+
 # vendored test harness — bootstrapped by scripts/bootstrap-bats.sh
 .tools/
