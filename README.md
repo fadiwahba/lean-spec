@@ -3,9 +3,11 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/fadiwahba/lean-spec/releases/latest"><img src="https://img.shields.io/github/v/release/fadiwahba/lean-spec?color=2ea44f" alt="Release" /></a>
   <a href="https://github.com/fadiwahba/lean-spec/actions/workflows/ci.yml"><img src="https://github.com/fadiwahba/lean-spec/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/badge/python-3.11%2B-3776AB" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/Claude%20Code-plugin-8A63D2" alt="Claude Code plugin" />
+  <a href="https://github.com/fadiwahba/lean-spec/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
 </p>
 
 <h1 align="center">lean-spec</h1>
@@ -90,7 +92,7 @@ The lifecycle, with its gates:
 /plugin install lean-spec@lean-spec
 ```
 
-**Or run it locally** (for development / trying an unreleased checkout):
+**Or run it locally** (for development, or to run a checkout ahead of the release):
 
 ```bash
 # 1. Get the plugin (clone it anywhere)
@@ -185,8 +187,8 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 | M0 | scaffold · BATS harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
-| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | 🚧 shipping |
-| M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
+| M3 | e2e demo · ship review · marketplace publish → **[v1.0.0](https://github.com/fadiwahba/lean-spec/releases/tag/v1.0.0)** | ✅ released |
+| M5 | headless CI smoke · external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
 
 ## Requirements
 
