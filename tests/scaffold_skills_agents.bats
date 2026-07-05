@@ -101,6 +101,15 @@ print('ok')
   grep -q 'Propose dispatch' "${LEAN_SPEC_REPO_ROOT}/agents/architect.md"
 }
 
+@test "auto-all skill documents --no-confirm and max_features" {
+  grep -q -- '--no-confirm' "${LEAN_SPEC_REPO_ROOT}/skills/auto-all/SKILL.md"
+  grep -q 'max_features' "${LEAN_SPEC_REPO_ROOT}/skills/auto-all/SKILL.md"
+}
+
+@test "auto-all skill documents the --no-confirm cold-start clause" {
+  grep -qi 'cold start' "${LEAN_SPEC_REPO_ROOT}/skills/auto-all/SKILL.md"
+}
+
 @test "spec skill preflights the project docs before dispatch" {
   grep -q 'validate --project PRD.md' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
   grep -q 'validate --project CONSTITUTION.md' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
