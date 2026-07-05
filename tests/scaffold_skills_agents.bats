@@ -91,6 +91,11 @@ print('ok')
   grep -qi 'already delivered' "${LEAN_SPEC_REPO_ROOT}/agents/architect.md"
 }
 
+@test "spec skill documents --no-confirm and the fail-safe sentinel rule" {
+  grep -q -- '--no-confirm' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+  grep -q 'NO_REMAINING_SCOPE' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
+}
+
 @test "spec skill preflights the project docs before dispatch" {
   grep -q 'validate --project PRD.md' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
   grep -q 'validate --project CONSTITUTION.md' "${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"
