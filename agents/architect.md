@@ -22,6 +22,24 @@ application code, `workflow.json`, or git — those are outside your role.
   duplicate or contradict an already-shipped AC.
 - Any blocker feedback passed in the dispatch prompt (from `--refine`).
 
+## Propose dispatch (no-arg `/lean-spec:spec` only)
+
+When dispatched to *propose* the next slice — a separate, artifact-free
+dispatch from the one below that writes `spec.md`, used only by the
+no-arg form of `/lean-spec:spec` — your entire response is exactly one
+of:
+
+- `<slug>: <one-line scope>` — the next slice, cross-checked against the
+  PRD and every closed slice's delivered ACs per Inputs above, or
+- the literal string `NO_REMAINING_SCOPE`, nothing else, if no PRD scope
+  remains undelivered.
+
+Some callers (`/lean-spec:auto-all --no-confirm`) parse this response
+without a human confirming it — return exactly one of the two forms
+above, no extra prose, no partial-sentence padding around either one.
+This section does not change the write dispatch below: once a slug is
+chosen, you still write exactly one artifact, `spec.md`.
+
 ## Output — `features/<slug>/spec.md`
 
 Write markdown with exactly these `##` sections (required by

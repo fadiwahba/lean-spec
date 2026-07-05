@@ -159,6 +159,18 @@ if action == "closed":
             atomic_write(auto_path, auto)
             print(f"chained:{nxt}")
             sys.exit(0)
+        if auto.get("no_confirm"):
+            max_features = coerce_int(auto.get("max_features", 20), 20)
+            features_specced = coerce_int(auto.get("features_specced", 0), 0)
+            if (
+                max_features is not None
+                and features_specced is not None
+                and features_specced < max_features
+            ):
+                auto["features_specced"] = features_specced + 1
+                atomic_write(auto_path, auto)
+                print("spec_next")
+                sys.exit(0)
     try:
         os.remove(auto_path)
     except OSError:
@@ -178,6 +190,12 @@ fi
 
 if [ "$decision" = "disarm" ]; then
   echo "lean-spec auto: could not resolve next step for '${slug}' — auto mode disarmed" >&2
+  exit 0
+fi
+
+if [ "$decision" = "spec_next" ]; then
+  reason="lean-spec auto-all: no non-closed feature remains and --no-confirm is set — read ${PLUGIN_ROOT}/skills/spec/SKILL.md now and follow its no-arg Steps yourself with --no-confirm (skip the AskUserQuestion) to propose and write the next slice. The propose dispatch returns either '<slug>: <one-line scope>' or the literal sentinel NO_REMAINING_SCOPE — treat ANY other or malformed response the same as the sentinel (fail-safe: stop, do not retry or guess). If it is the sentinel (or unparseable): delete .lean-spec/auto.json and stop — the PRD is fully covered. Otherwise: ensure the new slug and dispatch the architect to write spec.md exactly as /lean-spec:spec normally would. Do not touch .lean-spec/auto.json yourself — the driver picks up the new feature (and resets its cycle count to 0) automatically via the existing next-non-closed-feature rescan on your next turn-end."
+  python3 -c 'import json, sys; print(json.dumps({"decision": "block", "reason": sys.argv[1]}, ensure_ascii=False))' "$reason"
   exit 0
 fi
 
