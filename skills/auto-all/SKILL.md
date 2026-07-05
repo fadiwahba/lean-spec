@@ -27,14 +27,19 @@ skill behaves exactly as it always has: drains only what already has a
    - **`--no-confirm` not set:** report that and stop — this skill never
      runs `/lean-spec:spec` to create new work.
    - **`--no-confirm` set (cold start):** before writing `auto.json` at
-     all, inline the exact same propose → sentinel-check → `ensure` →
-     architect-write flow that `/lean-spec:spec --no-confirm` defines
-     (see its SKILL.md's "Determine the slug" section). If the propose
-     dispatch returns `NO_REMAINING_SCOPE` (or an unparseable response —
-     treat it the same, fail-safe): report that the PRD has nothing to
-     spec and stop; do not write `auto.json`. Otherwise the newly-specced
-     slug becomes `<first-non-closed-slug>` below and you continue to
-     step 2.
+     all, inline the exact same flow that `/lean-spec:spec --no-confirm`
+     defines — **run its `## Preflight (fail-loud)` section first** (this
+     is the one entry point where the PRD is most likely still an
+     unfilled `/lean-spec:init` skeleton, so skipping it is not safe
+     here), then its "Determine the slug" propose → sentinel-check →
+     `ensure` → architect-write flow. If the preflight fails, stop and
+     show the CLI's one-line message verbatim, same as `/lean-spec:spec`
+     would. If
+     the propose dispatch returns `NO_REMAINING_SCOPE` (or an unparseable
+     response — treat it the same, fail-safe): report that the PRD has
+     nothing to spec and stop; do not write `auto.json`. Otherwise the
+     newly-specced slug becomes `<first-non-closed-slug>` below and you
+     continue to step 2.
 2. Write `.lean-spec/auto.json`:
    ```json
    {"slug": "<first-non-closed-slug>", "gates_on": <true|false>, "max_cycles": 20, "cycles": 0, "chain_all": true, "no_confirm": <true|false>, "max_features": <N, default 20>, "features_specced": 0}
