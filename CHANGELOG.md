@@ -10,9 +10,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- `/lean-spec:auto-all` gets an opt-in `--no-confirm [--max-features=N]`
-  flag: when no non-closed feature remains (mid-run, or a cold start on
-  a project with zero specced features), it chains into
+- `/lean-spec:auto-all` gets an opt-in `--no-confirm` flag (plus an
+  optional `--max-features=N` cap): when no non-closed feature remains
+  (mid-run, or a cold start on a project with zero specced features),
+  it chains into
   `/lean-spec:spec --no-confirm` instead of stopping, so a small/simple
   PRD can be spec+built hands-off from a single command. Specs are
   still written strictly one at a time, grounded in real closed-slice
