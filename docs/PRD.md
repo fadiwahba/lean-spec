@@ -96,7 +96,7 @@ lean-spec/
 | `/lean-spec:fix <slug>` | NEEDS_FIXES loop: `advance reviewing→implementing`; coder appends `## Cycle N` | validate + commit |
 | `/lean-spec:close <slug>` | verdict==APPROVE gate; `advance reviewing→closed`; commit | verdict gate |
 | `/lean-spec:auto <slug> [--gates-on] [--max-cycles=N]` | write `.lean-spec/auto.json`, run first next-step; **Stop hook drives the rest** | hook-owned |
-| `/lean-spec:auto-all [--gates-on]` | drive every non-closed feature to closed, sequentially (one `auto.json` at a time; does **not** spec new features) | hook-owned |
+| `/lean-spec:auto-all [--gates-on] [--no-confirm] [--max-features=N]` | drive every non-closed feature to closed, sequentially (one `auto.json` at a time); with `--no-confirm`, also chains into speccing the next slice one at a time, sentinel-terminated, instead of stopping (R17) | hook-owned |
 | `/lean-spec:next`, `/lean-spec:status` | read-only navigation (CLI passthrough) | — |
 
 Driver recipes (docs only): `/goal "features/<slug>/workflow.json has \"phase\": \"closed\", or stop after 20 turns"`, `/loop /lean-spec:auto-all`, CI: `claude -p "/lean-spec:auto <slug>"`.
@@ -198,10 +198,11 @@ Dogfood rule: from F6 onward, every feature is built through the v4 pipeline its
 | R14 | TOML for config, JSON for state — YAML eliminated | stdlib has no YAML parser; `tomllib` (3.11+) keeps comments and determinism; state stays `json` |
 | R15 | `/lean-spec:spec` fail-loud-preflights project-doc readiness via `validate --project`; the check now rejects **unfilled placeholder** sections, not just missing headings | a user could `init` then jump straight to `spec` (or run brownfield without ever `plan`ning), feeding the architect an empty/skeleton PRD + CONSTITUTION — defeating the "discipline enforced by the CLI, never prompt obedience" premise; the gate is a CLI check (layer rule), invoked as a preflight exactly like `init`'s and `plan`'s |
 | R16 | `/lean-spec:plan` grounds its interview in the existing repo (reads manifests / test+CI config / README / `git log`) before asking, rather than interviewing greenfield-only | brownfield adoption: `Stack`/`Principles`/`Delegation` are usually already evident in-repo; asking from scratch yields a Constitution that ignores what's actually there — done in the session model directly, no CLI stack-detection heuristic |
+| R17 | `/lean-spec:auto-all --no-confirm` chains into speccing the next slice (one at a time, sentinel-terminated, fail-safe on any unparseable response) instead of stopping when nothing's left to drain | gives simple/small projects a hands-off "spec+build the whole PRD" flow without reopening R8: specs are still written sequentially, grounded in real closed-slice ACs, never batch-decomposed. Trades away the `--refine` mid-chain feedback loop for unattended projects — an accepted, scoped-down cost, not free. Opt-in and off by default — plain `/lean-spec:auto-all` is unchanged |
 
 ## 13. Open questions
 
-None. Resolved 2026-07-03: reviewer = Opus default with Sonnet switch (R11) · `decompose` removed in favour of one-spec-at-a-time (R8) · `auto-all` in 1.0 (R9) · evidence gitignored (R12) · fail-loud preflights (R13) · TOML config / JSON state (R14). Resolved 2026-07-05: `spec` preflights project-doc readiness and `validate --project` rejects unfilled placeholders (R15) · `plan` grounds its interview in the existing repo for brownfield (R16).
+None. Resolved 2026-07-03: reviewer = Opus default with Sonnet switch (R11) · `decompose` removed in favour of one-spec-at-a-time (R8) · `auto-all` in 1.0 (R9) · evidence gitignored (R12) · fail-loud preflights (R13) · TOML config / JSON state (R14). Resolved 2026-07-05: `spec` preflights project-doc readiness and `validate --project` rejects unfilled placeholders (R15) · `plan` grounds its interview in the existing repo for brownfield (R16) · `auto-all --no-confirm` chains into speccing the next slice, sentinel-terminated (R17).
 
 ## 14. Approval
 
