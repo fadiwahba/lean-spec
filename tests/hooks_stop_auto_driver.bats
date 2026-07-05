@@ -243,6 +243,134 @@ EOF
   [ ! -f .lean-spec/auto.json ]
 }
 
+@test "chain_all + no_confirm: no feature remains and cap not hit emits spec_next, increments features_specced" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":5,"chain_all":true,"no_confirm":true,"max_features":20,"features_specced":0}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"decision": "block"'* ]]
+  [[ "$output" == *"--no-confirm"* ]]
+  [[ "$output" == *"NO_REMAINING_SCOPE"* ]]
+  run python3 -c "import json; d=json.load(open('.lean-spec/auto.json')); print(d['slug'], d['cycles'], d['features_specced'])"
+  [ "$output" = "demo 5 1" ]
+}
+
+@test "chain_all + no_confirm: cap reached stops and removes auto.json" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":5,"chain_all":true,"no_confirm":true,"max_features":3,"features_specced":3}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f .lean-spec/auto.json ]
+}
+
+@test "chain_all + no_confirm: max_features defaults to 20 when omitted" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"decision": "block"'* ]]
+  run python3 -c "import json; print(json.load(open('.lean-spec/auto.json'))['features_specced'])"
+  [ "$output" = "1" ]
+}
+
+@test "chain_all + no_confirm: non-numeric max_features stops instead of spec_next (safe default on garbage)" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true,"max_features":"garbage","features_specced":0}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f .lean-spec/auto.json ]
+}
+
+@test "chain_all + no_confirm: spec_next reason uses the absolute plugin-root path, not a bare relative one" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true,"max_features":20,"features_specced":0}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"${LEAN_SPEC_REPO_ROOT}/skills/spec/SKILL.md"* ]]
+}
+
+@test "chain_all + no_confirm: spec_next reason does not leak the closed slug or the generic fallback text" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true,"max_features":20,"features_specced":0}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"bin/lean-spec next demo"* ]]
+}
+
+@test "chain_all without no_confirm: no feature remains still stops exactly as today (regression guard)" {
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":1,"chain_all":true}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f .lean-spec/auto.json ]
+}
+
 @test "chain_all: chaining to a blocked feature stops the chain and escalates" {
   # After a chain_all "closed" -> chained hop, the driver re-resolves
   # `lean-spec next` on the newly chained slug and must re-check its action.
