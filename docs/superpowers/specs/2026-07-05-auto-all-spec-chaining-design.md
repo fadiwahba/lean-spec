@@ -204,6 +204,38 @@ skill does today: `ensure <slug>`, dispatch the architect to write
 unchanged. `auto.json` is never touched here except in the terminal
 delete case — no slug/cycle bookkeeping is this skill's job.
 
+### Cold start: `auto-all --no-confirm` on a project with zero specced features
+
+Scope addition (confirmed explicitly, not assumed): the mechanism above
+only covers chaining when a feature **closes and none remain** — a
+hook-driven, mid-run trigger. Without a separate fix, a completely fresh
+project (nothing ever specced) would still hit today's `auto-all` step 1
+("no non-closed feature found → report and stop, never specs") even with
+`--no-confirm` set, contradicting the "hands-off, spec+build the whole
+PRD" pitch — the user would still have to run `/lean-spec:spec` manually
+once before their first `--no-confirm` run.
+
+Fix, reusing the existing pattern instead of adding new hook logic:
+`/lean-spec:auto`'s own step 3 already performs the *first* cycle inline
+(the calling model runs it directly, before the hook ever engages) — so
+`skills/auto-all/SKILL.md`'s step 1 gets a `--no-confirm` clause: when no
+non-closed feature is found *and* `--no-confirm` is set, inline the exact
+same propose → sentinel-check → `ensure` → architect-write flow that
+`/lean-spec:spec --no-confirm` already defines above, **before** writing
+`auto.json` at all. If the propose dispatch returns the sentinel (or an
+unparseable response) — a fresh PRD with nothing to build, an edge case —
+report that and stop; there is no `auto.json` to delete yet (nothing was
+written), so "stop" here just means "don't proceed to step 2." Otherwise,
+step 2 writes `auto.json` with the newly-specced slug exactly as it does
+today, and steps 3–4 proceed unchanged.
+
+This adds no new hook code and no new decision branch — it's entirely a
+`skills/auto-all/SKILL.md` step-1 addition that calls out to the same
+`/lean-spec:spec --no-confirm` contract already specified above, the same
+way the hook's `spec_next` reason does for the mid-run case. Single
+source of truth for "propose/sentinel/ensure/dispatch" stays in
+`skills/spec/SKILL.md`.
+
 ## Safety interactions
 
 - **Corrected:** a `NEEDS_FIXES` review verdict on a chain-specced
@@ -259,6 +291,7 @@ No new test is needed for "the chained-to feature's `cycles` resets to `0`" — 
 8. `auto-all/SKILL.md` documents `--no-confirm` and `max_features`
 9. `spec/SKILL.md` documents `--no-confirm` skipping confirmation and the fail-safe "treat any unparseable response as the sentinel" rule
 10. `architect.md` documents the `NO_REMAINING_SCOPE` sentinel, scoped explicitly to the propose dispatch (not the write dispatch)
+11. `auto-all/SKILL.md` documents the cold-start clause in step 1 (no non-closed feature found + `--no-confirm` → inline the `/lean-spec:spec --no-confirm` flow before writing `auto.json`, not the "report and stop" default)
 
 No new `e2e_lifecycle.bats` case — that file exercises CLI/hook wrappers the driver script itself doesn't touch; the hook-level tests above are the correct layer.
 
@@ -269,7 +302,7 @@ Run `.tools/bin/bats tests/` — all green is the definition of done.
 ## Surface touched
 
 - `hooks/stop-auto-driver.sh` — new `no_confirm`/`max_features`/`features_specced` handling, one new `spec_next` decision branch (intercepted before the generic reason-builder, using the absolute `$PLUGIN_ROOT` path), one new block-reason template. No `bin/lean-spec` (CLI) changes — `--no-confirm`/`--max-features` are skill-level flags parsed into `auto.json`, same as the existing `--gates-on`/`--max-cycles`. No changes to `subagent-stop-gate.sh` or `pre-tool-use-guard.sh` (the known early-gate gap is accepted, not patched; the guard's regex already excludes `auto.json`/`spec.md`).
-- `skills/auto-all/SKILL.md` — document `--no-confirm [--max-features=N]`.
+- `skills/auto-all/SKILL.md` — document `--no-confirm [--max-features=N]`, plus the cold-start clause in step 1 (inline the `/lean-spec:spec --no-confirm` flow when no non-closed feature exists yet, instead of reporting and stopping).
 - `skills/spec/SKILL.md` — document `--no-confirm` (skip confirmation, propose dispatch still runs) and the fail-safe sentinel-parsing rule. No `auto.json` bookkeeping documented here — this skill never touches it except the terminal delete.
 - `agents/architect.md` — document the `NO_REMAINING_SCOPE` sentinel contract, scoped to the propose dispatch only.
 - `docs/PRD.md` — R17 + updated §13 resolved line.
