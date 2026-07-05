@@ -6,6 +6,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-05
+
+### Added
+
+- `/lean-spec:auto-all` gets an opt-in `--no-confirm [--max-features=N]`
+  flag: when no non-closed feature remains (mid-run, or a cold start on
+  a project with zero specced features), it chains into
+  `/lean-spec:spec --no-confirm` instead of stopping, so a small/simple
+  PRD can be spec+built hands-off from a single command. Specs are
+  still written strictly one at a time, grounded in real closed-slice
+  ACs (R8 unchanged) — this automates the confirmation cadence between
+  slices, not upfront batch decomposition. The architect signals "no
+  PRD scope remains" via a `NO_REMAINING_SCOPE` sentinel, parsed
+  fail-safe (any unparseable response stops the chain rather than
+  retrying).
+
 ## [1.1.0] - 2026-07-05
 
 ### Added
@@ -79,7 +95,8 @@ First public release. Requires **Claude Code ≥ 2.1.198**, **Python 3 ≥ 3.11*
 - The `PreToolUse` guard reads its payload from stdin so large writes cannot
   make it fail open.
 
-[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/fadiwahba/lean-spec/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fadiwahba/lean-spec/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/fadiwahba/lean-spec/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/fadiwahba/lean-spec/releases/tag/v1.0.0
