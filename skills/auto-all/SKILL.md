@@ -33,7 +33,8 @@ skill behaves exactly as it always has: drains only what already has a
      unfilled `/lean-spec:init` skeleton, so skipping it is not safe
      here), then its "Determine the slug" propose → sentinel-check →
      `ensure` → architect-write flow. If the preflight fails, stop and
-     show the CLI's message verbatim, same as `/lean-spec:spec` would. If
+     show the CLI's one-line message verbatim, same as `/lean-spec:spec`
+     would. If
      the propose dispatch returns `NO_REMAINING_SCOPE` (or an unparseable
      response — treat it the same, fail-safe): report that the PRD has
      nothing to spec and stop; do not write `auto.json`. Otherwise the

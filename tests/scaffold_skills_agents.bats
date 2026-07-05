@@ -111,7 +111,7 @@ print('ok')
 }
 
 @test "auto-all cold-start clause runs the spec skill's preflight before speccing" {
-  grep -q 'Preflight (fail-loud)' "${LEAN_SPEC_REPO_ROOT}/skills/auto-all/SKILL.md"
+  grep -q -- '`## Preflight (fail-loud)` section first' "${LEAN_SPEC_REPO_ROOT}/skills/auto-all/SKILL.md"
 }
 
 @test "spec skill preflights the project docs before dispatch" {
