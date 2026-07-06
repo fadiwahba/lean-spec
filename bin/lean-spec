@@ -215,6 +215,21 @@ def _gate_close_requires_verdict(root, slug):
         fail(f"cannot close '{slug}': review.md verdict is '{verdict}', required '{required}'", 2)
 
 
+def _gate_fix_requires_needs_fixes(root, slug):
+    """The fix loop (reviewing -> implementing) is only legitimate when the
+    reviewer returned NEEDS_FIXES: APPROVE routes to close, BLOCKED stops the
+    line and escalates, and a missing/invalid verdict is not an actionable
+    fix. Enforced here so the state machine matches resolve_next's routing
+    rather than trusting the caller to only send back genuine fix cycles."""
+    review_path = os.path.join(feature_dir(root, slug), "review.md")
+    if not os.path.isfile(review_path):
+        fail(f"cannot send '{slug}' back to implementing: review.md not found — run /lean-spec:review first", 2)
+    with open(review_path) as f:
+        verdict = extract_verdict(f.read())
+    if verdict != "NEEDS_FIXES":
+        fail(f"cannot send '{slug}' back to implementing: review.md verdict is '{verdict}', expected 'NEEDS_FIXES'", 2)
+
+
 SOURCE_PHASE_ARTIFACT = {"specifying": "spec.md", "implementing": "notes.md"}
 
 
@@ -223,8 +238,8 @@ def _gate_source_artifact(root, slug, frm):
     Validates the artifact belonging to the phase being left (spec.md when
     leaving specifying, notes.md when leaving implementing) before the
     transition is committed. reviewing->closed has its own, stricter verdict
-    gate (_gate_close_requires_verdict); reviewing->implementing (fix loop)
-    has no source artifact to validate here."""
+    gate (_gate_close_requires_verdict); reviewing->implementing has the
+    verdict gate _gate_fix_requires_needs_fixes."""
     artifact = SOURCE_PHASE_ARTIFACT.get(frm)
     if artifact is None:
         return
@@ -271,6 +286,8 @@ def cmd_advance(root, args):
         _gate_source_artifact(root, slug, frm)
         if (frm, to) == ("reviewing", "closed"):
             _gate_close_requires_verdict(root, slug)
+        if (frm, to) == ("reviewing", "implementing"):
+            _gate_fix_requires_needs_fixes(root, slug)
         ts = now_iso()
         wf["phase"] = to
         wf["updated_at"] = ts

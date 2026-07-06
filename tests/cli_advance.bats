@@ -124,15 +124,45 @@ EOF
   [ "$output" = "reviewing" ]
 }
 
-@test "advance reviewing -> implementing (fix loop) succeeds" {
+@test "advance reviewing -> implementing (fix loop) succeeds with a NEEDS_FIXES verdict" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
+  lean_spec advance demo implementing reviewing
+  lean_spec_write_artifact demo review.md <<'EOF'
+verdict: NEEDS_FIXES
+EOF
+  lean_spec advance demo reviewing implementing
+  [ "$status" -eq 0 ]
+  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  [ "$output" = "implementing" ]
+}
+
+@test "advance reviewing -> implementing is rejected when review.md is missing" {
   write_valid_spec
   lean_spec advance demo specifying implementing
   write_valid_notes
   lean_spec advance demo implementing reviewing
   lean_spec advance demo reviewing implementing
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"review.md not found"* ]]
   run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
-  [ "$output" = "implementing" ]
+  [ "$output" = "reviewing" ]
+}
+
+@test "advance reviewing -> implementing is rejected when the verdict is APPROVE (not a fix)" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
+  lean_spec advance demo implementing reviewing
+  lean_spec_write_artifact demo review.md <<'EOF'
+verdict: APPROVE
+EOF
+  lean_spec advance demo reviewing implementing
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"NEEDS_FIXES"* ]]
+  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  [ "$output" = "reviewing" ]
 }
 
 @test "advance records history entry with from/to/at" {
