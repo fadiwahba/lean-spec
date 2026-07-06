@@ -97,14 +97,28 @@ def workflow_path(root, slug):
 
 
 def atomic_write_json(path, data):
-    """tmp file (same dir, X-suffix per portability convention) + os.replace."""
+    """tmp file (same dir, X-suffix per portability convention) + os.replace.
+
+    mkstemp creates the tmp file 0600, and os.replace makes the target
+    inherit that mode — so without restoring it, every write would silently
+    downgrade an existing file to owner-only. Preserve an existing file's
+    mode; for a new file, honor the process umask (as a normal create would)
+    rather than leaving it 0600.
+    """
     d = os.path.dirname(path)
     os.makedirs(d, exist_ok=True)
+    try:
+        mode = os.stat(path).st_mode & 0o777
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     fd, tmp_path = tempfile.mkstemp(prefix=".workflowXXXXXX", dir=d)
     try:
         with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=2, sort_keys=True)
             f.write("\n")
+        os.chmod(tmp_path, mode)
         os.replace(tmp_path, path)
     except BaseException:
         try:
