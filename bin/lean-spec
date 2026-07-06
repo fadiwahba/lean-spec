@@ -127,6 +127,8 @@ def load_workflow(root, slug, required=True):
         fail(f"corrupt workflow.json for '{slug}': {e}", 1)
     if not isinstance(data, dict):
         fail(f"corrupt workflow.json for '{slug}': not a JSON object", 1)
+    if "history" in data and not isinstance(data["history"], list):
+        fail(f"corrupt workflow.json for '{slug}': history is not a list", 1)
     return data
 
 
@@ -275,6 +277,18 @@ def load_rules(root):
             data = tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
         fail(f"invalid .lean-spec/rules.toml: {e}", 1)
+
+    # The top-level [defaults]/[required_sections]/[max_tokens] keys must be
+    # tables. A wrong-typed container (e.g. `required_sections = "foo"`) would
+    # otherwise blow up the .update() below with a raw traceback — validate
+    # the container shape before the value shapes (CONSTITUTION principle 8).
+    for key in ("defaults", "required_sections", "max_tokens"):
+        if key in data and not isinstance(data[key], dict):
+            fail(
+                f"invalid .lean-spec/rules.toml: [{key}] must be a table "
+                f"(found {data[key]!r})",
+                1,
+            )
     rules["defaults"].update(data.get("defaults", {}))
     rules["required_sections"].update(data.get("required_sections", {}))
     rules["max_tokens"].update(data.get("max_tokens", {}))
