@@ -76,10 +76,10 @@ The lifecycle, with its gates:
 - 🧪 **TDD by default** — RED then GREEN, both runs captured as evidence; `review` is blocked without it. Opt out per-feature with `--no-tdd`.
 - 📝 **Artifacts as the audit trail** — `spec.md`, `notes.md`, `review.md` per feature; the whole history is in `git log`.
 - 🧭 **One spec at a time** — the next slice is derived from the PRD plus what's already shipped, so specs never go stale from being written too early.
-- 🖼️ **Visual reviews** — `review --visual` drives the running app via Playwright and captures UI evidence for design specs.
+- 🖼️ **Visual reviews** — `review --visual` drives the running app with a browser scripted through Bash (e.g. a Playwright CLI script) and captures UI evidence for design specs.
 - 🤖 **Hands-free autonomy** — a Stop-hook driver runs a feature (or all of them) to done with no babysitting.
 - 💥 **Fail-loud** — every entry point preflights its environment and exits with a one-line, actionable error. No silent fallbacks.
-- 🪶 **A dependency-free core** — the harness is pure `python3` stdlib (≥ 3.11) + bash: no Node, no pip, no `jq`/`yq`, no YAML. (Only the optional `review --visual` step reaches for extra tooling — Playwright/Chrome.)
+- 🪶 **A dependency-free core** — the harness is pure `python3` stdlib (≥ 3.11) + bash: no Node, no pip, no `jq`/`yq`, no YAML. (Only the optional `review --visual` step reaches for extra tooling — a Playwright CLI, driven through Bash.)
 
 ## Getting started
 

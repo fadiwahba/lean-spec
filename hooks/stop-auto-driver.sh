@@ -85,9 +85,13 @@ def next_non_closed_slug(root):
             continue
         try:
             with open(wf_path) as f:
-                phase = json.load(f).get("phase")
+                wf = json.load(f)
         except (OSError, json.JSONDecodeError):
             continue
+        # A valid-but-non-object workflow.json must not crash the scan on
+        # .get; treat it as a non-closed feature so it surfaces (the driver
+        # then fails loudly when it tries to resolve its next step).
+        phase = wf.get("phase") if isinstance(wf, dict) else None
         if phase != "closed":
             return name
     return None

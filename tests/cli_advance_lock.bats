@@ -25,21 +25,33 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
-@test "concurrent advances on the same slug serialize to one consistent transition" {
-  # Fire many identical specifying->implementing advances at once.
+@test "concurrent advances on the same slug: exactly one commits (lock serializes)" {
+  # Fire many identical specifying->implementing advances at once, recording
+  # each racer's exit code. The lock guarantees exactly one sees phase
+  # specifying and commits (exit 0); every other loses the race, re-reads
+  # implementing, and fails the current!=frm check (exit 2). Without the lock
+  # two racers could both read specifying and both exit 0.
+  d="$(mktemp -d "${BATS_TEST_TMPDIR:-${TMPDIR:-/tmp}}/racesXXXXXX")"
   for i in $(seq 1 12); do
-    "${LEAN_SPEC_BIN}" advance demo specifying implementing >/dev/null 2>&1 &
+    ( "${LEAN_SPEC_BIN}" advance demo specifying implementing >/dev/null 2>&1; echo "$?" > "${d}/${i}" ) &
   done
   wait
-  # Exactly one committed: phase is implementing, history has one entry,
-  # and the file is still valid JSON (no interleaved/corrupt write).
+  successes="$(grep -l '^0$' "${d}"/* | wc -l | tr -d ' ')"
+  [ "$successes" = "1" ]
+  # ...and the on-disk state is consistent: implementing, one history entry.
   run python3 -c "
 import json
-d = json.load(open('features/demo/workflow.json'))
-assert d['phase'] == 'implementing', d['phase']
-assert isinstance(d['history'], list) and len(d['history']) == 1, d['history']
+o = json.load(open('features/demo/workflow.json'))
+assert o['phase'] == 'implementing', o['phase']
+assert isinstance(o['history'], list) and len(o['history']) == 1, o['history']
 print('ok')
 "
-  [ "$status" -eq 0 ]
   [ "$output" = "ok" ]
+}
+
+@test "advance on a never-ensured slug fails without creating a lock directory" {
+  lean_spec advance neverexisted specifying implementing
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"no such feature"* ]]
+  [ ! -d features/neverexisted ]
 }
