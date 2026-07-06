@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-06
+
+### Changed
+
+- Cosmetic: `agents/coder.md` color cyan → yellow, `agents/reviewer.md`
+  color red → purple.
+
 ## [1.2.0] - 2026-07-05
 
 ### Added
@@ -22,6 +29,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   PRD scope remains" via a `NO_REMAINING_SCOPE` sentinel, parsed
   fail-safe (any unparseable response stops the chain rather than
   retrying).
+
+### Fixed
+
+- The `--no-confirm` cold-start clause (a project with zero specced
+  features) skipped `/lean-spec:spec`'s mandatory preflight (R15), the
+  one entry point where the PRD is most likely still an unfilled
+  `/lean-spec:init` skeleton. It now runs the preflight first, same as
+  `/lean-spec:spec` would.
 
 ## [1.1.0] - 2026-07-05
 
@@ -96,7 +111,8 @@ First public release. Requires **Claude Code ≥ 2.1.198**, **Python 3 ≥ 3.11*
 - The `PreToolUse` guard reads its payload from stdin so large writes cannot
   make it fail open.
 
-[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/fadiwahba/lean-spec/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/fadiwahba/lean-spec/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fadiwahba/lean-spec/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/fadiwahba/lean-spec/compare/v1.0.0...v1.0.1
