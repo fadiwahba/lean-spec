@@ -238,9 +238,21 @@ def _gate_source_artifact(root, slug, frm):
 
 
 def cmd_advance(root, args):
-    if len(args) != 3:
-        fail("usage: lean-spec advance <slug> <from> <to>", 1)
-    slug, frm, to = args
+    # --no-tdd / --tdd record a per-feature TDD override in workflow.json so
+    # the notes.md gate honors a spike opt-out instead of only reading the
+    # global rules.toml default (which the model cannot vary per feature).
+    tdd_override = None
+    positional = []
+    for a in args:
+        if a == "--no-tdd":
+            tdd_override = False
+        elif a == "--tdd":
+            tdd_override = True
+        else:
+            positional.append(a)
+    if len(positional) != 3:
+        fail("usage: lean-spec advance <slug> <from> <to> [--tdd|--no-tdd]", 1)
+    slug, frm, to = positional
     validate_slug(slug)
     for p in (frm, to):
         if p not in VALID_PHASES:
@@ -262,6 +274,8 @@ def cmd_advance(root, args):
         ts = now_iso()
         wf["phase"] = to
         wf["updated_at"] = ts
+        if tdd_override is not None:
+            wf["tdd"] = tdd_override
         wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
         path = workflow_path(root, slug)
         atomic_write_json(path, wf)
@@ -430,8 +444,15 @@ def validate_artifact(root, slug, artifact, rules, project=False):
                 required.append(extra)
     else:
         required = list(rules["required_sections"].get(artifact, []))
-        if artifact == "notes.md" and rules["defaults"].get("tdd", True):
-            if "TDD" not in required:
+        if artifact == "notes.md":
+            # Per-feature workflow.json `tdd` (set by advance --tdd/--no-tdd)
+            # overrides the global rules.toml default, so a documented spike
+            # opt-out actually satisfies this same gate.
+            tdd_required = rules["defaults"].get("tdd", True)
+            wf = load_workflow(root, slug, required=False)
+            if isinstance(wf, dict) and isinstance(wf.get("tdd"), bool):
+                tdd_required = wf["tdd"]
+            if tdd_required and "TDD" not in required:
                 required.append("TDD")
 
     missing = [s for s in required if s not in headings]

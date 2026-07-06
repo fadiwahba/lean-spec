@@ -8,12 +8,17 @@ disable-model-invocation: true
 
 ## Steps
 
-1. `bin/lean-spec advance <slug> specifying implementing` — the state
-   transition. If this fails (wrong phase), stop and show the CLI's
-   message; do not force it.
-2. Resolve TDD mode: `--tdd` / `--no-tdd` flag > `.lean-spec/rules.toml`
-   `[defaults].tdd` > default `true`. Pass the resolved mode into the
-   coder's dispatch prompt explicitly.
+1. Resolve TDD mode first: `--tdd` / `--no-tdd` flag > `.lean-spec/rules.toml`
+   `[defaults].tdd` > default `true`.
+2. `bin/lean-spec advance <slug> specifying implementing` — the state
+   transition. **Pass the resolved mode through as a flag** so the CLI
+   records it per-feature in `workflow.json`: append `--no-tdd` for a
+   spike (or `--tdd` to pin it on against a `tdd = false` project
+   default); omit for the plain default. This is what makes the
+   `notes.md` gate (step 4) honor the opt-out — without it the CLI reads
+   only the global default and rejects a `--no-tdd` `notes.md`. If the
+   transition fails (wrong phase), stop and show the CLI's message; do
+   not force it.
 3. Dispatch the `coder` agent via Task, with `docs/CONSTITUTION.md`
    injected, `features/<slug>/spec.md`, and the resolved TDD mode. The
    coder implements and writes `features/<slug>/notes.md` (with `## TDD`
