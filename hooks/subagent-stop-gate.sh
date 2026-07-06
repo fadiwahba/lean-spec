@@ -25,6 +25,9 @@ try:
     data = json.loads(sys.stdin.read())
 except (json.JSONDecodeError, ValueError):
     data = {}
+# Valid-but-non-object JSON (a bare array/scalar) must not crash .get below.
+if not isinstance(data, dict):
+    data = {}
 print("true" if data.get("stop_hook_active") else "false")
 ')"
 if [ "$stop_hook_active" = "true" ]; then
@@ -45,7 +48,8 @@ slug = None
 if os.path.isfile(auto_path):
     try:
         with open(auto_path) as f:
-            slug = json.load(f).get("slug")
+            data = json.load(f)
+        slug = data.get("slug") if isinstance(data, dict) else None
     except (json.JSONDecodeError, OSError):
         slug = None
 
@@ -69,7 +73,8 @@ if slug is None:
 wf_path = os.path.join(features_root, slug, "workflow.json")
 try:
     with open(wf_path) as f:
-        phase = json.load(f).get("phase", "__none__")
+        wf = json.load(f)
+    phase = wf.get("phase", "__none__") if isinstance(wf, dict) else "__none__"
 except (json.JSONDecodeError, OSError):
     phase = "__none__"
 

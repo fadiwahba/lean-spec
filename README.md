@@ -76,10 +76,10 @@ The lifecycle, with its gates:
 - 🧪 **TDD by default** — RED then GREEN, both runs captured as evidence; `review` is blocked without it. Opt out per-feature with `--no-tdd`.
 - 📝 **Artifacts as the audit trail** — `spec.md`, `notes.md`, `review.md` per feature; the whole history is in `git log`.
 - 🧭 **One spec at a time** — the next slice is derived from the PRD plus what's already shipped, so specs never go stale from being written too early.
-- 🖼️ **Visual reviews** — `review --visual` drives the running app via Playwright and captures UI evidence for design specs.
+- 🖼️ **Visual reviews** — `review --visual` drives the running app with a browser scripted through Bash (e.g. a Playwright CLI script) and captures UI evidence for design specs.
 - 🤖 **Hands-free autonomy** — a Stop-hook driver runs a feature (or all of them) to done with no babysitting.
 - 💥 **Fail-loud** — every entry point preflights its environment and exits with a one-line, actionable error. No silent fallbacks.
-- 🪶 **A dependency-free core** — the harness is pure `python3` stdlib (≥ 3.11) + bash: no Node, no pip, no `jq`/`yq`, no YAML. (Only the optional `review --visual` step reaches for extra tooling — Playwright/Chrome.)
+- 🪶 **A dependency-free core** — the harness is pure `python3` stdlib (≥ 3.11) + bash: no Node, no pip, no `jq`/`yq`, no YAML. (Only the optional `review --visual` step reaches for extra tooling — a Playwright CLI, driven through Bash.)
 
 ## Getting started
 
@@ -149,9 +149,19 @@ The coder is always reviewed by a *different* model family — no rubber-stampin
 ## Hands-free mode
 
 ```
-/lean-spec:auto <slug>        drive one feature to closed; a Stop hook runs each phase
-/lean-spec:auto-all           drain every open feature, one at a time
+/lean-spec:auto <slug>                        drive one feature to closed; a Stop hook runs each phase
+/lean-spec:auto-all                           drain every already-specced feature, one at a time
+/lean-spec:auto-all --no-confirm              also spec the next slice on demand (one at a time) and keep going
+/lean-spec:auto-all --no-confirm --max-features=N   cap how many slices get auto-specced in one run (default 20)
 ```
+
+`--no-confirm` turns `auto-all` into a single hands-off command for a
+small/simple PRD: when nothing is left to drain (mid-run, or on a fresh
+project with no specs yet) it chains into `/lean-spec:spec` for the next
+slice instead of stopping, skipping the per-slice confirmation. Specs are
+still written strictly one at a time (never batch-decomposed); the
+architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully
+covered.
 
 Or use Claude Code built-ins directly — no plugin code involved:
 
@@ -185,7 +195,7 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 | M0 | scaffold · BATS harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
-| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | 🚧 shipping |
+| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.2.x — see `CHANGELOG.md`) |
 | M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
 
 ## Requirements

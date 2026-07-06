@@ -1,7 +1,7 @@
 # lean-spec v4 — Product Requirements Document
 
 > **What we are building.** How we build it lives in `docs/CONSTITUTION.md`.
-> Status: DRAFT — awaiting Fady's approval. Greenfield rebuild; shares no code with lean-spec v3 (`~/sandbox/lean-spec`), only lessons.
+> Status: APPROVED — shipped (1.0 and subsequent point releases; see `CHANGELOG.md`). Greenfield rebuild; shares no code with lean-spec v3 (`~/sandbox/lean-spec`), only lessons.
 
 ---
 
@@ -92,7 +92,7 @@ lean-spec/
 | `/lean-spec:plan` | AskUserQuestion interview (≤3 rounds: problem/users, features, constraints, quality bar, non-goals) → session model writes `docs/PRD.md` + `docs/CONSTITUTION.md`; `--refine` (blocker feedback) / `--regenerate` modes | PRD/CONSTITUTION template sections present |
 | `/lean-spec:spec [<slug>] [--refine] [--no-confirm]` | no args: **architect** reads PRD + feature status, proposes the *next* slice (slug + scope) for user confirmation — skipped with `--no-confirm`, which instead parses the response fail-safe against the `NO_REMAINING_SCOPE` sentinel (R17) — then writes that one `spec.md` + `ensure` state; with slug: spec that named slice; `--refine` revises | SubagentStop validate |
 | `/lean-spec:implement <slug> [--tdd\|--no-tdd]` | `advance specifying→implementing`; dispatch **coder**; TDD per §8; commit | validate + `advance` + commit token |
-| `/lean-spec:review <slug> [--visual]` | `advance implementing→reviewing`; dispatch **reviewer** → `review.md` verdict. `--visual` (UI/UX specs): reviewer drives the running app via Playwright (or the user's Chrome instance), verifies visual ACs, saves screenshots to `features/<slug>/evidence/visual/`, cites them in a `## Visual Fidelity` section | validate; `--visual` additionally requires evidence files + section |
+| `/lean-spec:review <slug> [--visual]` | `advance implementing→reviewing`; dispatch **reviewer** → `review.md` verdict. `--visual` (UI/UX specs): reviewer drives the running app with a browser scripted through `Bash` (e.g. a Playwright CLI script), verifies visual ACs, saves screenshots to `features/<slug>/evidence/visual/`, cites them in a `## Visual Fidelity` section | validate; `--visual` additionally requires evidence files + section |
 | `/lean-spec:fix <slug>` | NEEDS_FIXES loop: `advance reviewing→implementing`; coder appends `## Cycle N` | validate + commit |
 | `/lean-spec:close <slug>` | verdict==APPROVE gate; `advance reviewing→closed`; commit | verdict gate |
 | `/lean-spec:auto <slug> [--gates-on] [--max-cycles=N]` | write `.lean-spec/auto.json`, run first next-step; **Stop hook drives the rest** | hook-owned |
@@ -206,4 +206,4 @@ None. Resolved 2026-07-03: reviewer = Opus default with Sonnet switch (R11) · `
 
 ## 14. Approval
 
-- [ ] Fady — PRD approved, proceed to decompose
+- [x] Fady — PRD approved; 1.0 shipped and released (see `CHANGELOG.md`).

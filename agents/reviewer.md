@@ -52,8 +52,11 @@ Keep `review.md` under the configured `max_tokens` cap (default 8000).
 
 ## `--visual` reviews (UI/UX specs only)
 
-Drive the running app via Playwright (or the user's Chrome instance),
-verify the visual Acceptance Criteria, and save every screenshot under
+Drive the running app with a browser you script through `Bash` (e.g. a
+Playwright CLI script — your tool grant is `Read, Grep, Glob, Write,
+Edit, Bash`, so browser automation runs via `Bash`, not a browser MCP
+tool), verify the visual Acceptance Criteria, and save every screenshot
+under
 `features/<slug>/evidence/visual/` (gitignored — a local audit aid, not
 the durable record). Add a `## Visual Fidelity` section citing each
 screenshot by filename. Evidence saved outside that folder, or not cited

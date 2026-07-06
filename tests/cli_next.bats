@@ -152,3 +152,9 @@ print('ok')
   lean_spec next ghost
   [ "$status" -eq 1 ]
 }
+
+@test "next with no arguments prints usage and exits 1" {
+  lean_spec next
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"usage"* ]]
+}

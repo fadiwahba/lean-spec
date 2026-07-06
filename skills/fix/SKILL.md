@@ -11,7 +11,11 @@ Only meaningful when `bin/lean-spec next <slug>` says so (i.e.
 
 ## Steps
 
-1. `bin/lean-spec advance <slug> reviewing implementing`.
+1. `bin/lean-spec advance <slug> reviewing implementing`. The CLI gates
+   this transition on `review.md`'s verdict being `NEEDS_FIXES` (APPROVE
+   routes to close, BLOCKED stops the line, a missing verdict is not a
+   fix) — so a wrong call fails loudly here rather than silently
+   re-opening an approved or blocked feature.
 2. Dispatch the `coder` agent via Task, with `docs/CONSTITUTION.md`
    injected, `features/<slug>/spec.md`, and `features/<slug>/review.md`'s
    findings. The coder appends a new `## Cycle N` section to

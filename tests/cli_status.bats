@@ -77,3 +77,9 @@ EOF
   lean_spec status ghost
   [ "$status" -eq 1 ]
 }
+
+@test "status with too many arguments prints usage and exits 1" {
+  lean_spec status demo extra-arg
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"usage"* ]]
+}

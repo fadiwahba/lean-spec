@@ -34,3 +34,13 @@ write_non_dict_workflow() {
   [[ "$output" == *"corrupt workflow.json"* ]]
   [[ "$output" != *"Traceback"* ]]
 }
+
+@test "advance on a dict workflow.json with non-list history fails loudly, no traceback" {
+  printf '{"phase":"specifying","history":"oops","created_at":"x","updated_at":"x"}' > features/demo/workflow.json
+  mkdir -p features/demo
+  echo "# spec" > features/demo/spec.md
+  lean_spec advance demo specifying implementing
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"corrupt workflow.json"* ]]
+  [[ "$output" != *"Traceback"* ]]
+}

@@ -13,9 +13,9 @@ disable-model-invocation: true
 2. Dispatch the `reviewer` agent via Task, with `docs/CONSTITUTION.md`
    injected, `features/<slug>/spec.md`, and `features/<slug>/notes.md`
    (including its `## TDD` evidence). Pass `--visual` through when given —
-   the reviewer then drives the running app (Playwright or the user's
-   Chrome instance) and saves screenshots under
-   `features/<slug>/evidence/visual/`.
+   the reviewer then drives the running app with a browser scripted
+   through `Bash` (e.g. a Playwright CLI script) and saves screenshots
+   under `features/<slug>/evidence/visual/`.
 3. `SubagentStop` validates `review.md` automatically (verdict line
    present and valid) when the reviewer finishes. Backstop:
    ```

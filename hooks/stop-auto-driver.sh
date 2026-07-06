@@ -27,7 +27,10 @@ slug="$(python3 -c '
 import json, sys
 try:
     with open(sys.argv[1]) as f:
-        print(json.load(f).get("slug", ""))
+        data = json.load(f)
+    # Valid-but-non-object JSON (a bare array/scalar) prints an empty slug,
+    # so the caller disarms (rm auto.json) instead of crashing on .get.
+    print(data.get("slug", "") if isinstance(data, dict) else "")
 except (OSError, json.JSONDecodeError):
     print("")
 ' "$AUTO_PATH")"
@@ -82,9 +85,13 @@ def next_non_closed_slug(root):
             continue
         try:
             with open(wf_path) as f:
-                phase = json.load(f).get("phase")
+                wf = json.load(f)
         except (OSError, json.JSONDecodeError):
             continue
+        # A valid-but-non-object workflow.json must not crash the scan on
+        # .get; treat it as a non-closed feature so it surfaces (the driver
+        # then fails loudly when it tries to resolve its next step).
+        phase = wf.get("phase") if isinstance(wf, dict) else None
         if phase != "closed":
             return name
     return None
@@ -94,6 +101,12 @@ try:
     with open(auto_path) as f:
         auto = json.load(f)
 except (OSError, json.JSONDecodeError):
+    print("stop")
+    sys.exit(0)
+
+# Defense-in-depth: the slug reader above already disarms a non-object
+# auto.json, but never let a bare array/scalar reach the .get() calls below.
+if not isinstance(auto, dict):
     print("stop")
     sys.exit(0)
 

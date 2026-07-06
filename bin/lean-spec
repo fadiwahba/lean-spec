@@ -26,12 +26,14 @@ word count (len(text.split())). This is a conservative proxy chosen for
 determinism without a tokenizer dependency (stdlib only) — it is not exact
 LLM-token accounting, just a cheap cap to catch runaway artifacts.
 """
+import fcntl
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 PROG = "lean-spec"
@@ -97,14 +99,28 @@ def workflow_path(root, slug):
 
 
 def atomic_write_json(path, data):
-    """tmp file (same dir, X-suffix per portability convention) + os.replace."""
+    """tmp file (same dir, X-suffix per portability convention) + os.replace.
+
+    mkstemp creates the tmp file 0600, and os.replace makes the target
+    inherit that mode — so without restoring it, every write would silently
+    downgrade an existing file to owner-only. Preserve an existing file's
+    mode; for a new file, honor the process umask (as a normal create would)
+    rather than leaving it 0600.
+    """
     d = os.path.dirname(path)
     os.makedirs(d, exist_ok=True)
+    try:
+        mode = os.stat(path).st_mode & 0o777
+    except FileNotFoundError:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     fd, tmp_path = tempfile.mkstemp(prefix=".workflowXXXXXX", dir=d)
     try:
         with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=2, sort_keys=True)
             f.write("\n")
+        os.chmod(tmp_path, mode)
         os.replace(tmp_path, path)
     except BaseException:
         try:
@@ -112,6 +128,22 @@ def atomic_write_json(path, data):
         except OSError:
             pass
         raise
+
+
+@contextmanager
+def feature_lock(root, slug):
+    """Advisory exclusive lock serializing a feature's read-modify-write.
+    The lockfile matches the gitignored `features/*/.workflow*` pattern, so
+    it never shows up in git status. fcntl.flock is POSIX (macOS + Linux)."""
+    d = feature_dir(root, slug)
+    os.makedirs(d, exist_ok=True)
+    lock_path = os.path.join(d, ".workflow.lock")
+    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 def load_workflow(root, slug, required=True):
@@ -127,6 +159,8 @@ def load_workflow(root, slug, required=True):
         fail(f"corrupt workflow.json for '{slug}': {e}", 1)
     if not isinstance(data, dict):
         fail(f"corrupt workflow.json for '{slug}': not a JSON object", 1)
+    if "history" in data and not isinstance(data["history"], list):
+        fail(f"corrupt workflow.json for '{slug}': history is not a list", 1)
     return data
 
 
@@ -181,6 +215,21 @@ def _gate_close_requires_verdict(root, slug):
         fail(f"cannot close '{slug}': review.md verdict is '{verdict}', required '{required}'", 2)
 
 
+def _gate_fix_requires_needs_fixes(root, slug):
+    """The fix loop (reviewing -> implementing) is only legitimate when the
+    reviewer returned NEEDS_FIXES: APPROVE routes to close, BLOCKED stops the
+    line and escalates, and a missing/invalid verdict is not an actionable
+    fix. Enforced here so the state machine matches resolve_next's routing
+    rather than trusting the caller to only send back genuine fix cycles."""
+    review_path = os.path.join(feature_dir(root, slug), "review.md")
+    if not os.path.isfile(review_path):
+        fail(f"cannot send '{slug}' back to implementing: review.md not found — run /lean-spec:review first", 2)
+    with open(review_path) as f:
+        verdict = extract_verdict(f.read())
+    if verdict != "NEEDS_FIXES":
+        fail(f"cannot send '{slug}' back to implementing: review.md verdict is '{verdict}', expected 'NEEDS_FIXES'", 2)
+
+
 SOURCE_PHASE_ARTIFACT = {"specifying": "spec.md", "implementing": "notes.md"}
 
 
@@ -189,8 +238,8 @@ def _gate_source_artifact(root, slug, frm):
     Validates the artifact belonging to the phase being left (spec.md when
     leaving specifying, notes.md when leaving implementing) before the
     transition is committed. reviewing->closed has its own, stricter verdict
-    gate (_gate_close_requires_verdict); reviewing->implementing (fix loop)
-    has no source artifact to validate here."""
+    gate (_gate_close_requires_verdict); reviewing->implementing has the
+    verdict gate _gate_fix_requires_needs_fixes."""
     artifact = SOURCE_PHASE_ARTIFACT.get(frm)
     if artifact is None:
         return
@@ -204,32 +253,58 @@ def _gate_source_artifact(root, slug, frm):
 
 
 def cmd_advance(root, args):
-    if len(args) != 3:
-        fail("usage: lean-spec advance <slug> <from> <to>", 1)
-    slug, frm, to = args
+    # --no-tdd / --tdd record a per-feature TDD override in workflow.json so
+    # the notes.md gate honors a spike opt-out instead of only reading the
+    # global rules.toml default (which the model cannot vary per feature).
+    tdd_override = None
+    positional = []
+    for a in args:
+        if a == "--no-tdd":
+            tdd_override = False
+        elif a == "--tdd":
+            tdd_override = True
+        else:
+            positional.append(a)
+    if len(positional) != 3:
+        fail("usage: lean-spec advance <slug> <from> <to> [--tdd|--no-tdd]", 1)
+    slug, frm, to = positional
     validate_slug(slug)
     for p in (frm, to):
         if p not in VALID_PHASES:
             fail(f"unknown phase '{p}' — valid phases: {', '.join(VALID_PHASES)}", 1)
-    wf = load_workflow(root, slug)
-    current = wf.get("phase")
-    if current != frm:
-        fail(f"'{slug}' is in phase '{current}', not '{frm}' — cannot advance from '{frm}'", 2)
-    if (frm, to) not in ALLOWED_TRANSITIONS:
-        fail(f"illegal transition '{frm}' -> '{to}' for '{slug}'", 2)
-    _gate_source_artifact(root, slug, frm)
-    if (frm, to) == ("reviewing", "closed"):
-        _gate_close_requires_verdict(root, slug)
-    ts = now_iso()
-    wf["phase"] = to
-    wf["updated_at"] = ts
-    wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
-    path = workflow_path(root, slug)
-    atomic_write_json(path, wf)
-    # post-advance assertion (defensive: re-read from disk)
-    reread = load_workflow(root, slug)
-    if reread.get("phase") != to:
-        fail(f"post-advance assertion failed for '{slug}': expected phase '{to}', found '{reread.get('phase')}'", 2)
+    # Fail fast on a missing feature before feature_lock's makedirs creates a
+    # (lockfile-only) directory for a slug that was never `ensure`d. The real
+    # check still runs inside the lock below; this only avoids the litter.
+    if not os.path.isfile(workflow_path(root, slug)):
+        load_workflow(root, slug)  # raises the friendly "no such feature" fail
+    # Serialize the whole load -> gate -> mutate -> write against concurrent
+    # advances on the same slug, so two racing callers cannot both read the
+    # stale phase, both pass the `current != frm` check, and clobber each
+    # other's history entry.
+    with feature_lock(root, slug):
+        wf = load_workflow(root, slug)
+        current = wf.get("phase")
+        if current != frm:
+            fail(f"'{slug}' is in phase '{current}', not '{frm}' — cannot advance from '{frm}'", 2)
+        if (frm, to) not in ALLOWED_TRANSITIONS:
+            fail(f"illegal transition '{frm}' -> '{to}' for '{slug}'", 2)
+        _gate_source_artifact(root, slug, frm)
+        if (frm, to) == ("reviewing", "closed"):
+            _gate_close_requires_verdict(root, slug)
+        if (frm, to) == ("reviewing", "implementing"):
+            _gate_fix_requires_needs_fixes(root, slug)
+        ts = now_iso()
+        wf["phase"] = to
+        wf["updated_at"] = ts
+        if tdd_override is not None:
+            wf["tdd"] = tdd_override
+        wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
+        path = workflow_path(root, slug)
+        atomic_write_json(path, wf)
+        # post-advance assertion (defensive: re-read from disk)
+        reread = load_workflow(root, slug)
+        if reread.get("phase") != to:
+            fail(f"post-advance assertion failed for '{slug}': expected phase '{to}', found '{reread.get('phase')}'", 2)
     return 0
 
 
@@ -275,6 +350,18 @@ def load_rules(root):
             data = tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
         fail(f"invalid .lean-spec/rules.toml: {e}", 1)
+
+    # The top-level [defaults]/[required_sections]/[max_tokens] keys must be
+    # tables. A wrong-typed container (e.g. `required_sections = "foo"`) would
+    # otherwise blow up the .update() below with a raw traceback — validate
+    # the container shape before the value shapes (CONSTITUTION principle 8).
+    for key in ("defaults", "required_sections", "max_tokens"):
+        if key in data and not isinstance(data[key], dict):
+            fail(
+                f"invalid .lean-spec/rules.toml: [{key}] must be a table "
+                f"(found {data[key]!r})",
+                1,
+            )
     rules["defaults"].update(data.get("defaults", {}))
     rules["required_sections"].update(data.get("required_sections", {}))
     rules["max_tokens"].update(data.get("max_tokens", {}))
@@ -298,6 +385,20 @@ def load_rules(root):
                 f"must be a list of strings (found {sections!r})",
                 1,
             )
+    tdd = rules["defaults"].get("tdd", True)
+    if not isinstance(tdd, bool):
+        fail(
+            f"invalid .lean-spec/rules.toml: [defaults].tdd must be true or "
+            f"false (found {tdd!r})",
+            1,
+        )
+    verdict = rules["defaults"].get("required_verdict", "APPROVE")
+    if verdict not in ("APPROVE", "NEEDS_FIXES", "BLOCKED"):
+        fail(
+            f"invalid .lean-spec/rules.toml: [defaults].required_verdict must "
+            f"be one of APPROVE/NEEDS_FIXES/BLOCKED (found {verdict!r})",
+            1,
+        )
     return rules
 
 
@@ -379,8 +480,15 @@ def validate_artifact(root, slug, artifact, rules, project=False):
                 required.append(extra)
     else:
         required = list(rules["required_sections"].get(artifact, []))
-        if artifact == "notes.md" and rules["defaults"].get("tdd", True):
-            if "TDD" not in required:
+        if artifact == "notes.md":
+            # Per-feature workflow.json `tdd` (set by advance --tdd/--no-tdd)
+            # overrides the global rules.toml default, so a documented spike
+            # opt-out actually satisfies this same gate.
+            tdd_required = rules["defaults"].get("tdd", True)
+            wf = load_workflow(root, slug, required=False)
+            if isinstance(wf, dict) and isinstance(wf.get("tdd"), bool):
+                tdd_required = wf["tdd"]
+            if tdd_required and "TDD" not in required:
                 required.append("TDD")
 
     missing = [s for s in required if s not in headings]

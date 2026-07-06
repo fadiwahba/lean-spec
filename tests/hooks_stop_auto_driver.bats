@@ -428,3 +428,35 @@ EOF
   [ -z "$output" ]
   [ ! -f .lean-spec/auto.json ]
 }
+
+@test "does not crash and disarms when auto.json is valid JSON but not an object" {
+  write_auto <<'EOF'
+[1,2,3]
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f .lean-spec/auto.json ]
+}
+
+@test "chain_all: a sibling non-object workflow.json does not crash the scan (no traceback)" {
+  # Drive demo to closed, then plant a sibling feature whose workflow.json is
+  # valid JSON but not an object. next_non_closed_slug scans every sibling;
+  # an unguarded .get() there would abort the hook with a raw traceback.
+  lean_spec ensure demo
+  write_valid_spec demo
+  lean_spec advance demo specifying implementing
+  write_valid_notes demo
+  lean_spec advance demo implementing reviewing
+  mkdir -p features/demo
+  echo "verdict: APPROVE" > features/demo/review.md
+  lean_spec advance demo reviewing closed
+  mkdir -p features/bad
+  echo '[]' > features/bad/workflow.json
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Traceback"* ]]
+}
