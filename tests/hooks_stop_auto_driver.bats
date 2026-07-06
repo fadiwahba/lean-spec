@@ -428,3 +428,13 @@ EOF
   [ -z "$output" ]
   [ ! -f .lean-spec/auto.json ]
 }
+
+@test "does not crash and disarms when auto.json is valid JSON but not an object" {
+  write_auto <<'EOF'
+[1,2,3]
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -f .lean-spec/auto.json ]
+}

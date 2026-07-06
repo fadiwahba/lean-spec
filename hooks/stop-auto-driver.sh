@@ -27,7 +27,10 @@ slug="$(python3 -c '
 import json, sys
 try:
     with open(sys.argv[1]) as f:
-        print(json.load(f).get("slug", ""))
+        data = json.load(f)
+    # Valid-but-non-object JSON (a bare array/scalar) prints an empty slug,
+    # so the caller disarms (rm auto.json) instead of crashing on .get.
+    print(data.get("slug", "") if isinstance(data, dict) else "")
 except (OSError, json.JSONDecodeError):
     print("")
 ' "$AUTO_PATH")"
@@ -94,6 +97,12 @@ try:
     with open(auto_path) as f:
         auto = json.load(f)
 except (OSError, json.JSONDecodeError):
+    print("stop")
+    sys.exit(0)
+
+# Defense-in-depth: the slug reader above already disarms a non-object
+# auto.json, but never let a bare array/scalar reach the .get() calls below.
+if not isinstance(auto, dict):
     print("stop")
     sys.exit(0)
 

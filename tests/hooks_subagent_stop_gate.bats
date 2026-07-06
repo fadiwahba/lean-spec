@@ -158,3 +158,38 @@ print(json.dumps({'stop_hook_active': False, 'noise': blob}))
   run gate
   [[ "$output" == *"other"* ]]
 }
+
+@test "does not crash on a stop payload that is valid JSON but not an object" {
+  lean_spec ensure demo
+  mkdir -p features/demo
+  echo "# spec" > features/demo/spec.md
+  # A non-object payload must not crash the stdin parse; the gate should
+  # still resolve the feature and allow (valid spec.md).
+  run gate_with '[1,2,3]'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "does not crash when auto.json is valid JSON but not an object" {
+  lean_spec ensure demo
+  mkdir -p features/demo .lean-spec
+  echo "# spec" > features/demo/spec.md
+  echo '[]' > .lean-spec/auto.json
+  # A non-object auto.json must not crash the resolver; it falls back to the
+  # most-recently-modified feature (demo, which has a valid spec.md).
+  run gate
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "does not crash when the resolved workflow.json is valid JSON but not an object" {
+  lean_spec ensure demo
+  mkdir -p features/demo
+  echo "# spec" > features/demo/spec.md
+  echo '"not an object"' > features/demo/workflow.json
+  # A non-object workflow.json must not crash the phase read; unknown phase
+  # falls through to a silent allow.
+  run gate
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}

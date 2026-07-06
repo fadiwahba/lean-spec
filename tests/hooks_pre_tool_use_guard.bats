@@ -67,6 +67,40 @@ guard() {
   [ "$status" -eq 0 ]
 }
 
+@test "does not crash on valid JSON that is not an object (top-level array)" {
+  run guard '[1,2,3]'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "does not crash when tool_input is valid JSON but not an object" {
+  run guard '{"tool_name":"Write","tool_input":["not","a","dict"]}'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "does not crash on a bare JSON scalar" {
+  run guard '42'
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "denies workflow.json regardless of case (case-insensitive filesystem bypass)" {
+  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/Workflow.json"}}'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+}
+
+@test "denies workflow.json reached via a ./ prefix" {
+  run guard '{"tool_name":"Write","tool_input":{"file_path":"./features/demo/workflow.json"}}'
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+}
+
+@test "denies workflow.json reached via a ../ traversal that normalizes back into features/" {
+  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/../other/workflow.json"}}'
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+}
+
 @test "allows a ~200KB Write to a normal path without failing open (payload exceeds argv limits)" {
   payload_file="$(mktemp "${BATS_TEST_TMPDIR:-${TMPDIR:-/tmp}}/payloadXXXXXX")"
   python3 -c "
