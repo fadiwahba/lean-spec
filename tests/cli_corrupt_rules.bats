@@ -51,3 +51,25 @@ EOF
   [[ "$output" == *"rules.toml"* ]]
   [[ "$output" != *"Traceback"* ]]
 }
+
+@test "defaults.tdd as a non-boolean fails loudly" {
+  write_rules <<'EOF'
+[defaults]
+tdd = "yes"
+EOF
+  lean_spec validate demo spec.md
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"tdd"* ]]
+  [[ "$output" != *"Traceback"* ]]
+}
+
+@test "defaults.required_verdict with an invalid value fails loudly" {
+  write_rules <<'EOF'
+[defaults]
+required_verdict = "APPROVED"
+EOF
+  lean_spec validate demo spec.md
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"required_verdict"* ]]
+  [[ "$output" != *"Traceback"* ]]
+}

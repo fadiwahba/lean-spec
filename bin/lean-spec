@@ -380,6 +380,20 @@ def load_rules(root):
                 f"must be a list of strings (found {sections!r})",
                 1,
             )
+    tdd = rules["defaults"].get("tdd", True)
+    if not isinstance(tdd, bool):
+        fail(
+            f"invalid .lean-spec/rules.toml: [defaults].tdd must be true or "
+            f"false (found {tdd!r})",
+            1,
+        )
+    verdict = rules["defaults"].get("required_verdict", "APPROVE")
+    if verdict not in ("APPROVE", "NEEDS_FIXES", "BLOCKED"):
+        fail(
+            f"invalid .lean-spec/rules.toml: [defaults].required_verdict must "
+            f"be one of APPROVE/NEEDS_FIXES/BLOCKED (found {verdict!r})",
+            1,
+        )
     return rules
 
 

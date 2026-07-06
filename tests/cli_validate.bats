@@ -368,3 +368,26 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"rules.toml"* ]]
 }
+
+@test "validate --project honors an extra required_sections entry from rules.toml" {
+  mkdir -p docs .lean-spec
+  cat > .lean-spec/rules.toml <<'TOML'
+[required_sections]
+"PRD.md" = ["Rollout"]
+TOML
+  cat > docs/PRD.md <<'MD'
+## Problem & Users
+real
+## Features
+real
+## Constraints
+real
+## Quality Bar
+real
+## Non-Goals
+real
+MD
+  lean_spec validate --project PRD.md
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Rollout"* ]]
+}
