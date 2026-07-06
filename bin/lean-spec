@@ -26,12 +26,14 @@ word count (len(text.split())). This is a conservative proxy chosen for
 determinism without a tokenizer dependency (stdlib only) — it is not exact
 LLM-token accounting, just a cheap cap to catch runaway artifacts.
 """
+import fcntl
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 PROG = "lean-spec"
@@ -126,6 +128,22 @@ def atomic_write_json(path, data):
         except OSError:
             pass
         raise
+
+
+@contextmanager
+def feature_lock(root, slug):
+    """Advisory exclusive lock serializing a feature's read-modify-write.
+    The lockfile matches the gitignored `features/*/.workflow*` pattern, so
+    it never shows up in git status. fcntl.flock is POSIX (macOS + Linux)."""
+    d = feature_dir(root, slug)
+    os.makedirs(d, exist_ok=True)
+    lock_path = os.path.join(d, ".workflow.lock")
+    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 def load_workflow(root, slug, required=True):
@@ -227,25 +245,30 @@ def cmd_advance(root, args):
     for p in (frm, to):
         if p not in VALID_PHASES:
             fail(f"unknown phase '{p}' — valid phases: {', '.join(VALID_PHASES)}", 1)
-    wf = load_workflow(root, slug)
-    current = wf.get("phase")
-    if current != frm:
-        fail(f"'{slug}' is in phase '{current}', not '{frm}' — cannot advance from '{frm}'", 2)
-    if (frm, to) not in ALLOWED_TRANSITIONS:
-        fail(f"illegal transition '{frm}' -> '{to}' for '{slug}'", 2)
-    _gate_source_artifact(root, slug, frm)
-    if (frm, to) == ("reviewing", "closed"):
-        _gate_close_requires_verdict(root, slug)
-    ts = now_iso()
-    wf["phase"] = to
-    wf["updated_at"] = ts
-    wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
-    path = workflow_path(root, slug)
-    atomic_write_json(path, wf)
-    # post-advance assertion (defensive: re-read from disk)
-    reread = load_workflow(root, slug)
-    if reread.get("phase") != to:
-        fail(f"post-advance assertion failed for '{slug}': expected phase '{to}', found '{reread.get('phase')}'", 2)
+    # Serialize the whole load -> gate -> mutate -> write against concurrent
+    # advances on the same slug, so two racing callers cannot both read the
+    # stale phase, both pass the `current != frm` check, and clobber each
+    # other's history entry.
+    with feature_lock(root, slug):
+        wf = load_workflow(root, slug)
+        current = wf.get("phase")
+        if current != frm:
+            fail(f"'{slug}' is in phase '{current}', not '{frm}' — cannot advance from '{frm}'", 2)
+        if (frm, to) not in ALLOWED_TRANSITIONS:
+            fail(f"illegal transition '{frm}' -> '{to}' for '{slug}'", 2)
+        _gate_source_artifact(root, slug, frm)
+        if (frm, to) == ("reviewing", "closed"):
+            _gate_close_requires_verdict(root, slug)
+        ts = now_iso()
+        wf["phase"] = to
+        wf["updated_at"] = ts
+        wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
+        path = workflow_path(root, slug)
+        atomic_write_json(path, wf)
+        # post-advance assertion (defensive: re-read from disk)
+        reread = load_workflow(root, slug)
+        if reread.get("phase") != to:
+            fail(f"post-advance assertion failed for '{slug}': expected phase '{to}', found '{reread.get('phase')}'", 2)
     return 0
 
 
