@@ -6,6 +6,54 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-07
+
+Hardening release from a from-scratch deep review (four parallel
+adversarial reviewers) plus two rounds of Opus/xhigh whole-branch review.
+32 new tests; full suite 219 green.
+
+### Fixed
+
+- **Enforcement fail-open**: all three hooks caught only
+  `JSONDecodeError`, so valid-but-non-object JSON (a bare array/scalar
+  payload or state file) crashed them uncaught — the PreToolUse guard and
+  SubagentStop gate silently skipped enforcement, the Stop driver died.
+  Every parsed payload / `auto.json` / `workflow.json` is now
+  `isinstance`-guarded.
+- **Guard bypass**: the `pre-tool-use-guard` `workflow.json` regex matched
+  the literal path with no normalization, so `Workflow.json` on a
+  case-preserving filesystem (APFS) and `../`-traversal paths dodged it.
+  Now `os.path.normpath` + `re.IGNORECASE`.
+- **Raw tracebacks on corrupt input**: a wrong-typed `rules.toml`
+  container (`required_sections = "foo"`), a non-list `workflow.json`
+  history, a non-boolean `defaults.tdd`, or an invalid
+  `defaults.required_verdict` now fail loudly with a one-line message
+  (CONSTITUTION principle 8) instead of a Python traceback.
+- **`/lean-spec:implement --no-tdd` was a dead end**: the documented
+  spike opt-out produced a `notes.md` the CLI gate then rejected (it read
+  only the global `rules.toml` default). The decision now persists
+  per-feature in `workflow.json` (`advance --tdd/--no-tdd`) and `validate`
+  honors it.
+- **Ungated fix loop**: `reviewing → implementing` had no gate at all;
+  it now requires `review.md` verdict `NEEDS_FIXES` (APPROVE routes to
+  close, BLOCKED stops the line).
+- **Permissions downgrade**: `atomic_write_json` silently reset
+  `workflow.json` to owner-only (`600`) on every advance; it now
+  preserves an existing file's mode and honors umask for new files.
+
+### Changed
+
+- `bin/lean-spec advance` accepts `--tdd` / `--no-tdd` to record a
+  per-feature TDD override in `workflow.json`.
+- `cmd_advance`'s read-modify-write is serialized with an `fcntl` advisory
+  lock, so concurrent advances on one slug can't clobber each other's
+  history.
+- Docs de-drifted: README documents `auto-all --no-confirm`/`--max-features`
+  and marks 1.0 shipped; PRD status is APPROVED/shipped; CONSTITUTION adds
+  `spec`/`review` to the commit-type list and states the test-coverage bar
+  truthfully; the reviewer `--visual` docs match the agent's actual
+  (Bash-only) tool grant.
+
 ## [1.2.1] - 2026-07-06
 
 ### Changed
@@ -111,7 +159,8 @@ First public release. Requires **Claude Code ≥ 2.1.198**, **Python 3 ≥ 3.11*
 - The `PreToolUse` guard reads its payload from stdin so large writes cannot
   make it fail open.
 
-[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/fadiwahba/lean-spec/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/fadiwahba/lean-spec/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/fadiwahba/lean-spec/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/fadiwahba/lean-spec/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fadiwahba/lean-spec/compare/v1.0.1...v1.1.0
