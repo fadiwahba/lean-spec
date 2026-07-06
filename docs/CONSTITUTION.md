@@ -9,7 +9,7 @@
 - Bash (hooks) + **Python 3 ≥ 3.11, stdlib only** (state CLI; JSON for state, `tomllib` for config). No `jq`, no `yq`, no YAML, no Node.js, no pip packages.
 - Markdown: skills (`skills/*/SKILL.md`), agents (`agents/*.md`), artifacts, templates.
 - Tests: BATS (`.tools/bin/bats tests/`). CI: GitHub Actions.
-- Target: Claude Code ≥ 2.1.198 (pin exact floor at F11).
+- Target: Claude Code ≥ 2.1.198 (documented floor; not machine-enforced in the manifest).
 
 ## Architecture principles (non-negotiable)
 
@@ -48,14 +48,14 @@ Rationale: spend the strongest configuration where judgment concentrates — pla
 - Artifact caps: spec ≤2000 tokens, notes ≤6000, review ≤8000 (enforced via rules.toml).
 - `close` requires `verdict: APPROVE`. No manual override path exists.
 - `--visual` reviews must save every screenshot under `features/<slug>/evidence/visual/` and cite each in `review.md` — evidence outside that folder fails the gate. The folder is **gitignored** (`init` scaffolds the entry): evidence is a local audit aid; the `review.md` citations are the durable record.
-- Every shell script passes `bash -n`; every Python path has a BATS invocation test.
+- Every shell script passes `bash -n`; every CLI command and gate has BATS coverage (the environment preflights — missing `python3`/`git` — abort before any command runs and are the one exception).
 - macOS + Linux portable: `mktemp` X-suffix pattern, no GNU-only flags, glob via Python not zsh.
 
 ## Process
 
 - **Dogfood rule**: from F6 onward, every feature ships through the v4 lifecycle itself (spec → implement → review → close). M0–M1 are hand-built by necessity, still TDD.
 - One feature in flight at a time. `BLOCKED` verdicts stop the line and escalate to Fady.
-- Commits: `type(scope): short subject` — types `feat|fix|refactor|docs|chore|test`; no Co-Authored-By; no emoji.
+- Commits: `type(scope): short subject` — types `feat|fix|refactor|docs|chore|test|spec|review` (`spec`/`review` scope the lifecycle skills' own commits); no Co-Authored-By; no emoji.
 - Version bumps: `.claude-plugin/plugin.json` only (single manifest — no Gemini twin in v4). CHANGELOG follows Keep a Changelog, new block above `[Unreleased]`.
 - Never commit `.env*` or credentials. No new dependency without Fady's explicit approval. No destructive git (`reset --hard`, `push --force`) without explicit confirmation.
 
