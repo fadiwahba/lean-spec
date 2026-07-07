@@ -31,7 +31,8 @@
     "./skills/auto",
     "./skills/auto-all",
     "./skills/next",
-    "./skills/status"
+    "./skills/status",
+    "./skills/help"
   ],
   "hooks": {
     "PreToolUse": [

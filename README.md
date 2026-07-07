@@ -153,6 +153,7 @@ Both `auto` and `auto-all` also accept `--gates-on` — a flag reserved for stri
 |---|---|---|
 | `/lean-spec:next [<slug>\|--all]` | Reports the next lifecycle step for a feature (or every feature). Makes no changes. | "What do I run next?" |
 | `/lean-spec:status [<slug>]` | Reports the current phase (and, in reviewing, the verdict) for one or all features. Makes no changes. | "Where is everything?" |
+| `/lean-spec:help` | Prints this overview — the lifecycle and every skill with when to use it. Makes no changes. | New to lean-spec, or "what can I run?" |
 
 ## Configuration
 

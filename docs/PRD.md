@@ -75,7 +75,7 @@ lean-spec/
 │   └── stop-auto-driver.sh         # auto mode: block turn-end until closed/BLOCKED/cap
 ├── skills/                         # LAYER 3 — thin prompts (zero gate logic)
 │   └── <name>/SKILL.md             # init, plan, spec, respec, implement, review,
-│                                   # fix, close, auto, auto-all, next, status
+│                                   # fix, close, auto, auto-all, next, status, help
 ├── agents/                         # architect, coder, reviewer (frontmatter model+effort)
 ├── templates/                      # PRD, CONSTITUTION, spec, notes, review skeletons
 ├── examples/rules.toml
@@ -98,6 +98,7 @@ lean-spec/
 | `/lean-spec:auto <slug> [--gates-on] [--max-cycles=N]` | write `.lean-spec/auto.json`, run first next-step; **Stop hook drives the rest** | hook-owned |
 | `/lean-spec:auto-all [--gates-on] [--no-confirm] [--max-features=N]` | drive every non-closed feature to closed, sequentially (one `auto.json` at a time); with `--no-confirm`, also chains into speccing the next slice one at a time, sentinel-terminated, instead of stopping (R17) | hook-owned |
 | `/lean-spec:next`, `/lean-spec:status` | read-only navigation (CLI passthrough) | — |
+| `/lean-spec:help` | read-only onboarding overview: the lifecycle + every skill with when to use it (no command run) | — |
 
 Driver recipes (docs only): `/goal "features/<slug>/workflow.json has \"phase\": \"closed\", or stop after 20 turns"`, `/loop /lean-spec:auto-all`, CI: `claude -p "/lean-spec:auto <slug>"`.
 
