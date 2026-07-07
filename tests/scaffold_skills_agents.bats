@@ -2,7 +2,7 @@
 
 load 'helpers.bash'
 
-SKILL_NAMES="init plan spec respec implement review fix close auto auto-all next status"
+SKILL_NAMES="init plan spec respec implement review fix close auto auto-all next status help"
 AGENT_NAMES="architect coder reviewer"
 
 parse_frontmatter() {
@@ -78,11 +78,20 @@ print('ok')
   done
 }
 
-@test "read-only skills (next, status) do not disable model invocation" {
-  for name in next status; do
+@test "read-only skills (next, status, help) do not disable model invocation" {
+  for name in next status help; do
     run parse_frontmatter "${LEAN_SPEC_REPO_ROOT}/skills/${name}/SKILL.md"
     [[ "$output" != *"disable-model-invocation"* ]]
   done
+}
+
+@test "help skill orients a new user: names the lifecycle skills and read-only ones" {
+  f="${LEAN_SPEC_REPO_ROOT}/skills/help/SKILL.md"
+  grep -q '/lean-spec:init' "$f"
+  grep -q '/lean-spec:spec' "$f"
+  grep -q '/lean-spec:close' "$f"
+  grep -q '/lean-spec:auto-all' "$f"
+  grep -qi 'read-only' "$f"
 }
 
 @test "spec skill feeds the architect the delivered ACs of closed slices" {
