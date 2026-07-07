@@ -183,7 +183,7 @@ required_verdict = "APPROVE"                          # what `close` demands
 | implement / fix | **coder** | Sonnet 5 · high · **TDD** | `notes.md` (+ TDD evidence) |
 | review | **reviewer** | Opus 4.8 · high | `review.md` (+ verdict) |
 
-By default the coder is reviewed by a *different* model family (Opus reviews Sonnet) — no rubber-stamping your own work. You can downshift the reviewer in `rules.toml` if you want to trade that for cost.
+By default the coder is reviewed by a *different* model family (Opus reviews Sonnet) — no rubber-stamping your own work. You can downshift the reviewer in `.lean-spec/rules.toml` if you want to trade that for cost.
 
 ## Hands-free mode
 
