@@ -116,6 +116,44 @@ Then drive the lifecycle from inside Claude Code:
 
 Repeat `spec → implement → review → close` for each feature. That's the whole loop.
 
+## Command reference
+
+Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flags are shown in `[brackets]`.
+
+**Setup — run once per project**
+
+| Command | What it does | When to use it |
+|---|---|---|
+| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, `docs/`, `features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
+| `/lean-spec:plan ["<idea>"] [--refine] [--regenerate]` | Runs a short interview (≤3 rounds) and writes `docs/PRD.md` + `docs/CONSTITUTION.md`. Grounds itself in an existing repo's stack/conventions for brownfield. `--refine` folds in one blocker without re-interviewing; `--regenerate` redoes from scratch. | Right after `init`. Use `--refine` when a blocker discovered mid-build needs the plan changed before the next slice. |
+
+**Per-feature lifecycle — repeat for each feature**
+
+| Command | What it does | When to use it |
+|---|---|---|
+| `/lean-spec:spec [<slug>] [--refine] [--no-confirm]` | The **architect** proposes and writes the next slice's `spec.md` (Scope · Acceptance Criteria · Out of Scope · Coder Guardrails). No slug → derives the next slice from the PRD and what's already closed. `--refine` revises an existing spec; `--no-confirm` skips the proposal confirmation (for unattended runs). | Start of every feature. Preflights that `PRD.md`/`CONSTITUTION.md` are actually filled in first. |
+| `/lean-spec:respec <slug>` | Revises an existing `spec.md` in place — an alias for `spec <slug> --refine`. | When a spec needs changing after it's written (scope shift, a blocker refined it). |
+| `/lean-spec:implement <slug> [--tdd\|--no-tdd]` | Advances to *implementing*; the **coder** builds the slice RED → GREEN and writes `notes.md` with the captured TDD runs. `--no-tdd` opts out for a spike (recorded per-feature, so the gate honors it). | Once a slice has a spec. |
+| `/lean-spec:review <slug> [--visual]` | Advances to *reviewing*; a **reviewer** (a *different* model family than the coder) writes `review.md` with a verdict. `--visual` drives the running app via a Bash-scripted browser and captures UI screenshot evidence for design specs. | After `implement`. |
+| `/lean-spec:fix <slug>` | The NEEDS_FIXES loop: sends the feature back to *implementing* (CLI-gated — only allowed when the verdict is `NEEDS_FIXES`), the coder addresses each finding and appends a `## Cycle N` to `notes.md`. | When a review comes back `NEEDS_FIXES`. Then re-run `review`. |
+| `/lean-spec:close <slug>` | Advances *reviewing → closed*. Refuses unless the verdict is `APPROVE` — there is no manual override. | When a review is `APPROVE`. |
+
+**Hands-free — optional autonomous drivers**
+
+| Command | What it does | When to use it |
+|---|---|---|
+| `/lean-spec:auto <slug> [--max-cycles=N]` | Runs the first lifecycle step, then a `Stop` hook drives every remaining phase to `closed` (or `BLOCKED`, or the cycle cap) with no further input. | Drive one already-specced feature to done unattended. |
+| `/lean-spec:auto-all [--no-confirm] [--max-features=N]` | Same driver, across every non-closed feature in sequence. `--no-confirm` additionally specs the next slice on demand (one at a time) so a whole small/simple PRD builds from a single command; `--max-features=N` caps how many slices it auto-specs (default 20). | Drain a backlog — or, with `--no-confirm`, spec **and** build a small PRD — hands-free. |
+
+Both `auto` and `auto-all` also accept `--gates-on` — a flag reserved for stricter per-phase confirmation. It's a no-op today (every quality gate is already always-on via the CLI/hooks); it's recorded for forward-compatibility only, so you rarely need it.
+
+**Read-only — safe any time**
+
+| Command | What it does | When to use it |
+|---|---|---|
+| `/lean-spec:next [<slug>\|--all]` | Reports the next lifecycle step for a feature (or every feature). Makes no changes. | "What do I run next?" |
+| `/lean-spec:status [<slug>]` | Reports the current phase (and, in reviewing, the verdict) for one or all features. Makes no changes. | "Where is everything?" |
+
 ## Configuration
 
 Everything is optional — a zero-config project completes a full cycle. Tune per project in `.lean-spec/rules.toml`:
@@ -148,20 +186,7 @@ The coder is always reviewed by a *different* model family — no rubber-stampin
 
 ## Hands-free mode
 
-```
-/lean-spec:auto <slug>                        drive one feature to closed; a Stop hook runs each phase
-/lean-spec:auto-all                           drain every already-specced feature, one at a time
-/lean-spec:auto-all --no-confirm              also spec the next slice on demand (one at a time) and keep going
-/lean-spec:auto-all --no-confirm --max-features=N   cap how many slices get auto-specced in one run (default 20)
-```
-
-`--no-confirm` turns `auto-all` into a single hands-off command for a
-small/simple PRD: when nothing is left to drain (mid-run, or on a fresh
-project with no specs yet) it chains into `/lean-spec:spec` for the next
-slice instead of stopping, skipping the per-slice confirmation. Specs are
-still written strictly one at a time (never batch-decomposed); the
-architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully
-covered.
+The `auto` / `auto-all` drivers (see the [command reference](#command-reference)) run the lifecycle unattended. `--no-confirm` turns `auto-all` into a single hands-off command for a small/simple PRD: when nothing is left to drain (mid-run, or on a fresh project with no specs yet) it chains into `/lean-spec:spec` for the next slice instead of stopping, skipping the per-slice confirmation. Specs are still written strictly one at a time (never batch-decomposed); the architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully covered.
 
 Or use Claude Code built-ins directly — no plugin code involved:
 
@@ -195,7 +220,7 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 | M0 | scaffold · BATS harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
-| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.2.x — see `CHANGELOG.md`) |
+| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.3.x — see `CHANGELOG.md`) |
 | M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
 
 ## Requirements
