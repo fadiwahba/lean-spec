@@ -145,6 +145,8 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 | `/lean-spec:auto <slug> [--max-cycles=N]` | Runs the first lifecycle step, then a `Stop` hook drives every remaining phase to `closed` (or `BLOCKED`, or the cycle cap) with no further input. | Drive one already-specced feature to done unattended. |
 | `/lean-spec:auto-all [--no-confirm] [--max-features=N]` | Same driver, across every non-closed feature in sequence. `--no-confirm` additionally specs the next slice on demand (one at a time) so a whole small/simple PRD builds from a single command; `--max-features=N` caps how many slices it auto-specs (default 20). | Drain a backlog — or, with `--no-confirm`, spec **and** build a small PRD — hands-free. |
 
+Both `auto` and `auto-all` also accept `--gates-on` — a flag reserved for stricter per-phase confirmation. It's a no-op today (every quality gate is already always-on via the CLI/hooks); it's recorded for forward-compatibility only, so you rarely need it.
+
 **Read-only — safe any time**
 
 | Command | What it does | When to use it |
