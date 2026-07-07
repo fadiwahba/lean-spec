@@ -183,7 +183,7 @@ required_verdict = "APPROVE"                          # what `close` demands
 | implement / fix | **coder** | Sonnet 5 · high · **TDD** | `notes.md` (+ TDD evidence) |
 | review | **reviewer** | Opus 4.8 · high | `review.md` (+ verdict) |
 
-The coder is always reviewed by a *different* model family — no rubber-stamping your own work.
+By default the coder is reviewed by a *different* model family (Opus reviews Sonnet) — no rubber-stamping your own work. You can downshift the reviewer in `rules.toml` if you want to trade that for cost.
 
 ## Hands-free mode
 
@@ -221,7 +221,7 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 | M0 | scaffold · BATS harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
-| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.3.x — see `CHANGELOG.md`) |
+| M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.4.x — see `CHANGELOG.md`) |
 | M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
 
 ## Requirements

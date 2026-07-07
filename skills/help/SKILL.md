@@ -37,7 +37,8 @@ dispatch any agent — this skill only informs.
 - `/lean-spec:implement <slug>` — the coder builds it RED → GREEN with
   captured TDD evidence. `--no-tdd` opts out for a spike.
 - `/lean-spec:review <slug>` — a reviewer (a different model than the
-  coder) writes a verdict. `--visual` captures UI screenshot evidence.
+  coder by default) writes a verdict. `--visual` captures UI screenshot
+  evidence.
 - `/lean-spec:fix <slug>` — address a `NEEDS_FIXES` verdict, then
   re-review.
 - `/lean-spec:close <slug>` — closes the feature; refuses unless the
