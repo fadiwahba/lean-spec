@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
-# PreToolUse hook: blocks direct hand-edits of features/*/workflow.json.
-# workflow.json is mutated exclusively by bin/lean-spec (see CONSTITUTION
-# principle 2). Reads the hook JSON payload from stdin, checks tool_name +
-# file_path (or MultiEdit's file_path), and emits a permissionDecision deny
-# when the target matches. Any other input: allow silently (exit 0, no
-# output) so the hook stays invisible on the happy path.
+# PreToolUse hook: blocks direct hand-edits of the two state files that have a
+# designated CLI writer (CONSTITUTION principle 2):
+#   * features/*/workflow.json  -> written only by `bin/lean-spec advance/ensure`
+#   * .lean-spec/auto.json      -> written only by `bin/lean-spec auto arm/disarm`
+# Reads the hook JSON payload from stdin, checks tool_name + file_path (or
+# MultiEdit's file_path), and emits a permissionDecision deny when the target
+# matches. Any other input: allow silently (exit 0, no output) so the hook
+# stays invisible on the happy path.
+#
+# The auto.json case (issue #21) matters most: once that file exists, the Stop
+# hook drives phases whose skills are all `disable-model-invocation: true`, so
+# writing it by hand is equivalent to self-granting the authorization that gate
+# exists to withhold. Denying the write removes the discretion instead of
+# policing it with prose the model reads in the same channel it must obey.
 set -euo pipefail
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -56,24 +64,35 @@ if not isinstance(file_path, str):
 # so the plugin dev platform (case-preserving APFS) cannot dodge the guard
 # with Workflow.json / WORKFLOW.JSON landing on the same on-disk file.
 normalized = os.path.normpath(file_path)
-pattern = re.compile(r"(^|/)features/[^/]+/workflow\.json$", re.IGNORECASE)
-if pattern.search(normalized):
-    print("deny")
+workflow = re.compile(r"(^|/)features/[^/]+/workflow\.json$", re.IGNORECASE)
+auto = re.compile(r"(^|/)\.lean-spec/auto\.json$", re.IGNORECASE)
+if workflow.search(normalized):
+    print("deny:workflow")
+elif auto.search(normalized):
+    print("deny:auto")
 else:
     print("allow")
 ')"
 
-if [ "$decision" = "deny" ]; then
+emit_deny() {
   cat <<JSON
 {
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "workflow.json is mutated only by bin/lean-spec (ensure/advance) — never hand-edited. Use \`${PLUGIN_ROOT}/bin/lean-spec advance <slug> <from> <to>\` instead."
+    "permissionDecisionReason": "$1"
   }
 }
 JSON
   exit 0
+}
+
+if [ "$decision" = "deny:workflow" ]; then
+  emit_deny "workflow.json is mutated only by bin/lean-spec (ensure/advance) — never hand-edited. Use \`${PLUGIN_ROOT}/bin/lean-spec advance <slug> <from> <to>\` instead."
+fi
+
+if [ "$decision" = "deny:auto" ]; then
+  emit_deny ".lean-spec/auto.json is owned by the auto-driver — never hand-written. Use \`${PLUGIN_ROOT}/bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm]\` (or \`auto disarm\`), or ask the user to run /lean-spec:auto-all. Arming a run the user did not ask for is not yours to decide."
 fi
 
 exit 0

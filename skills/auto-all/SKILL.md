@@ -40,13 +40,16 @@ skill behaves exactly as it always has: drains only what already has a
      nothing to spec and stop; do not write `auto.json`. Otherwise the
      newly-specced slug becomes `<first-non-closed-slug>` below and you
      continue to step 2.
-2. Write `.lean-spec/auto.json`:
-   ```json
-   {"slug": "<first-non-closed-slug>", "gates_on": <true|false>, "max_cycles": 20, "cycles": 0, "chain_all": true, "no_confirm": <true|false>, "max_features": <N, default 20>, "features_specced": 0}
+2. Arm the driver via the CLI — **never write the file yourself**:
    ```
-   `no_confirm`/`max_features`/`features_specced` are only meaningful
-   when `--no-confirm` is set; omit them when it isn't (today's exact
-   shape, unchanged).
+   bin/lean-spec auto arm <first-non-closed-slug> --chain-all [--gates-on] \
+       [--no-confirm [--max-features=N]]
+   ```
+   The CLI owns `.lean-spec/auto.json`'s schema, defaults, provenance and
+   atomic write; it emits `no_confirm`/`max_features`/`features_specced`
+   only when `--no-confirm` is passed (today's exact shape, unchanged). A
+   direct `Write`/`Edit` of that path is denied by
+   `hooks/pre-tool-use-guard.sh`.
 3. Run `bin/lean-spec next <slug>` once yourself and dispatch the named
    skill, same as `/lean-spec:auto`'s first step.
 4. From here, `hooks/stop-auto-driver.sh` drives every phase for every
@@ -72,3 +75,7 @@ skill behaves exactly as it always has: drains only what already has a
 - Run two features concurrently — `chain_all` always drives exactly one
   `auto.json` at a time (PRD R9).
 - Skip past a BLOCKED feature to keep draining the rest.
+- Write, edit, or delete `.lean-spec/auto.json` by hand (including via a
+  Bash heredoc or `rm`) — including re-arming a chain the user paused, or
+  arming one on a `spec_next` poke. Use `bin/lean-spec auto arm`/`auto
+  disarm`, and only when the user asked for it.

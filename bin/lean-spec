@@ -11,6 +11,9 @@ Subcommands:
     validate <slug> <artifact>     rules.toml-driven artifact checks
     next <slug>|--all [--json]     phase -> next-skill resolver
     status [<slug>] [--json]       read-only report
+    auto arm <slug> [flags]        arm the Stop-hook auto driver (.lean-spec/auto.json)
+    auto disarm                    remove .lean-spec/auto.json
+    auto status [--json]           read-only auto-mode report
 
 Exit codes:
     0   success
@@ -98,7 +101,7 @@ def workflow_path(root, slug):
     return os.path.join(feature_dir(root, slug), "workflow.json")
 
 
-def atomic_write_json(path, data):
+def atomic_write_json(path, data, tmp_prefix=".workflowXXXXXX"):
     """tmp file (same dir, X-suffix per portability convention) + os.replace.
 
     mkstemp creates the tmp file 0600, and os.replace makes the target
@@ -106,6 +109,11 @@ def atomic_write_json(path, data):
     downgrade an existing file to owner-only. Preserve an existing file's
     mode; for a new file, honor the process umask (as a normal create would)
     rather than leaving it 0600.
+
+    `tmp_prefix` selects the crash-leftover pattern .gitignore already covers
+    (`features/*/.workflow*` for workflow.json, `.lean-spec/.auto*` for
+    auto.json) — a mismatched prefix would leave an interrupted write visible
+    in `git status`.
     """
     d = os.path.dirname(path)
     os.makedirs(d, exist_ok=True)
@@ -115,7 +123,7 @@ def atomic_write_json(path, data):
         umask = os.umask(0)
         os.umask(umask)
         mode = 0o666 & ~umask
-    fd, tmp_path = tempfile.mkstemp(prefix=".workflowXXXXXX", dir=d)
+    fd, tmp_path = tempfile.mkstemp(prefix=tmp_prefix, dir=d)
     try:
         with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=2, sort_keys=True)
@@ -635,6 +643,167 @@ def cmd_next(root, args):
 
 
 # ---------------------------------------------------------------------------
+# auto (arm / disarm / status) — the only writer of .lean-spec/auto.json
+# ---------------------------------------------------------------------------
+# auto.json is a state file with a designated writer, exactly like
+# workflow.json: once it exists, hooks/stop-auto-driver.sh drives phases whose
+# skills are all `disable-model-invocation: true`. Giving it a CLI writer is
+# what lets hooks/pre-tool-use-guard.sh deny Write/Edit on it outright without
+# breaking /lean-spec:auto — removing the discretion rather than policing it
+# (CONSTITUTION principle 1: skills describe, hooks enforce, the CLI mutates).
+
+AUTO_DIR = ".lean-spec"
+AUTO_FILE = "auto.json"
+DEFAULT_MAX_CYCLES = 20
+DEFAULT_MAX_FEATURES = 20
+
+
+def auto_path(root):
+    return os.path.join(root, AUTO_DIR, AUTO_FILE)
+
+
+def load_auto(root):
+    """Returns the parsed auto.json, or None when disarmed. Fails loudly on a
+    corrupt/non-object file rather than silently treating it as disarmed."""
+    path = auto_path(root)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        fail(f"corrupt {AUTO_DIR}/{AUTO_FILE}: {e} — run `lean-spec auto disarm` to reset", 1)
+    if not isinstance(data, dict):
+        fail(f"corrupt {AUTO_DIR}/{AUTO_FILE}: not a JSON object — run `lean-spec auto disarm` to reset", 1)
+    return data
+
+
+def _parse_positive_int(raw, flag):
+    try:
+        value = int(raw)
+    except ValueError:
+        fail(f"{flag} must be an integer (found '{raw}')", 1)
+    if value < 1:
+        fail(f"{flag} must be >= 1 (found {value})", 1)
+    return value
+
+
+def cmd_auto_arm(root, args):
+    slug = None
+    gates_on = False
+    chain_all = False
+    no_confirm = False
+    max_cycles = DEFAULT_MAX_CYCLES
+    max_features = DEFAULT_MAX_FEATURES
+    for a in args:
+        if a == "--gates-on":
+            gates_on = True
+        elif a == "--chain-all":
+            chain_all = True
+        elif a == "--no-confirm":
+            no_confirm = True
+        elif a.startswith("--max-cycles="):
+            max_cycles = _parse_positive_int(a.split("=", 1)[1], "--max-cycles")
+        elif a.startswith("--max-features="):
+            max_features = _parse_positive_int(a.split("=", 1)[1], "--max-features")
+        elif a.startswith("-"):
+            fail(
+                f"unknown flag '{a}' — usage: lean-spec auto arm <slug> "
+                "[--gates-on] [--chain-all] [--no-confirm] [--max-cycles=N] [--max-features=N]",
+                1,
+            )
+        elif slug is None:
+            slug = a
+        else:
+            fail(f"unexpected argument '{a}' — usage: lean-spec auto arm <slug> [flags]", 1)
+
+    if slug is None:
+        fail("usage: lean-spec auto arm <slug> [--gates-on] [--chain-all] [--no-confirm] [--max-cycles=N] [--max-features=N]", 1)
+    validate_slug(slug)
+    # Refuse to arm a feature that does not exist: the driver would resolve no
+    # step on its first poke and disarm anyway, so failing here is the loud
+    # version of the same outcome (principle 8).
+    load_workflow(root, slug)
+
+    # `--no-confirm` is only meaningful while chaining (it governs what happens
+    # once no non-closed feature remains) — accepting it alone would write a
+    # key the driver never reads.
+    if no_confirm and not chain_all:
+        fail("--no-confirm requires --chain-all (it only governs the end of a chain)", 1)
+
+    data = {
+        "slug": slug,
+        "gates_on": gates_on,
+        "max_cycles": max_cycles,
+        "cycles": 0,
+        # Provenance: an audit trail of when this run was armed and by which
+        # writer. NOTE (issue #21): this is a record, NOT an authorization
+        # proof — `auto arm` is a Bash invocation, so it cannot distinguish a
+        # human-invoked /lean-spec:auto from a model running it unprompted.
+        # See docs/CONSTITUTION.md "Known gap".
+        "armed_by": "command",
+        "armed_at": now_iso(),
+    }
+    if chain_all:
+        data["chain_all"] = True
+        if no_confirm:
+            data["no_confirm"] = True
+            data["max_features"] = max_features
+            data["features_specced"] = 0
+    atomic_write_json(auto_path(root), data, tmp_prefix=".autoXXXXXX")
+    return 0
+
+
+def cmd_auto_disarm(root, args):
+    if args:
+        fail("usage: lean-spec auto disarm", 1)
+    try:
+        os.remove(auto_path(root))
+    except FileNotFoundError:
+        pass  # idempotent: disarming when nothing is armed is a no-op (principle 6)
+    return 0
+
+
+def cmd_auto_status(root, args):
+    as_json = "--json" in args
+    args = [a for a in args if a != "--json"]
+    if args:
+        fail("usage: lean-spec auto status [--json]", 1)
+    data = load_auto(root)
+    if data is None:
+        if as_json:
+            print(json.dumps({"armed": False}, indent=2, sort_keys=True))
+        else:
+            print(f"{PROG}: auto: disarmed")
+        return 0
+    info = dict(data)
+    info["armed"] = True
+    if as_json:
+        print(json.dumps(info, indent=2, sort_keys=True))
+    else:
+        for k in sorted(info):
+            print(f"{k}: {info[k]}")
+    return 0
+
+
+AUTO_SUBCOMMANDS = {
+    "arm": cmd_auto_arm,
+    "disarm": cmd_auto_disarm,
+    "status": cmd_auto_status,
+}
+
+
+def cmd_auto(root, args):
+    usage = f"usage: lean-spec auto <{'|'.join(AUTO_SUBCOMMANDS)}> ..."
+    if not args:
+        fail(usage, 1)
+    sub, rest = args[0], args[1:]
+    if sub not in AUTO_SUBCOMMANDS:
+        fail(f"unknown auto subcommand '{sub}' — {usage}", 1)
+    return AUTO_SUBCOMMANDS[sub](root, rest)
+
+
+# ---------------------------------------------------------------------------
 # status
 # ---------------------------------------------------------------------------
 
@@ -694,6 +863,7 @@ COMMANDS = {
     "validate": cmd_validate,
     "next": cmd_next,
     "status": cmd_status,
+    "auto": cmd_auto,
 }
 
 

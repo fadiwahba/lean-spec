@@ -14,13 +14,39 @@
 ## Architecture principles (non-negotiable)
 
 1. **Layer rule** — skills describe, hooks enforce, the CLI mutates. Gate logic never lives in a skill prompt.
-2. **State is single-sourced** in `features/*/workflow.json`; mutated only by `bin/lean-spec`. Never hand-write it — not via Write/Edit (hook-blocked) and not via Bash heredoc (undetected breach; forbidden by this constitution).
+2. **State is single-sourced** in `features/*/workflow.json` and `.lean-spec/auto.json`; both mutated only by `bin/lean-spec` (`ensure`/`advance` and `auto arm`/`auto disarm` respectively). Never hand-write either — not via Write/Edit (hook-blocked by `hooks/pre-tool-use-guard.sh`) and not via Bash heredoc or `rm` (undetected breach; forbidden by this constitution). `auto.json` carries the higher stake: once it exists the Stop hook drives phases whose skills are all `disable-model-invocation: true`, so **arming or re-arming a run is the user's decision, never the model's** — see "Known gap" below.
 3. **Phase transitions are atomic**: tmp file + `os.replace` + post-advance assertion.
 4. **Artifacts gate phases**: an invalid artifact blocks the advance; validation runs at `SubagentStop` (early) and at the phase gate (backstop).
 5. **Additive config**: absent `rules.toml` keys enforce nothing; zero-config first run must complete a full cycle.
 6. **Idempotency everywhere**: `ensure` and re-running any skill in its own phase is a no-op, never an error.
 7. **One spec at a time**: no upfront decomposition — the next slice is specced only after the previous one closes; blockers refine the PRD first.
 8. **Fail loudly, never silently**: every entry point preflights its environment — `python3 ≥ 3.11` on PATH, Claude Code ≥ the pinned floor, inside a git repo, required files present — and exits non-zero with a one-line actionable message naming exactly what is missing and how to fix it (e.g. `lean-spec: python3 >= 3.11 required (found 3.9.6) — brew install python3`). No silent fallbacks, no swallowed exceptions, no degraded "best effort" paths; a gate that fails prints which check failed and why.
+
+### Known gap — the guard is drift-prevention, not an authorization boundary
+
+`hooks/pre-tool-use-guard.sh` denies `Write`/`Edit`/`MultiEdit` on `.lean-spec/auto.json`, and
+`bin/lean-spec auto arm` is its only writer. That closes the path a model actually takes when it
+drifts. **It does not make arming unforgeable**, and we do not claim it does:
+
+- `auto arm` is a Bash invocation, and Bash is not gated by the PreToolUse matcher. A model can run
+  the CLI itself, or write the file with a heredoc, or `rm` it to disarm.
+- Nothing inside the process can distinguish `auto arm` run because a human typed
+  `/lean-spec:auto-all` from `auto arm` run unprompted — the skill's Steps are performed *by the
+  model* either way. `armed_by`/`armed_at` are an **audit record, not a proof**; a heredoc can
+  write the same two fields.
+
+Deliberate choices that follow from this:
+
+- **Deny writes, not deletes.** Arming escalates (it starts an unattended run); deleting
+  de-escalates (it stops one). A model that disarms fails safe. `auto disarm` exists so the clean
+  path is available, but a `rm` is not treated as a breach.
+- **No "was this authorized?" heuristic in the hook.** That question is not answerable from a
+  `PreToolUse` payload, and a guess that is wrong in either direction is worse than an honest gap —
+  a false deny breaks `/lean-spec:auto`, a false allow is the bug we started with.
+
+What actually holds the boundary is unchanged: every mutating phase skill is
+`disable-model-invocation: true`, so a human must invoke the phase. This guard removes the
+accidental door; it does not bolt the deliberate one.
 
 ## Delegation ladder — who does what (building v4 itself)
 

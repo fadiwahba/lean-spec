@@ -34,6 +34,27 @@ write_valid_notes() {
   printf '## What was built\nstuff\n## TDD\nred/green\n' > "features/${slug}/notes.md"
 }
 
+@test "preserves arm provenance across a cycle rewrite (issue #21)" {
+  write_valid_spec demo
+  "${LEAN_SPEC_BIN}" ensure demo
+  write_auto <<'EOF'
+{"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"armed_by":"command","armed_at":"2026-08-06T00:00:00Z"}
+EOF
+  run driver '{}'
+  [ "$status" -eq 0 ]
+  # The driver rewrites auto.json every cycle (cycle counter); unrecognized
+  # keys must survive that rewrite or the audit trail is lost on cycle 1.
+  run python3 -c "
+import json
+d = json.load(open('.lean-spec/auto.json'))
+assert d['armed_by'] == 'command', d
+assert d['armed_at'] == '2026-08-06T00:00:00Z', d
+assert d['cycles'] == 1, d
+print('ok')
+"
+  [ "$output" = "ok" ]
+}
+
 @test "allows stop when no auto.json exists" {
   run driver '{}'
   [ "$status" -eq 0 ]
