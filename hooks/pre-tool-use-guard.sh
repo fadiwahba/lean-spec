@@ -74,16 +74,22 @@ else:
     print("allow")
 ')"
 
+# Build the decision with json.dumps, NEVER string interpolation into a JSON
+# heredoc: the reason embeds CLAUDE_PLUGIN_ROOT, and a path containing a
+# double-quote, backslash or newline would emit malformed JSON. Claude Code
+# could not then parse the decision, so the deny would be lost and the guard
+# would FAIL OPEN — the exact failure class this hook exists to prevent.
 emit_deny() {
-  cat <<JSON
-{
-  "hookSpecificOutput": {
-    "hookEventName": "PreToolUse",
-    "permissionDecision": "deny",
-    "permissionDecisionReason": "$1"
-  }
-}
-JSON
+  python3 -c '
+import json, sys
+print(json.dumps({
+    "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "deny",
+        "permissionDecisionReason": sys.argv[1],
+    }
+}, ensure_ascii=False, indent=2))
+' "$1"
   exit 0
 }
 
