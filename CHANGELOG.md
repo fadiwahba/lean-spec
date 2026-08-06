@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-06
+
+Security-hardening release: the auto-driver's state file gets a CLI writer
+and a real hook guard, closing the path by which a model could arm an
+unattended run the user never authorized ([#21]).
+
 ### Added
 
 - **`bin/lean-spec auto arm|disarm|status`** — a CLI writer for
@@ -46,7 +52,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The `spec_next` driver poke now points at `bin/lean-spec auto
   arm|disarm` instead of issuing an unenforceable "do not touch this file".
 
+### Security
+
+- **The PreToolUse guard could fail open.** `permissionDecisionReason` was
+  interpolated into a JSON heredoc unescaped, and it embeds
+  `CLAUDE_PLUGIN_ROOT` — so a plugin path containing a double-quote,
+  backslash or newline emitted malformed JSON. An unparseable decision
+  means the deny is lost, i.e. the guard silently permits exactly what it
+  exists to block. This affected the **pre-existing `workflow.json` deny**
+  as well as the new `auto.json` one. The payload is now built with
+  `json.dumps`; 3 regression tests cover quote/backslash/newline plugin
+  roots. Surfaced as a suppressed Copilot comment on [#22].
+
 [#21]: https://github.com/fadiwahba/lean-spec/issues/21
+[#22]: https://github.com/fadiwahba/lean-spec/pull/22
 
 ## [1.4.0] - 2026-07-07
 
