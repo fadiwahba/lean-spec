@@ -26,7 +26,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   on the very poke that forbade it. `hooks/pre-tool-use-guard.sh` now
   denies `Write`/`Edit`/`MultiEdit`/`NotebookEdit` on it (path-normalized
   and case-insensitive, like the `workflow.json` rule) with a deny message
-  naming the CLI remedy, and both `auto` skills now invoke
+  naming the CLI remedy and both user entry points (`/lean-spec:auto`,
+  `/lean-spec:auto-all`), and both `auto` skills now invoke
   `bin/lean-spec auto arm` instead of describing a file write — removing
   the discretion rather than policing it.
 
@@ -37,8 +38,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   plainly what this guard does and does not do: it closes the path a
   drifting model actually takes, but arming is not unforgeable (Bash is
   ungated, and nothing in-process can distinguish a human-invoked
-  `/lean-spec:auto` from an unprompted `auto arm`). Deletes are
-  deliberately not denied — disarming fails safe.
+  `/lean-spec:auto` from an unprompted `auto arm`). Hand-deleting
+  `auto.json` remains a constitutional breach but is deliberately **not**
+  mechanically denied — disarming fails safe, and guarding it would mean
+  pattern-matching `rm` through a `Bash` matcher whose false positives
+  cost more than the gain.
 - The `spec_next` driver poke now points at `bin/lean-spec auto
   arm|disarm` instead of issuing an unenforceable "do not touch this file".
 

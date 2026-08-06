@@ -92,7 +92,7 @@ if [ "$decision" = "deny:workflow" ]; then
 fi
 
 if [ "$decision" = "deny:auto" ]; then
-  emit_deny ".lean-spec/auto.json is owned by the auto-driver — never hand-written. Use \`${PLUGIN_ROOT}/bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm]\` (or \`auto disarm\`), or ask the user to run /lean-spec:auto-all. Arming a run the user did not ask for is not yours to decide."
+  emit_deny ".lean-spec/auto.json is owned by the auto-driver — never hand-written. Use \`${PLUGIN_ROOT}/bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm]\` (or \`auto disarm\`), or ask the user to run /lean-spec:auto (one feature) or /lean-spec:auto-all (every non-closed feature). Arming a run the user did not ask for is not yours to decide."
 fi
 
 exit 0

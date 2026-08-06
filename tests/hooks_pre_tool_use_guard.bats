@@ -149,6 +149,19 @@ guard() {
   [[ "$output" == *"auto arm"* ]]
 }
 
+@test "auto.json deny message names BOTH user entry points, not just auto-all" {
+  # A remedy naming only /lean-spec:auto-all misdirects anyone arming a single
+  # feature, whose entry point is /lean-spec:auto (Copilot review, PR #22).
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/auto.json"}}'
+  [[ "$output" == *"/lean-spec:auto "* ]]
+  [[ "$output" == *"/lean-spec:auto-all"* ]]
+}
+
+@test "denies NotebookEdit to .lean-spec/auto.json (full guarded tool set)" {
+  run guard '{"tool_name":"NotebookEdit","tool_input":{"notebook_path":".lean-spec/auto.json"}}'
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+}
+
 @test "allows Write to .lean-spec/rules.toml (only auto.json is guarded)" {
   run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/rules.toml"}}'
   [ -z "$output" ]
