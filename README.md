@@ -147,6 +147,8 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 
 Both `auto` and `auto-all` also accept `--gates-on` — a flag reserved for stricter per-phase confirmation. It's a no-op today (every quality gate is already always-on via the CLI/hooks); it's recorded for forward-compatibility only, so you rarely need it.
 
+Auto mode is armed and disarmed **only** through the state CLI — `bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm] [--gates-on] [--max-cycles=N] [--max-features=N]`, `auto disarm`, `auto status [--json]`. `.lean-spec/auto.json` is that CLI's file the way `workflow.json` is `advance`'s, and a direct `Write`/`Edit` of it is denied by the PreToolUse guard: once the file exists the Stop hook starts driving phases whose skills are all model-invocation-disabled, so **starting or restarting an unattended run is your call, not the model's.** Run `bin/lean-spec auto status` any time to see whether a run is armed and what armed it.
+
 **Read-only — safe any time**
 
 | Command | What it does | When to use it |

@@ -14,10 +14,15 @@ step itself. Everything after that is `hooks/stop-auto-driver.sh` (a
 ## Steps
 
 1. `bin/lean-spec ensure <slug>` (idempotent — no-op if it already exists).
-2. Write `.lean-spec/auto.json`:
-   ```json
-   {"slug": "<slug>", "gates_on": <true|false>, "max_cycles": <N, default 20>, "cycles": 0}
+2. Arm the driver via the CLI — **never write the file yourself**:
    ```
+   bin/lean-spec auto arm <slug> [--gates-on] [--max-cycles=N]
+   ```
+   The CLI owns `.lean-spec/auto.json`'s schema, defaults, provenance and
+   atomic write, exactly as `advance` owns `workflow.json`. A direct
+   `Write`/`Edit` of that path is denied by
+   `hooks/pre-tool-use-guard.sh`.
+
    `--gates-on` sets `gates_on: true` (reserved for stricter per-phase
    confirmation policies — today every quality gate is already always-on
    via the CLI/hooks regardless of this flag; it is recorded for
@@ -40,3 +45,7 @@ step itself. Everything after that is `hooks/stop-auto-driver.sh` (a
   the loop, then stop; the hook takes it from there.
 - Bypass the cycle cap or the BLOCKED-stops-the-line rule — those are
   enforced in `hooks/stop-auto-driver.sh`, not here.
+- Write, edit, or delete `.lean-spec/auto.json` by hand (including via a
+  Bash heredoc or `rm`). Arming a run is the user's decision; use
+  `bin/lean-spec auto arm`/`auto disarm` and only when the user asked
+  for it.

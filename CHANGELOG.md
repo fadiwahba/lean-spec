@@ -6,6 +6,48 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`bin/lean-spec auto arm|disarm|status`** — a CLI writer for
+  `.lean-spec/auto.json`, mirroring what `ensure`/`advance` are to
+  `workflow.json`. `arm` owns the schema, defaults, validation (unknown
+  slug, bad flags, `--max-cycles`/`--max-features` bounds,
+  `--no-confirm` requires `--chain-all`) and the atomic write, and
+  records `armed_by`/`armed_at` provenance. `status [--json]` reports
+  whether a run is armed.
+
+### Fixed
+
+- **`.lean-spec/auto.json` could be written by the model, self-granting
+  the authorization every mutating phase skill withholds via
+  `disable-model-invocation: true`** ([#21]). The file was protected only
+  by prose in a hook *message* — the same channel the model was expected
+  to obey — and was observed being self-armed, self-disarmed, and written
+  on the very poke that forbade it. `hooks/pre-tool-use-guard.sh` now
+  denies `Write`/`Edit`/`MultiEdit`/`NotebookEdit` on it (path-normalized
+  and case-insensitive, like the `workflow.json` rule) with a deny message
+  naming the CLI remedy and both user entry points (`/lean-spec:auto`,
+  `/lean-spec:auto-all`), and both `auto` skills now invoke
+  `bin/lean-spec auto arm` instead of describing a file write — removing
+  the discretion rather than policing it.
+
+### Changed
+
+- CONSTITUTION principle 2 now covers `.lean-spec/auto.json` alongside
+  `features/*/workflow.json`, plus a new **"Known gap"** section stating
+  plainly what this guard does and does not do: it closes the path a
+  drifting model actually takes, but arming is not unforgeable (Bash is
+  ungated, and nothing in-process can distinguish a human-invoked
+  `/lean-spec:auto` from an unprompted `auto arm`). Hand-deleting
+  `auto.json` remains a constitutional breach but is deliberately **not**
+  mechanically denied — disarming fails safe, and guarding it would mean
+  pattern-matching `rm` through a `Bash` matcher whose false positives
+  cost more than the gain.
+- The `spec_next` driver poke now points at `bin/lean-spec auto
+  arm|disarm` instead of issuing an unenforceable "do not touch this file".
+
+[#21]: https://github.com/fadiwahba/lean-spec/issues/21
+
 ## [1.4.0] - 2026-07-07
 
 ### Added
