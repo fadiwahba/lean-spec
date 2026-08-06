@@ -1,6 +1,6 @@
 {
   "name": "lean-spec",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Deterministic, spec-driven development lifecycle for Claude Code: interview -> PRD -> spec -> implement (TDD) -> review -> fix -> close. Discipline is enforced by a state CLI and hooks, never by prompt obedience.",
   "author": {
     "name": "Fady Soliman"
