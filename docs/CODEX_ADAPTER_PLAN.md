@@ -19,7 +19,7 @@ Codex CLI now has near-parity with every mechanism lean-spec depends on:
 | Auto-mode driver loop | `Stop` hook, `decision: block` + reason | `Stop` hook, same — reason becomes the continuation prompt | High |
 | Per-phase model + effort agents | `agents/*.md` frontmatter (`model`, `effort`) | `.codex/agents/*.toml` (`model`, `model_reasoning_effort`) | High — different file format |
 | Authoritative project instructions | CLAUDE.md / constitution injection | `AGENTS.md` chain (git root → cwd, closest wins) | High |
-| Command allow rules | permission settings | execpolicy rules (`.codex/rules/*.rules`, Starlark `prefix_rule`) | Medium — commands only, no path-level deny |
+| Command allow rules | permission settings | execpolicy rules (`.codex/rules/*.rules`, Starlark `prefix_rule`) — **experimental**; gates shell commands only | Medium — no path-level deny. Note: Codex "rules" are NOT an equivalent of Claude's `.claude/rules/*.md` instruction files; that role belongs to AGENTS.md |
 | Plugin packaging | `.claude-plugin/plugin.json` + marketplace | `.codex-plugin/plugin.json` + marketplace (`codex plugin add`) | Medium — skills confirmed in plugins; hooks-in-plugin unconfirmed |
 | Headless / CI | `claude -p` | `codex exec --sandbox workspace-write -c approval_policy=never` | High |
 
@@ -68,7 +68,7 @@ adapters/codex/install.sh   # or: bin/lean-spec init --host codex
 
 writes into the target project — `.codex/hooks.json` (three hooks), `.codex/agents/*.toml`, `.agents/skills/lean-spec-*/`, `.codex/rules/lean-spec.rules` (allow `bin/lean-spec`, `git commit`, test runners), appends the AGENTS.md block, and checks `[features] hooks = true` (fail loud with the exact config line if off). Idempotent, fail-loud preflight (python3 ≥ 3.11, git repo, codex on PATH + version floor).
 
-Secondary: **Codex plugin** — `.codex-plugin/plugin.json` in this same repo (skills confirmed shippable; whether hooks can ship in a plugin is unconfirmed). The plugin's `$lean-spec-init` skill then runs the installer above for the parts plugins can't carry. Marketplace publish once the repo route is proven.
+Secondary: **Codex plugin** — `.codex-plugin/plugin.json` in this same repo, installed via the `/plugins` browser in Codex CLI. Verified (build-plugins docs): the manifest supports only `name`, `version`, `description`, `skills` today — so the plugin route carries **skills only**. Hooks are listed as plugin *content* on the plugins overview page, but there is no documented manifest field for them, and agents/rules have none either. So the plugin's `$lean-spec-init` skill runs the installer above for everything the manifest can't carry (hooks, agent TOMLs, rules, AGENTS.md block). Marketplace publish once the repo route is proven.
 
 ## 7. Milestones
 
