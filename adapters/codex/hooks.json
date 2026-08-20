@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".lean-spec/runtime/hooks/pre-tool-use-guard.sh"
+            "command": "bash -c 'root=$(git rev-parse --show-toplevel) || exit 1; exec \"$root/.lean-spec/runtime/hooks/pre-tool-use-guard.sh\"'"
           }
         ]
       }
@@ -16,7 +16,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".lean-spec/runtime/hooks/subagent-stop-gate.sh"
+            "command": "bash -c 'root=$(git rev-parse --show-toplevel) || exit 1; exec \"$root/.lean-spec/runtime/hooks/subagent-stop-gate.sh\"'"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'root=$(git rev-parse --show-toplevel) || exit 1; exec \"$root/.lean-spec/runtime/hooks/subagent-start-bind.sh\"'"
           }
         ]
       }
@@ -26,7 +36,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".lean-spec/runtime/hooks/stop-auto-driver.sh"
+            "command": "bash -c 'root=$(git rev-parse --show-toplevel) || exit 1; exec \"$root/.lean-spec/runtime/hooks/stop-auto-driver.sh\"'"
           }
         ]
       }

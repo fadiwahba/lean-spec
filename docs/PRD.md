@@ -1,5 +1,8 @@
 # lean-spec v4 — Product Requirements Document
 
+> Historical v4 product record. The current host-neutral adapter requirements
+> are in [`CODEX_ADAPTER_SPEC.md`](CODEX_ADAPTER_SPEC.md).
+
 > **What we are building.** How we build it lives in `docs/CONSTITUTION.md`.
 > Status: APPROVED — shipped (1.0 and subsequent point releases; see `CHANGELOG.md`). Greenfield rebuild; shares no code with lean-spec v3 (`~/sandbox/lean-spec`), only lessons.
 
@@ -79,7 +82,7 @@ lean-spec/
 ├── agents/                         # architect, coder, reviewer (frontmatter model+effort)
 ├── templates/                      # PRD, CONSTITUTION, spec, notes, review skeletons
 ├── examples/rules.toml
-└── tests/                          # BATS; CLI + hooks testable without a live model
+└── tests/                          # Python unittest; CLI + hooks testable without a live model
 ```
 
 **Layer rule (the load-bearing invariant):** skills *describe* work and dispatch agents; hooks *enforce*; the CLI *mutates*. A skill instruction the model ignores can never break state, because state and gates don't live in skills.
@@ -131,7 +134,10 @@ required_verdict = "APPROVE"
 "review.md" = 8000
 ```
 
-Effort resolution (doc-verified): agent frontmatter carries defaults; a differing `rules.toml` effort routes the dispatch through headless `claude -p --model <m> --effort <e>` (same adapter path external providers will use — one mechanism, two uses). **`effort` is optional and capability-gated**: each adapter declares whether its CLI supports an effort flag; it is passed only where supported (claude today) and silently dropped — with a logged note — for providers that don't (gemini, opencode, codex). An unsupported effort value never fails a dispatch.
+Effort resolution: agent frontmatter carries defaults. The current external
+adapter passes `effort` only to Codex through
+`-c model_reasoning_effort=<effort>`. Claude and Gemini entries must omit it;
+the adapter rejects an unsupported effort instead of silently dropping it.
 
 ## 8. TDD mode (default ON)
 
@@ -141,12 +147,17 @@ Effort resolution (doc-verified): agent frontmatter carries defaults; a differin
 
 ## 9. External providers (post-1.0, M5)
 
-One adapter contract, not command ports: resolve prompt → write to tmp file → run provider headless CLI (`gemini --yolo -p`, `opencode --pure run`, `codex exec`, `claude -p`) → CLI validates artifacts → orchestrator commits. Providers are file-writers only; they never touch `workflow.json` or git. `agents.<phase>.provider: gemini|opencode|codex|claude-headless` activates an adapter. Each adapter carries a small capability map (model-flag syntax, effort support yes/no) so optional knobs like `effort` degrade gracefully on providers that don't understand them (§7).
+One adapter contract, not command ports: resolve prompt → run an installed
+provider headlessly → CLI validates artifacts → orchestrator commits. The
+current adapter IDs are `codex`, `claude`, and `gemini`. It builds argv lists
+without a shell: `codex exec --json --model`, `claude -p --output-format json
+--model`, and `gemini --output-format json --model --prompt`. Providers never
+write lifecycle state; only `bin/lean-spec` does.
 
 ## 10. Non-goals (explicit)
 
 - No per-command cross-provider ports (TOML/Codex/OpenCode copies) — ever.
-- No Node.js/npm runtime; no `jq`/`yq`; no YAML anywhere (python3 ≥ 3.11 stdlib only: `json` for state, `tomllib` for config). BATS is the only dev tool.
+- No Node.js/npm runtime; no `jq`/`yq`; no YAML anywhere (python3 ≥ 3.11 stdlib only: `json` for state, `tomllib` for config). Python's stdlib `unittest` is the test tool.
 - No web UI/dashboard; artifacts + git are the interface.
 - No multi-feature parallel orchestration in 1.0 (one feature in flight per driver).
 - No native support for non-Claude orchestrators in 1.0 (they arrive as M5 adapters).
@@ -154,10 +165,10 @@ One adapter contract, not command ports: resolve prompt → write to tmp file �
 ## 11. Feature breakdown (implementation-ready)
 
 ### M0 — Bootstrap (no lifecycle yet)
-- **F1** repo scaffold: manifest, BATS harness, CI (GitHub Actions: bats on PR), templates.
+- **F1** repo scaffold: manifest, Python unittest harness, CI (GitHub Actions: unittest on PR), templates.
 
 ### M1 — Deterministic core
-- **F2** `bin/lean-spec` state CLI (ensure/advance/assert/validate/next/status) + full BATS coverage.
+- **F2** `bin/lean-spec` state CLI (ensure/advance/assert/validate/next/status) + full Python unittest coverage.
 - **F3** `pre-tool-use-guard.sh` + `subagent-stop-gate.sh` + `stop-auto-driver.sh`.
 - **F4** rules.toml v2 loader inside the CLI (`validate` consumes it).
 
@@ -174,7 +185,7 @@ One adapter contract, not command ports: resolve prompt → write to tmp file �
 - **F12** final ship review (Opus 4.8 · xhigh, per CONSTITUTION §Delegation) → 1.0.
 
 ### M5 — Post-1.0
-- **F13** external provider adapters (gemini/opencode/codex/claude-headless).
+- **F13** external provider adapters (Gemini, Codex, and Claude headless CLIs).
 - **F14** opt-in telemetry.
 
 Dogfood rule: from F6 onward, every feature is built through the v4 pipeline itself (M0–M1 bootstrap by hand, by necessity).
@@ -199,7 +210,7 @@ Dogfood rule: from F6 onward, every feature is built through the v4 pipeline its
 | R14 | TOML for config, JSON for state — YAML eliminated | stdlib has no YAML parser; `tomllib` (3.11+) keeps comments and determinism; state stays `json` |
 | R15 | `/lean-spec:spec` fail-loud-preflights project-doc readiness via `validate --project`; the check now rejects **unfilled placeholder** sections, not just missing headings | a user could `init` then jump straight to `spec` (or run brownfield without ever `plan`ning), feeding the architect an empty/skeleton PRD + CONSTITUTION — defeating the "discipline enforced by the CLI, never prompt obedience" premise; the gate is a CLI check (layer rule), invoked as a preflight exactly like `init`'s and `plan`'s |
 | R16 | `/lean-spec:plan` grounds its interview in the existing repo (reads manifests / test+CI config / README / `git log`) before asking, rather than interviewing greenfield-only | brownfield adoption: `Stack`/`Principles`/`Delegation` are usually already evident in-repo; asking from scratch yields a Constitution that ignores what's actually there — done in the session model directly, no CLI stack-detection heuristic |
-| R17 | `/lean-spec:auto-all --no-confirm` chains into speccing the next slice (one at a time, sentinel-terminated, fail-safe on any unparseable response) instead of stopping when nothing's left to drain | gives simple/small projects a hands-off "spec+build the whole PRD" flow without reopening R8: specs are still written sequentially, grounded in real closed-slice ACs, never batch-decomposed. Trades away the `--refine` mid-chain feedback loop for unattended projects — an accepted, scoped-down cost, not free. Opt-in and off by default — plain `/lean-spec:auto-all` is unchanged |
+| R17 | `auto-all --no-confirm` chains into speccing the next slice one at a time, stopping only on the exact `NO_REMAINING_SCOPE` sentinel | gives simple/small projects a hands-off "spec+build the whole PRD" flow without reopening R8. Malformed architect output is `NEEDS_INPUT`, never inferred completion. |
 | R18 | Enforcement hardening from a ground-up deep review (v1.3.0): the three hooks reject valid-but-non-object JSON instead of crashing (was a fail-open bypass); the `workflow.json` write guard normalizes + case-folds paths (`Workflow.json`/`../` no longer dodge it); corrupt `rules.toml`/`workflow.json` fail loudly, not with tracebacks; `--no-tdd` persists per-feature in `workflow.json` so the gate honors the opt-out; `reviewing→implementing` is CLI-gated on a `NEEDS_FIXES` verdict; `advance` is serialized with an `fcntl` lock and preserves file mode | the "discipline enforced by the harness, never prompt obedience" premise only holds if the harness itself can't be crashed into failing open or bypassed — the review found several such holes; closing them keeps the enforcement guarantees real under corrupt/adversarial state |
 
 ## 13. Open questions

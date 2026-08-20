@@ -47,8 +47,5 @@ jobs:
       - name: examples/rules.toml is valid TOML
         run: python3 -c "import tomllib; tomllib.load(open('examples/rules.toml','rb'))"
 
-      - name: Bootstrap bats-core
-        run: ./scripts/bootstrap-bats.sh
-
-      - name: Run BATS suite
-        run: ./.tools/bin/bats tests/
+      - name: Run unittest suite
+        run: python3 -m unittest discover -s tests -p 'test_*.py'

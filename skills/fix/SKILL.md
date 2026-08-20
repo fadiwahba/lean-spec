@@ -15,7 +15,8 @@ Only meaningful when `bin/lean-spec next <slug>` says so (i.e.
    routes to close, BLOCKED stops the line, a missing verdict is not a
    fix) — so a wrong call fails loudly here rather than silently
    re-opening an approved or blocked feature.
-2. Dispatch the `coder` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
+2. Give the active host adapter the explicit work identity, then dispatch the
+   `coder` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
    injected, `.lean-spec/features/<slug>/spec.md`, and `.lean-spec/features/<slug>/review.md`'s
    findings. The coder appends a new `## Cycle N` section to
    `.lean-spec/features/<slug>/notes.md` rather than rewriting history, addressing

@@ -6,7 +6,11 @@
 
 **Architecture:** `bin/lean-spec` owns semantic state, layout, validation, and automatic-run decisions. Canonical `skills/` describe lifecycle work in host-neutral language. Claude and Codex adapter files only translate host events, commands, and agent definitions to that core contract.
 
-**Tech Stack:** Python 3.11 stdlib, Bash, BATS, TOML, JSON, Markdown; macOS and Linux.
+**Tech Stack:** Python 3.11 stdlib, Bash, TOML, JSON, Markdown; macOS and Linux.
+
+> **Superseded test note:** this historical plan used BATS. The approved
+> delivery replaces it with direct Python 3.11 `unittest` coverage before
+> removing BATS.
 
 **Spec:** `docs/CODEX_ADAPTER_SPEC.md`
 
@@ -18,7 +22,8 @@
 - The CLI is the only writer of workflow and auto state. Hooks never mutate it.
 - `--no-confirm` may skip approval, never missing requirements.
 - Keep Claude compatibility or provide an explicit, tested migration.
-- Every task starts with a failing BATS test and ends with the affected BATS tests passing.
+- Every task starts with a failing Python unittest and ends with the affected
+  Python tests passing.
 
 ---
 

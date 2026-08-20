@@ -6,6 +6,7 @@ import argparse
 import json
 import shutil
 import stat
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -26,6 +27,16 @@ def copy_tree(source: Path, destination: Path, dry_run: bool) -> None:
         print(f"copy {source} -> {destination}")
         return
     shutil.copytree(source, destination, dirs_exist_ok=True)
+
+
+def is_git_repository(project: Path) -> bool:
+    result = subprocess.run(
+        ["git", "-C", str(project), "rev-parse", "--is-inside-work-tree"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
 
 
 def copy_codex_skill(source: Path, destination: Path, dry_run: bool) -> None:
@@ -73,6 +84,19 @@ def desired_hook_config() -> dict:
     return config
 
 
+def is_lean_spec_hook(entry: object) -> bool:
+    """Recognize any prior project-runtime Lean Spec hook command."""
+    if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
+        return False
+    for hook in entry["hooks"]:
+        if not isinstance(hook, dict):
+            continue
+        command = hook.get("command")
+        if isinstance(command, str) and ".lean-spec/runtime/hooks/" in command:
+            return True
+    return False
+
+
 def merge_hook_config(path: Path, desired: dict) -> dict:
     if not path.exists():
         return desired
@@ -89,7 +113,9 @@ def merge_hook_config(path: Path, desired: dict) -> dict:
     merged = dict(existing)
     hooks = dict(existing["hooks"])
     for event, entries in desired["hooks"].items():
-        current = list(hooks.get(event, []))
+        # Replace prior Lean Spec hook entries even if their command changed
+        # between releases. Keep unrelated user hooks untouched.
+        current = [entry for entry in hooks.get(event, []) if not is_lean_spec_hook(entry)]
         for entry in entries:
             if entry not in current:
                 current.append(entry)
@@ -132,7 +158,7 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     project = args.project.resolve()
-    if not (project / ".git").exists():
+    if not is_git_repository(project):
         parser.error("--project must be a git repository")
 
     try:

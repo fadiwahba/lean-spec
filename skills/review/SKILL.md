@@ -11,7 +11,8 @@ description: Advances an implemented feature to reviewing and dispatches the rev
    state transition. Pass `--visual` when requested. This records the visual
    evidence gate in CLI-owned feature state. Stop and surface the CLI's
    message on failure.
-2. Dispatch the `reviewer` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
+2. Give the active host adapter the explicit work identity, then dispatch the
+   `reviewer` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
    injected, `.lean-spec/features/<slug>/spec.md`, and `.lean-spec/features/<slug>/notes.md`
    (including its `## TDD` evidence). Pass `--visual` through when given —
    the reviewer then drives the running app with a browser scripted

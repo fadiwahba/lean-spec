@@ -12,6 +12,9 @@
 
 <p align="center"><em>An agent-neutral, deterministic development lifecycle with Claude and Codex adapters.</em></p>
 
+Lean Spec supports macOS and Linux with Python 3.11+, Git, and Bash. Windows
+is not a first-class target in this release.
+
 ---
 
 ## What is lean-spec?
@@ -128,11 +131,13 @@ It installs project-owned runtime files below `.lean-spec/runtime`, skills in
 `.codex/hooks.json`, and one marked block in root `AGENTS.md`. It is safe to
 run again. Codex discovers the installed skills as `$lean-spec-<name>`.
 
-The repository also contains a skills-only Codex plugin manifest. If Lean
-Spec is available from a configured marketplace, install it with Codex's
-`/plugins` browser and start a new session. The project installer remains
-required because the documented plugin manifest only declares skills; the
-adapter must add project hooks, agents, and `AGENTS.md` instructions.
+The repository also contains a Codex plugin. If Lean Spec is available from a
+configured marketplace, install it with Codex's `/plugins` browser, start a
+new session, then run `$lean-spec-bootstrap` from the target Git repository. Bootstrap
+runs the same project installer above. Bootstrap installs project runtime,
+custom agents, `AGENTS.md` instructions, hooks, and the canonical lifecycle
+skills. Before hooks run, use Codex's `/hooks` screen to review and trust the
+project hook definitions.
 
 The installer does not use symlinks. Contributors may use symlinks locally.
 Normal project installation uses copied, versioned files.
@@ -145,6 +150,10 @@ spec = { model = "gpt-5.6-sol", effort = "high" }
 implement = { model = "gpt-5.6-terra", effort = "medium" }
 review = { model = "gpt-5.6-sol", effort = "high" }
 ```
+
+For headless external-provider dispatch, use the commented examples in
+[`examples/rules.toml`](examples/rules.toml). Provider values are stable adapter
+IDs (`codex`, `claude`, `gemini`), not company display names.
 
 ### Project artifacts and migration
 
@@ -196,7 +205,7 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 
 Both `auto` and `auto-all` also accept `--gates-on` — a flag reserved for stricter per-phase confirmation. It's a no-op today (every quality gate is already always-on via the CLI/hooks); it's recorded for forward-compatibility only, so you rarely need it.
 
-Auto mode is armed and disarmed **only** through the state CLI — `bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm] [--gates-on] [--max-cycles=N] [--max-features=N]`, `auto disarm`, `auto status [--json]`. `.lean-spec/auto.json` is that CLI's file the way `workflow.json` is `advance`'s, and a direct `Write`/`Edit` of it is denied by the PreToolUse guard: once the file exists the Stop hook starts driving phases whose skills are all model-invocation-disabled, so **starting or restarting an unattended run is your call, not the model's.** Run `bin/lean-spec auto status` any time to see whether a run is armed and what armed it.
+Auto state is changed **only** through the state CLI: `bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm] [--gates-on] [--max-cycles=N] [--max-features=N]`, `auto tick --run-id <id> --event-id <id>`, `auto complete --run-id <id> --no-remaining-scope`, and `auto disarm`. `auto tick` is called by the Stop hook; `auto complete` is only for the `NO_REMAINING_SCOPE` sentinel from `auto-all --no-confirm`. `.lean-spec/auto.json` is the CLI's file the way `workflow.json` is `advance`'s. A direct edit is denied by the PreToolUse guard, so starting or restarting an unattended run remains the user's choice. Run `bin/lean-spec auto status [--json]` to inspect a run.
 
 **Read-only — safe any time**
 
@@ -247,7 +256,7 @@ By default the coder is reviewed by a *different* model family (Opus reviews Son
 
 ## Hands-free mode
 
-The `auto` / `auto-all` drivers (see the [command reference](#command-reference)) run the lifecycle unattended. `--no-confirm` turns `auto-all` into a single hands-off command for a small/simple PRD: when nothing is left to drain (mid-run, or on a fresh project with no specs yet) it chains into `/lean-spec:spec` for the next slice instead of stopping, skipping the per-slice confirmation. Specs are still written strictly one at a time (never batch-decomposed); the architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully covered.
+The `auto` / `auto-all` drivers (see the [command reference](#command-reference)) run the lifecycle unattended. `--no-confirm` turns `auto-all` into a single hands-off command for a small/simple PRD: when nothing is left to drain (mid-run, or on a fresh project with no specs yet) it routes to the host's `spec` skill for the next slice instead of stopping, skipping the per-slice confirmation. Specs are still written strictly one at a time (never batch-decomposed); the architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully covered. Malformed architect output stops with `NEEDS_INPUT`; it never completes the run.
 
 Or use Claude Code built-ins directly — no plugin code involved:
 
@@ -263,11 +272,10 @@ See the whole lifecycle run against a throwaway project — real CLI, real hooks
 
 ```bash
 ./scripts/demo.sh            # needs python3, git, and bash — drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
-scripts/bootstrap-bats.sh    # one-time: vendors bats-core into .tools/ (gitignored)
-.tools/bin/bats tests/       # the full suite, incl. the CI-enforced e2e drive
+python3 -m unittest discover -s tests -p 'test_*.py'  # the full suite, incl. the CI-enforced e2e drive
 ```
 
-Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
+Details: [`tests/test_integration.py`](tests/test_integration.py) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
 
 ## Repository documentation
 
@@ -279,7 +287,7 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 
 | Milestone | Scope | Status |
 |---|---|---|
-| M0 | scaffold · BATS harness · CI | ✅ done |
+| M0 | scaffold · unittest harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
 | M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.4.x — see `CHANGELOG.md`) |

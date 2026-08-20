@@ -655,17 +655,14 @@ def validate_artifact(root, slug, artifact, rules, project=False):
     if missing:
         errors.append(f"{artifact} missing required section(s): {', '.join(missing)}")
 
-    if project:
-        bodies = _section_bodies(text)
-        unfilled = [
-            s for s in required
-            if s in headings and _is_unfilled(bodies.get(s, ""))
-        ]
-        if unfilled:
-            errors.append(
-                f"{artifact} has unfilled placeholder section(s): "
-                f"{', '.join(unfilled)} — run /lean-spec:plan to fill them"
-            )
+    bodies = _section_bodies(text)
+    unfilled = [s for s in required if s in headings and _is_unfilled(bodies.get(s, ""))]
+    if unfilled:
+        remedy = "run /lean-spec:plan to fill them" if project else "write the required artifact content"
+        errors.append(
+            f"{artifact} has unfilled placeholder section(s): "
+            f"{', '.join(unfilled)} — {remedy}"
+        )
 
     cap = rules["max_tokens"].get(artifact)
     if cap is not None:
@@ -726,17 +723,40 @@ def cmd_validate(root, args):
 # next
 # ---------------------------------------------------------------------------
 
+NEXT_STEP_IDENTITY = {
+    "implement": ("coder", "notes.md", "implementation-artifact-valid", "implementing"),
+    "review": ("reviewer", "review.md", "review-artifact-valid", "reviewing"),
+    "close": ("orchestrator", "review.md", "approval-verdict-valid", "closed"),
+    "fix": ("coder", "notes.md", "needs-fixes-verdict-valid", "implementing"),
+}
+
+
+def _next_skill(result, step):
+    owner, artifact, gate, expected_phase = NEXT_STEP_IDENTITY[step]
+    result.update({
+        "action": "skill",
+        "step": step,
+        "outcome": "READY",
+        "owner": owner,
+        "artifact": artifact,
+        "gate": gate,
+        "expected_phase": expected_phase,
+    })
+
+
 def resolve_next(root, slug):
     """Returns host-neutral next-step data for a feature."""
     wf = load_workflow(root, slug)
     phase = wf.get("phase")
-    result = {"slug": slug, "phase": phase, "action": None, "step": None, "reason": None}
+    result = {
+        "schema_version": 1, "slug": slug, "phase": phase, "action": None,
+        "step": None, "reason": None, "outcome": None, "owner": None,
+        "artifact": None, "gate": None, "expected_phase": phase,
+    }
     if phase == "specifying":
-        result["action"] = "skill"
-        result["step"] = "implement"
+        _next_skill(result, "implement")
     elif phase == "implementing":
-        result["action"] = "skill"
-        result["step"] = "review"
+        _next_skill(result, "review")
     elif phase == "reviewing":
         review_path = os.path.join(feature_dir(root, slug), "review.md")
         if not os.path.isfile(review_path):
@@ -746,21 +766,23 @@ def resolve_next(root, slug):
             with open(review_path) as f:
                 verdict = extract_verdict(f.read())
             if verdict == "APPROVE":
-                result["action"] = "skill"
-                result["step"] = "close"
+                _next_skill(result, "close")
             elif verdict == "NEEDS_FIXES":
-                result["action"] = "skill"
-                result["step"] = "fix"
+                _next_skill(result, "fix")
             elif verdict == "BLOCKED":
                 result["action"] = "blocked"
+                result["outcome"] = "BLOCKED"
                 result["reason"] = "review.md verdict is BLOCKED — escalate"
             else:
                 result["action"] = "blocked"
+                result["outcome"] = "BLOCKED"
                 result["reason"] = "review.md missing a valid verdict line"
     elif phase == "closed":
         result["action"] = "closed"
+        result["outcome"] = "COMPLETE"
     else:
         result["action"] = "blocked"
+        result["outcome"] = "BLOCKED"
         result["reason"] = f"unknown phase '{phase}'"
     return result
 
@@ -827,6 +849,7 @@ AUTO_DIR = ".lean-spec"
 AUTO_FILE = "auto.json"
 DEFAULT_MAX_CYCLES = 20
 DEFAULT_MAX_FEATURES = 20
+AUTO_EVENT_HISTORY_LIMIT = 32
 
 
 def auto_path(root):
@@ -936,11 +959,13 @@ def cmd_auto_arm(root, args):
     if no_confirm and not chain_all:
         fail("--no-confirm requires --chain-all (it only governs the end of a chain)", 1)
 
+    initial_next = resolve_next(root, slug)
+    expected_phase = initial_next["expected_phase"] if initial_next["action"] == "skill" else initial_next["phase"]
     data = {
         "schema_version": 1,
         "run_id": str(uuid.uuid4()),
         "slug": slug,
-        "expected_phase": load_workflow(root, slug)["phase"],
+        "expected_phase": expected_phase,
         "status": "armed",
         "gates_on": gates_on,
         "max_cycles": max_cycles,
@@ -952,6 +977,7 @@ def cmd_auto_arm(root, args):
         # See docs/CONSTITUTION.md "Known gap".
         "armed_by": "command",
         "armed_at": now_iso(),
+        "event_history": [],
     }
     if chain_all:
         data["chain_all"] = True
@@ -967,6 +993,7 @@ def _auto_result(outcome, data, **extra):
     result = {
         "schema_version": 1,
         "outcome": outcome,
+        "run_id": auto_run_id(data),
         "slug": data["slug"],
         "expected_phase": data["expected_phase"],
     }
@@ -977,7 +1004,20 @@ def _auto_result(outcome, data, **extra):
 def _write_auto_result(root, data, event_id, result):
     data["last_event_id"] = event_id
     data["last_result"] = result
+    history = data.get("event_history")
+    if not isinstance(history, list):
+        history = []
+    history = [item for item in history if isinstance(item, dict) and item.get("event_id") != event_id]
+    history.append({"event_id": event_id, "result": result})
+    data["event_history"] = history[-AUTO_EVENT_HISTORY_LIMIT:]
     atomic_write_json(auto_path(root), data, tmp_prefix=".autoXXXXXX")
+    persisted = load_auto(root)
+    if (
+        persisted is None
+        or persisted.get("last_event_id") != event_id
+        or persisted.get("last_result") != result
+    ):
+        fail("auto state write could not be verified", 1)
     print(json.dumps(result, indent=2, sort_keys=True))
 
 
@@ -1017,12 +1057,18 @@ def cmd_auto_tick(root, args):
             fail("auto run is disarmed", 2)
         if auto_run_id(data) != run_id:
             fail("auto tick rejected: run id does not match the armed run", 2)
+        for item in reversed(data.get("event_history", [])):
+            if isinstance(item, dict) and item.get("event_id") == event_id and isinstance(item.get("result"), dict):
+                print(json.dumps(item["result"], indent=2, sort_keys=True))
+                return 0
         if data.get("last_event_id") == event_id:
             result = data.get("last_result")
             if not isinstance(result, dict):
                 fail("auto tick rejected: duplicate event has no stored result", 1)
             print(json.dumps(result, indent=2, sort_keys=True))
             return 0
+        if data.get("status") in {"complete", "blocked"}:
+            fail(f"auto tick rejected: run is {data['status']}", 2)
 
         slug = data.get("slug")
         if not isinstance(slug, str):
@@ -1072,9 +1118,13 @@ def cmd_auto_tick(root, args):
                 result = _auto_result("BLOCKED", data, reason="maximum auto cycles reached")
             else:
                 data["cycles"] = cycles + 1
+                data["expected_phase"] = next_state["expected_phase"]
                 result = _auto_result(
                     "READY", data,
                     next_step=next_state["step"],
+                    owner=next_state["owner"],
+                    artifact=next_state["artifact"],
+                    gate=next_state["gate"],
                 )
         elif action == "blocked":
             data["status"] = "blocked"
@@ -1089,9 +1139,13 @@ def cmd_auto_tick(root, args):
                     data["cycles"] = 0
                     next_state = resolve_next(root, next_slug)
                     if next_state["action"] == "skill":
+                        data["expected_phase"] = next_state["expected_phase"]
                         result = _auto_result(
                             "READY", data,
                             next_step=next_state["step"],
+                            owner=next_state["owner"],
+                            artifact=next_state["artifact"],
+                            gate=next_state["gate"],
                         )
                     else:
                         data["status"] = "blocked"
@@ -1141,7 +1195,7 @@ def cmd_auto_status(root, args):
         return 0
     info = dict(data)
     info["run_id"] = auto_run_id(data)
-    info["armed"] = True
+    info["armed"] = data.get("status") in {"armed", "needs_input"}
     if as_json:
         print(json.dumps(info, indent=2, sort_keys=True))
     else:
@@ -1150,12 +1204,160 @@ def cmd_auto_status(root, args):
     return 0
 
 
+def cmd_auto_complete(root, args):
+    as_json = "--json" in args
+    args = [arg for arg in args if arg != "--json"]
+    if len(args) != 3 or args[0] != "--run-id" or args[2] != "--no-remaining-scope":
+        fail("usage: lean-spec auto complete --run-id <id> --no-remaining-scope [--json]", 1)
+    run_id = args[1]
+    with auto_lock(root):
+        data = load_auto(root)
+        if data is None:
+            fail("auto run is disarmed", 2)
+        if auto_run_id(data) != run_id:
+            fail("auto complete rejected: run id does not match the armed run", 2)
+        if not data.get("chain_all") or not data.get("no_confirm"):
+            fail("auto complete rejected: no-remaining-scope applies only to auto-all --no-confirm", 2)
+        if _next_non_closed_slug(root) is not None:
+            fail("auto complete rejected: a non-closed feature remains", 2)
+        data["status"] = "complete"
+        data["completion_reason"] = "no_remaining_scope"
+        result = _auto_result("COMPLETE", data, reason="NO_REMAINING_SCOPE")
+        _write_auto_result(root, data, f"complete:{run_id}", result)
+    return 0
+
+
 AUTO_SUBCOMMANDS = {
     "arm": cmd_auto_arm,
     "disarm": cmd_auto_disarm,
     "status": cmd_auto_status,
+    "complete": cmd_auto_complete,
     "tick": cmd_auto_tick,
 }
+
+
+# ---------------------------------------------------------------------------
+# dispatch identity (CLI-owned bridge between Codex lifecycle hooks)
+# ---------------------------------------------------------------------------
+
+DISPATCH_FILE = "dispatch.json"
+DISPATCH_ROLES = {
+    "architect": ("specifying", "spec.md", "spec-artifact-valid"),
+    "coder": ("implementing", "notes.md", "implementation-artifact-valid"),
+    "reviewer": ("reviewing", "review.md", "review-artifact-valid"),
+}
+
+
+def dispatch_path(root):
+    return os.path.join(artifact_root(root), DISPATCH_FILE)
+
+
+def load_dispatch(root):
+    path = dispatch_path(root)
+    if not os.path.isfile(path):
+        return {"schema_version": 1, "pending": None, "agents": {}}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        fail(f"corrupt {AUTO_DIR}/{DISPATCH_FILE}: {e}", 1)
+    if not isinstance(data, dict) or not isinstance(data.get("agents", {}), dict):
+        fail(f"corrupt {AUTO_DIR}/{DISPATCH_FILE}: invalid dispatch state", 1)
+    data.setdefault("schema_version", 1)
+    data.setdefault("pending", None)
+    data.setdefault("agents", {})
+    return data
+
+
+def write_dispatch(root, data):
+    atomic_write_json(dispatch_path(root), data, tmp_prefix=".dispatchXXXXXX")
+
+
+def cmd_dispatch_prepare(root, args):
+    if len(args) != 2:
+        fail("usage: lean-spec dispatch prepare <slug> <architect|coder|reviewer>", 1)
+    slug, owner = args
+    validate_slug(slug)
+    if owner not in DISPATCH_ROLES:
+        fail(f"unknown dispatch owner '{owner}'", 1)
+    expected_phase, artifact, gate = DISPATCH_ROLES[owner]
+    workflow = load_workflow(root, slug)
+    if workflow.get("phase") != expected_phase:
+        fail(f"cannot prepare {owner}: expected phase '{expected_phase}', found '{workflow.get('phase')}'", 2)
+    with auto_lock(root):
+        data = load_dispatch(root)
+        if data.get("pending") is not None:
+            fail("another lean-spec dispatch is pending agent binding", 2)
+        identity = {
+            "slug": slug, "owner": owner, "expected_phase": expected_phase,
+            "artifact": artifact, "gate": gate, "agent_type": f"lean-spec-{owner}",
+            "work_id": str(uuid.uuid4()),
+        }
+        data["pending"] = identity
+        write_dispatch(root, data)
+    print(json.dumps(identity, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_dispatch_bind(root, args):
+    if len(args) != 2:
+        fail("usage: lean-spec dispatch bind <agent-id> <agent-type>", 1)
+    agent_id, agent_type = args
+    with auto_lock(root):
+        data = load_dispatch(root)
+        pending = data.get("pending")
+        if not isinstance(pending, dict) or pending.get("agent_type") != agent_type:
+            return 0
+        data["agents"][agent_id] = pending
+        data["pending"] = None
+        write_dispatch(root, data)
+    return 0
+
+
+def cmd_dispatch_resolve(root, args):
+    if len(args) != 1:
+        fail("usage: lean-spec dispatch resolve <agent-id>", 1)
+    identity = load_dispatch(root)["agents"].get(args[0])
+    if not isinstance(identity, dict):
+        return 3
+    print(json.dumps(identity, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_dispatch_complete(root, args):
+    if len(args) != 1:
+        fail("usage: lean-spec dispatch complete <agent-id>", 1)
+    with auto_lock(root):
+        data = load_dispatch(root)
+        data["agents"].pop(args[0], None)
+        write_dispatch(root, data)
+    return 0
+
+
+def cmd_dispatch_cancel(root, args):
+    if args:
+        fail("usage: lean-spec dispatch cancel", 1)
+    with auto_lock(root):
+        data = load_dispatch(root)
+        if data.get("pending") is not None:
+            data["pending"] = None
+            write_dispatch(root, data)
+    return 0
+
+
+DISPATCH_SUBCOMMANDS = {
+    "prepare": cmd_dispatch_prepare,
+    "bind": cmd_dispatch_bind,
+    "resolve": cmd_dispatch_resolve,
+    "complete": cmd_dispatch_complete,
+    "cancel": cmd_dispatch_cancel,
+}
+
+
+def cmd_dispatch(root, args):
+    if not args or args[0] not in DISPATCH_SUBCOMMANDS:
+        fail("usage: lean-spec dispatch <prepare|bind|resolve|complete|cancel> ...", 1)
+    return DISPATCH_SUBCOMMANDS[args[0]](root, args[1:])
 
 
 def cmd_auto(root, args):
@@ -1274,6 +1476,7 @@ COMMANDS = {
     "next": cmd_next,
     "status": cmd_status,
     "auto": cmd_auto,
+    "dispatch": cmd_dispatch,
     "provider": cmd_provider,
     "readiness": cmd_readiness,
     "migrate-layout": cmd_migrate_layout,

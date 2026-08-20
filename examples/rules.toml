@@ -6,10 +6,16 @@ plan      = { model = "session" }                  # interview runs in the main 
 spec      = { provider = "claude", model = "opus" }
 implement = { provider = "claude", model = "sonnet" }
 review    = { provider = "claude", model = "opus" }
-# Codex accepts an explicit reasoning effort. `provider run` requires an
-# explicit argv-form authentication check before it launches an agent:
-# implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium", auth_check = ["codex", "login", "status"] }
-# Gemini and Claude expose no documented headless effort flag, so omit effort.
+# Provider values are CLI adapter IDs: `codex`, `claude`, and `gemini`.
+# Use an exact model ID accepted by the installed provider CLI. Examples:
+# implement = { provider = "codex", model = "gpt-5.4", effort = "medium" } # OpenAI Codex
+# review = { provider = "claude", model = "opus" }                          # Anthropic Claude
+# spec = { provider = "gemini", model = "gemini-3.7-flash" }                # Google Gemini
+# Codex accepts an explicit reasoning effort. Claude and Gemini have no
+# documented headless effort flag in this adapter, so omit effort for them.
+# `lean-spec provider run` additionally requires `auth_check = ["..."]`.
+# Use a command verified for your installed provider; `provider argv` does not
+# require it and safely shows the exact command before a run.
 # fix inherits implement when omitted
 
 [defaults]

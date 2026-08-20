@@ -9,7 +9,7 @@
   "repository": "https://github.com/fadiwahba/lean-spec",
   "license": "MIT",
   "keywords": ["spec-driven-development", "tdd", "workflow", "lifecycle"],
-  "skills": "./skills/",
+  "skills": "./adapters/codex/plugin/skills/",
   "interface": {
     "displayName": "Lean Spec",
     "shortDescription": "Deterministic development lifecycle",

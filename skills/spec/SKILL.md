@@ -36,11 +36,10 @@ project requirements.
   - **With `--no-confirm`:** skip that confirmation — there is no live
     user to answer it in an unattended run (e.g. driven by
     `auto-all` --no-confirm`). Parse the response as
-    `<slug>: <scope>`; treat the sentinel, or *any* response that
-    doesn't parse that way (padding, extra prose, garbage, empty), the
-    same — fail-safe, not exact-string-match-only. On the
-    sentinel/unparseable case, report that the PRD is fully covered and let
-    the CLI-owned automatic run return `COMPLETE`; write no state directly.
+    `<slug>: <scope>`; accept only that exact shape. On
+    `NO_REMAINING_SCOPE`, report that the PRD is fully covered and let the
+    CLI-owned automatic run return `COMPLETE`; write no state directly. On
+    malformed output, stop with `NEEDS_INPUT`; never infer completion.
     Otherwise proceed straight to Dispatch below with the parsed slug.
 - **`<slug>` given:** spec that named slice directly.
 - **`--refine`:** the slug must already exist and have a `spec.md`; dispatch
@@ -50,20 +49,23 @@ project requirements.
 
 1. `bin/lean-spec ensure <slug>` — idempotent; creates `workflow.json` in
    `specifying` phase if this is a new feature.
-2. Dispatch the `architect` agent as a subagent, with `.lean-spec/CONSTITUTION.md`'s
+2. Give the active host adapter the explicit work identity before the write
+   dispatch. It must bind or carry the exact slug, owner, artifact, phase,
+   and gate; it must never infer the latest feature.
+3. Dispatch the `architect` agent as a subagent, with `.lean-spec/CONSTITUTION.md`'s
    content injected into the prompt, plus `.lean-spec/PRD.md`, current feature
    status, **the `## Acceptance Criteria` of every closed slice's `spec.md`
    (the "already delivered" ledger, so the architect never re-specs shipped
    work),** and (on `--refine`) the reason for revision. The architect
    writes `.lean-spec/features/<slug>/spec.md`.
-3. The `SubagentStop` hook validates `spec.md` automatically the moment
+4. The `SubagentStop` hook validates `spec.md` automatically the moment
    the architect finishes (early gate). As a backstop, also run:
    ```
    bin/lean-spec validate <slug> spec.md
    ```
    If it fails, dispatch the architect again with the validator's output
    as feedback — do not hand-patch `spec.md` yourself.
-4. Tell the orchestrator to commit: `spec(<slug>): <one-line scope>`.
+5. Tell the orchestrator to commit: `spec(<slug>): <one-line scope>`.
 
 This skill never touches `.lean-spec/auto.json`. The CLI owns all automatic
 run state, including completion, pending input, slug, and cycle bookkeeping.
@@ -79,6 +81,5 @@ run state, including completion, pending input, slug, and cycle bookkeeping.
   — true with or without `--no-confirm`.
 - Dispatch the architect when `validate --project` fails for PRD.md or
   CONSTITUTION.md — the preflight is mandatory.
-- Retry or guess when the propose-dispatch response is ambiguous — treat
-  any unparseable response as `NO_REMAINING_SCOPE` (fail-safe), never
-  loop trying to reinterpret it.
+- Retry, guess, or complete when the propose-dispatch response is ambiguous.
+  Stop with `NEEDS_INPUT` and request one targeted clarification.

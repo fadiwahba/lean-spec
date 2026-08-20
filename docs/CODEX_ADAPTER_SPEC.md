@@ -11,6 +11,9 @@ Make lean-spec work natively in Codex while keeping the framework agent-agnostic
 
 The result must support Claude Code and Codex from one canonical source. Future hosts must be able to reuse the same core without copying lifecycle logic.
 
+The supported host platforms for this release are macOS and Linux with Python
+3.11+, Git, and Bash. Windows support is explicitly out of scope.
+
 ## 2. Non-negotiable rules
 
 1. The feature lifecycle stays:
@@ -23,11 +26,14 @@ The result must support Claude Code and Codex from one canonical source. Future 
 
 2. Every phase keeps one owner, one mandatory artifact, and one gate.
 3. Skills describe work. Host hooks enforce host events. `bin/lean-spec` is the only state mutator.
-4. `features/<slug>/workflow.json` and `.lean-spec/auto.json` must never be written or deleted outside the CLI.
+4. `.lean-spec/features/<slug>/workflow.json` and `.lean-spec/auto.json` must never be written or deleted outside the CLI.
 5. Canonical skills use host-neutral wording. Generated or packaged host files must not become a second hand-maintained source.
 6. No agent may guess a product, compatibility, security, migration, or acceptance requirement.
 7. Greenfield and brownfield projects use the same lifecycle.
-8. This release supports macOS and Linux. Keep Python 3.11+ stdlib, Bash, TOML, JSON, Markdown, and the existing BATS suite. Do not add a runtime dependency or attempt a Windows-first rewrite in this release.
+8. This release supports macOS and Linux. Keep Python 3.11+ stdlib, Bash,
+   TOML, JSON, and Markdown. The test suite uses Python's stdlib `unittest`.
+   Do not add a runtime dependency or attempt a Windows-first rewrite in this
+   release.
 9. Existing Claude behaviour stays compatible by default.
 
 ## 3. Architecture boundaries
@@ -219,7 +225,9 @@ The exact internal function layout may follow existing code style, but the behav
 - Write atomically and verify the result after replacement.
 - Return the semantic outcome and next step.
 
-Hooks and skills may call `auto arm`, `auto tick`, `auto status`, and `auto disarm`. They must never rewrite or delete `.lean-spec/auto.json` themselves.
+Hooks and skills may call `auto arm`, `auto tick`, `auto complete`, `auto
+status`, and `auto disarm`. They must never rewrite or delete
+`.lean-spec/auto.json` themselves.
 
 ### 7.2 Auto state
 
@@ -271,7 +279,7 @@ Every enforceable artifact rule must live in CLI validation. This includes visua
 - Skills: plugin-provided skills or project `.agents/skills/`.
 - Project instructions: root and per-directory `AGENTS.md` files.
 - Custom agents: project `.codex/agents/*.toml`.
-- Hooks: project or plugin Codex hook configuration.
+- Hooks: project `.codex/hooks.json` installed by the bootstrap.
 - Command policy rules: `.codex/rules/*.rules`; these are execpolicy rules, not Claude-style instruction files.
 
 Do not describe `.agents/` as the general authoritative instruction directory. It is the cross-tool skill location. `AGENTS.md` is authoritative for project instructions.
@@ -310,6 +318,10 @@ Provide one documented normal path and one contributor path:
 
 The bootstrap must install or merge only what Codex needs, including custom agent TOML, hook configuration, and a marked lean-spec block in root `AGENTS.md`. It must preserve user content, be idempotent, and show every changed file.
 
+The plugin provides the bootstrap skill only. The bootstrap installs project
+hooks so their commands resolve the target repository runtime. The user must
+review and trust those hooks through Codex's `/hooks` screen before use.
+
 If the documented Codex plugin format cannot package a required component, the init/bootstrap step must install that component into the project. Do not rely on an undocumented manifest field.
 
 ## 10. Verification requirements
@@ -334,14 +346,19 @@ Add deterministic tests for:
 16. Generated host files matching canonical skill sources.
 17. A Codex end-to-end fixture that moves one feature from `specifying` to `closed` and proves a direct state edit is rejected.
 
-All existing BATS tests must remain green. New behaviour must be covered before implementation code is accepted.
+The Python `unittest` suite must cover every supported lifecycle, hook,
+installer, provider-routing, and end-to-end behaviour. New behaviour must be
+covered before implementation code is accepted.
 
 ## 11. Backward compatibility
 
 - Claude remains the default host when no host is configured.
 - Existing human-readable CLI output remains available unless a documented breaking change is approved.
 - Existing workflow files are accepted or migrated deterministically by the CLI.
-- Existing rules without `[project]` must receive an explicit, documented migration error or a safe interactive migration path. Do not silently guess the project type.
+- Existing rules without `[project]` remain valid. Lean-spec deliberately does
+  not persist a greenfield/brownfield label; readiness questions collect only
+  the preservation, migration, and regression facts that are needed. No
+  project-type migration is required or inferred.
 - Existing skill names remain available on Claude.
 
 ## 12. Out of scope
@@ -365,7 +382,7 @@ This work is complete when:
 - Greenfield and brownfield readiness are both enforced.
 - Claude remains compatible.
 - Codex can be installed, initialized, and used through its native skills, hooks, agents, and `AGENTS.md` instruction chain.
-- The full BATS suite and the Codex end-to-end fixture pass.
+- The full Python `unittest` suite and the Codex end-to-end fixture pass.
 - Installation and architecture documentation match the tested implementation.
 
 ## 14. Verified Codex references

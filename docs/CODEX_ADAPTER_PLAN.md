@@ -1,5 +1,10 @@
 # Codex host adapter — plan
 
+> **Test strategy update (2026-08-21):** This historical plan originally used
+> BATS. The approved implementation replaces it with direct Python 3.11
+> `unittest` coverage before BATS is removed. BATS references below are not
+> the release acceptance gate.
+
 > Status: historical research record. The accepted requirements are in
 > [`CODEX_ADAPTER_SPEC.md`](CODEX_ADAPTER_SPEC.md); the completed task plan is
 > [`superpowers/plans/2026-08-20-codex-host-adapter.md`](superpowers/plans/2026-08-20-codex-host-adapter.md).
@@ -22,7 +27,7 @@ Codex CLI now has near-parity with every mechanism lean-spec depends on:
 | Per-phase model + effort agents | `agents/*.md` frontmatter (`model`, `effort`) | `.codex/agents/*.toml` (`model`, `model_reasoning_effort`) | High — different file format |
 | Authoritative project instructions | CLAUDE.md / constitution injection | `AGENTS.md` chain (git root → cwd, closest wins) | High |
 | Command allow rules | permission settings | execpolicy rules (`.codex/rules/*.rules`, Starlark `prefix_rule`) — **experimental**; gates shell commands only | Medium — no path-level deny. Note: Codex "rules" are NOT an equivalent of Claude's `.claude/rules/*.md` instruction files; that role belongs to AGENTS.md |
-| Plugin packaging | `.claude-plugin/plugin.json` + marketplace | `.codex-plugin/plugin.json` + marketplace (`codex plugin add`) | Medium — skills confirmed in plugins; hooks-in-plugin unconfirmed |
+| Plugin packaging | `.claude-plugin/plugin.json` + marketplace | `.codex-plugin/plugin.json` + marketplace (`codex plugin add`) | High — plugin supplies bootstrap skill; bootstrap installs project hooks |
 | Headless / CI | `claude -p` | `codex exec --sandbox workspace-write -c approval_policy=never` | High |
 
 Hook config lives in `<repo>/.codex/hooks.json` (or config.toml), gated by `[features] hooks = true`. Hook payloads carry `tool_name` / `tool_input` on stdin, same as Claude Code.
@@ -33,7 +38,7 @@ PRD non-goal ("no per-command cross-provider ports — ever") stays honored:
 
 - **`bin/lean-spec` is already host-neutral** (python stdlib + git). It stays the single source of truth. Zero logic is duplicated.
 - **`skills/*/SKILL.md` stays the single canonical skill text.** The Codex copies are **generated, never hand-maintained** — a small installer transforms them (rename, sidecar, invocation syntax). If we ever hand-edit a generated file, we've rebuilt the v3 tax; CI will diff generated output against canon.
-- **The three hooks stay the same three scripts.** They already read JSON from stdin and emit the same deny/block shapes Codex expects. They gain Codex-payload awareness (§4), not siblings.
+- **The existing three hook responsibilities stay unchanged.** The Codex adapter adds a small `SubagentStart` identity binder because Codex supplies the real agent ID only at launch.
 - New directory: `adapters/codex/` — installer + templates only. No lifecycle logic.
 
 This needs one governance change: CONSTITUTION "Hard non-goals" currently bans cross-provider ports outright. Amend it (Fady sign-off required) to: *generated adapters that reuse the canonical CLI, hooks, and skill text are allowed; hand-maintained per-command copies remain forbidden.* PRD gets a new F15 under M5.
@@ -41,7 +46,7 @@ This needs one governance change: CONSTITUTION "Hard non-goals" currently bans c
 ## 3. CLI changes (small, host-neutral)
 
 1. `next --json` today returns `"skill": "/lean-spec:implement"` — a Claude-ism. Change to a neutral `"step": "implement"` plus a host-rendered `"skill"` string. Host comes from `LEAN_SPEC_HOST` env (set by each host's hook config) or a `--host` flag; default stays `claude` so nothing breaks.
-2. Hook reason texts (stop-auto-driver) that say "read `<plugin>/skills/<name>/SKILL.md`" already work on Codex (skills are files there too) — only the path root differs. The driver resolves the skills root per host.
+2. Hook reason texts use the installed runtime skill path; the driver resolves the project root at hook time.
 3. `rules.toml` gains an additive, optional `[hosts.codex]` model map (e.g. `spec = { model = "gpt-5.x-high-tier", effort = "high" }`) because `opus`/`sonnet` names mean nothing to Codex. Absent → fail loud at dispatch with a one-line message (principle 8), never a silent guess.
 
 ## 4. Hook changes (the real work)
@@ -65,20 +70,29 @@ Enforcement parity note: on Codex, shell is the primary tool, so the heredoc/`rm
 Primary: **repo-level installer** (works today, no unconfirmed features):
 
 ```
-adapters/codex/install.sh   # or: bin/lean-spec init --host codex
+python3 adapters/codex/install.py --project "$PWD"
 ```
 
-writes into the target project — `.codex/hooks.json` (three hooks), `.codex/agents/*.toml`, `.agents/skills/lean-spec-*/`, `.codex/rules/lean-spec.rules` (allow `bin/lean-spec`, `git commit`, test runners), appends the AGENTS.md block, and checks `[features] hooks = true` (fail loud with the exact config line if off). Idempotent, fail-loud preflight (python3 ≥ 3.11, git repo, codex on PATH + version floor).
+It writes into the target project: `.codex/hooks.json` (PreToolUse,
+SubagentStart, SubagentStop, and Stop), `.codex/agents/*.toml`,
+`.agents/skills/lean-spec-*/`, copied runtime files, and a marked AGENTS.md
+block. It is idempotent and fails loudly on an unsupported hook shape.
 
-Secondary: **Codex plugin** — `.codex-plugin/plugin.json` in this same repo, installed via the `/plugins` browser in Codex CLI. Verified (build-plugins docs): the manifest supports only `name`, `version`, `description`, `skills` today — so the plugin route carries **skills only**. Hooks are listed as plugin *content* on the plugins overview page, but there is no documented manifest field for them, and agents/rules have none either. So the plugin's `$lean-spec-init` skill runs the installer above for everything the manifest can't carry (hooks, agent TOMLs, rules, AGENTS.md block). Marketplace publish once the repo route is proven.
+Secondary: **Codex plugin** — `.codex-plugin/plugin.json` in this same repo,
+installed via the `/plugins` browser. The plugin carries one adapter-owned
+`$lean-spec-bootstrap` skill. Bootstrap invokes the project installer,
+which copies host-neutral lifecycle skills into the target project and creates
+project-owned runtime, hooks, agents, and `AGENTS.md` guidance. The user then
+reviews and trusts project hooks through `/hooks`. Marketplace publish once the
+repo route is proven.
 
 ## 7. Milestones
 
 | # | Scope | Gate |
 |---|---|---|
-| C0 | Governance: CONSTITUTION amendment + PRD F15. CLI host-neutrality (`step` field, `LEAN_SPEC_HOST`, `[hosts.codex]` map). | BATS green; Claude behavior byte-identical by default |
-| C1 | Hooks understand Codex payloads (`apply_patch` path extraction; captured real payloads as fixtures). | BATS with Codex-shaped fixtures; deny/block verified |
-| C2 | Generator + installer: skills transform, sidecars, agent TOMLs, AGENTS.md block, rules file. | BATS scaffold tests; generated-vs-canon diff check in CI |
+| C0 | Governance: CONSTITUTION amendment + PRD F15. CLI host-neutrality (`step` field, `LEAN_SPEC_HOST`, `[hosts.codex]` map). | Python unittest green; Claude behavior byte-identical by default |
+| C1 | Hooks understand Codex payloads (`apply_patch` path extraction; captured real payloads as fixtures). | Python unittest with Codex-shaped fixtures; deny/block verified |
+| C2 | Generator + installer: skills transform, sidecars, agent TOMLs, AGENTS.md block, rules file. | Python unittest scaffold tests; generated-vs-canon diff check in CI |
 | C3 | e2e: demo project driven spec → closed under `codex exec` non-interactive; README + docs; `.codex-plugin/` manifest + marketplace publish. | recorded e2e run; gates shown rejecting a hand-edit |
 
 Dogfood rule: C0–C3 each ship through the lean-spec lifecycle itself.

@@ -8,7 +8,7 @@ LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
 payload="$(cat || true)"
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-status_json="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" auto status --json 2>/dev/null || true)"
+status_json="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" auto status --json)"
 run_id="$(printf '%s' "$status_json" | python3 -c '
 import json, sys
 try:
@@ -23,7 +23,7 @@ event_id="$(printf '%s\n%s\n%s' "$run_id" "$(printf '%s' "$status_json" | python
 import hashlib, sys
 print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())
 ')"
-result="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" auto tick --run-id "$run_id" --event-id "$event_id" --json 2>/dev/null || true)"
+result="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" auto tick --run-id "$run_id" --event-id "$event_id" --json)"
 
 reason="$(printf '%s' "$result" | python3 -c '
 import json, sys
@@ -37,7 +37,7 @@ if result.get("outcome") != "READY":
 step = result.get("next_step")
 slug = result.get("slug", "")
 if step == "spec":
-    print(f"lean-spec auto-all: read {root}/skills/spec/SKILL.md now and perform its no-confirm steps. Stop safely with NEEDS_INPUT if a required decision is missing.")
+    print(f"lean-spec auto-all: read {root}/skills/spec/SKILL.md now and perform its no-confirm steps. Stop safely with NEEDS_INPUT if a required decision is missing. Only if the architect returns exactly NO_REMAINING_SCOPE, run `{root}/bin/lean-spec auto complete --run-id {result.get('run_id', '')} --no-remaining-scope` and stop. If the output is malformed, stop and ask one targeted question; never run auto complete.")
 elif isinstance(step, str) and step:
     print(f"lean-spec auto: read {root}/skills/{step}/SKILL.md now and perform its steps for {slug!r}.")
 ' "$PLUGIN_ROOT")"

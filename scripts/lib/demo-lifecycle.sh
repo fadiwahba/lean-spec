@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/lib/demo-lifecycle.sh — shared fixture-writing helpers for the F9
-# end-to-end demo: scripts/demo.sh (human-run) and tests/e2e_lifecycle.bats
+# end-to-end demo: scripts/demo.sh (human-run) and tests/test_integration.py
 # (CI-run) both source this file so the two stay in sync (DRY).
 #
 # Layer rule (docs/CONSTITUTION.md): this file only ever writes artifact

@@ -34,9 +34,9 @@ skill behaves exactly as it always has: drains only what already has a
      `ensure` → architect-write flow. If the preflight fails, stop and
      show the CLI's one-line message verbatim, same as `spec`
      would. If
-     the propose dispatch returns `NO_REMAINING_SCOPE` (or an unparseable
-     response — treat it the same, fail-safe): report that the PRD has
-     nothing to spec and stop; do not write `auto.json`. Otherwise the
+     the propose dispatch returns `NO_REMAINING_SCOPE`: report that the PRD
+     has nothing to spec and stop; do not write `auto.json`. If the response
+     is malformed, stop with `NEEDS_INPUT`; never infer completion. Otherwise the
      newly-specced slug becomes `<first-non-closed-slug>` below and you
      continue to step 2.
 2. Arm the driver via the CLI — **never write the file yourself**:
@@ -59,7 +59,11 @@ skill behaves exactly as it always has: drains only what already has a
    set** and none remain, the hook instead (bounded by `max_features`)
    points you at `spec` --no-confirm` for the next slice before
    falling back to the same stop once the cap is hit or the PRD is fully
-   covered. A `BLOCKED` verdict or a `max_cycles` cap on any single
+   covered. Only if that architect response is exactly `NO_REMAINING_SCOPE`,
+   run the exact `bin/lean-spec auto complete --run-id <id> --no-remaining-scope`
+   command supplied by the continuation reason. This records `COMPLETE` in
+   CLI-owned state; never delete or edit `auto.json` directly. A `BLOCKED`
+   verdict or a `max_cycles` cap on any single
    feature stops the *entire* chain immediately (it does not skip ahead
    to the next feature) — this matches the CONSTITUTION's "BLOCKED
    verdicts stop the line and escalate to Fady."
