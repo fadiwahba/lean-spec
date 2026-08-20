@@ -6,6 +6,7 @@ import argparse
 import json
 import shutil
 import stat
+import tomllib
 from pathlib import Path
 
 
@@ -17,6 +18,7 @@ ROLE_MODELS = {
     "coder": ("gpt-5.6-terra", "medium"),
     "reviewer": ("gpt-5.6-sol", "high"),
 }
+ROLE_OWNERS = {"architect": "spec", "coder": "implement", "reviewer": "review"}
 
 
 def copy_tree(source: Path, destination: Path, dry_run: bool) -> None:
@@ -86,6 +88,34 @@ def merge_hook_config(path: Path, desired: dict) -> dict:
     return merged
 
 
+def codex_role_models(project: Path) -> dict[str, tuple[str, str]]:
+    rules_path = project / ".lean-spec" / "rules.toml"
+    models = dict(ROLE_MODELS)
+    if not rules_path.exists():
+        return models
+    try:
+        rules = tomllib.loads(rules_path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as error:
+        raise ValueError(f"{rules_path} is not valid TOML: {error}") from error
+    hosts = rules.get("hosts", {})
+    codex = hosts.get("codex", {}) if isinstance(hosts, dict) else None
+    if codex is None:
+        return models
+    if not isinstance(codex, dict):
+        raise ValueError(f"{rules_path} [hosts.codex] must be a table")
+    for role, owner in ROLE_OWNERS.items():
+        override = codex.get(owner)
+        if override is None:
+            continue
+        if not isinstance(override, dict):
+            raise ValueError(f"{rules_path} hosts.codex.{owner} must be a table")
+        model, effort = override.get("model"), override.get("effort")
+        if not isinstance(model, str) or not isinstance(effort, str):
+            raise ValueError(f"{rules_path} hosts.codex.{owner} requires string model and effort")
+        models[role] = (model, effort)
+    return models
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--project", required=True, type=Path)
@@ -99,6 +129,7 @@ def main() -> int:
         desired_hooks = desired_hook_config()
         merged_hooks = merge_hook_config(project / ".codex" / "hooks.json", desired_hooks)
         merged_agents_md(project / "AGENTS.md")
+        role_models = codex_role_models(project)
     except ValueError as error:
         parser.error(str(error))
 
@@ -115,7 +146,7 @@ def main() -> int:
     for role in ("architect", "coder", "reviewer"):
         source = ROOT / "agents" / f"{role}.md"
         content = source.read_text()
-        model, effort = ROLE_MODELS[role]
+        model, effort = role_models[role]
         write_text(
             project / ".codex" / "agents" / f"lean-spec-{role}.toml",
             f'name = "lean-spec-{role}"\ndescription = "Lean-spec {role} role"\n'

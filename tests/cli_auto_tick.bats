@@ -51,3 +51,18 @@ EOF
   [[ "$output" == *"expected phase"* ]]
   [ "$(cat .lean-spec/auto.json)" = "$before" ]
 }
+
+@test "no-confirm auto run persists one NEEDS_INPUT result when project readiness is missing" {
+  lean_spec auto disarm
+  lean_spec auto arm demo --chain-all --no-confirm
+  run python3 -c "import json; print(json.load(open('.lean-spec/auto.json'))['run_id'])"
+  run_id="$output"
+
+  lean_spec auto tick --run-id "$run_id" --event-id needs-input --json
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"outcome": "NEEDS_INPUT"'* ]]
+  [[ "$output" == *'"resume_step": "plan"'* ]]
+  run python3 -c "import json; d=json.load(open('.lean-spec/auto.json')); assert d['status'] == 'needs_input'; assert d['pending_input']['outcome'] == 'NEEDS_INPUT'"
+  [ "$status" -eq 0 ]
+}

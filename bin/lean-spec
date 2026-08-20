@@ -995,6 +995,27 @@ def cmd_auto_tick(root, args):
         data.setdefault("run_id", run_id)
         data.setdefault("expected_phase", expected_phase)
         data.setdefault("status", "armed")
+
+        if data.get("no_confirm"):
+            missing = project_readiness(root)
+            if missing is not None:
+                _, question, reason = missing
+                result = {
+                    "schema_version": 1,
+                    "outcome": "NEEDS_INPUT",
+                    "input_scope": "project",
+                    "slug": slug,
+                    "question": question,
+                    "reason": reason,
+                    "resume_step": "plan",
+                }
+                data["status"] = "needs_input"
+                data["pending_input"] = result
+                _write_auto_result(root, data, event_id, result)
+                return 0
+            if data.get("status") == "needs_input":
+                data["status"] = "armed"
+                data.pop("pending_input", None)
         cycles = _auto_int(data, "cycles", 0)
         max_cycles = _auto_int(data, "max_cycles", DEFAULT_MAX_CYCLES, 1)
 

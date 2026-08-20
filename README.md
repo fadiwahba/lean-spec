@@ -131,6 +131,15 @@ run again. Codex discovers the installed skills as `$lean-spec-<name>`.
 The installer does not use symlinks. Contributors may use symlinks locally;
 normal users get copied, versioned files.
 
+Optionally override the generated Codex role models in `.lean-spec/rules.toml`:
+
+```toml
+[hosts.codex]
+spec = { model = "gpt-5.6-sol", effort = "high" }
+implement = { model = "gpt-5.6-terra", effort = "medium" }
+review = { model = "gpt-5.6-sol", effort = "high" }
+```
+
 ### Project artifacts and migration
 
 Generated lean-spec artifacts live below `.lean-spec/`: `PRD.md`,

@@ -69,3 +69,17 @@ PY
   [ ! -e .lean-spec ]
   [ ! -e AGENTS.md ]
 }
+
+@test "uses explicit Codex role mappings from project rules" {
+  mkdir -p .lean-spec
+  cat > .lean-spec/rules.toml <<'EOF'
+[hosts.codex]
+spec = { model = "gpt-5.6-terra", effort = "medium" }
+EOF
+
+  install_adapter
+
+  [ "$status" -eq 0 ]
+  grep -Fx 'model = "gpt-5.6-terra"' .codex/agents/lean-spec-architect.toml
+  grep -Fx 'model_reasoning_effort = "medium"' .codex/agents/lean-spec-architect.toml
+}

@@ -20,6 +20,18 @@ driver() {
   echo "$1" | bash "${LEAN_SPEC_HOOKS}/stop-auto-driver.sh"
 }
 
+write_ready_project() {
+  mkdir -p .lean-spec
+  cat > .lean-spec/PRD.md <<'EOF'
+## Existing System & Behaviour
+No product behaviour exists.
+## Compatibility & Migration
+No migration is required.
+## Regression Checks
+Run tests.
+EOF
+}
+
 write_auto() {
   mkdir -p .lean-spec
   cat > .lean-spec/auto.json
@@ -271,6 +283,7 @@ EOF
 }
 
 @test "chain_all + no_confirm: no feature remains and cap not hit emits spec_next, increments features_specced" {
+  write_ready_project
   lean_spec ensure demo
   write_valid_spec demo
   lean_spec advance demo specifying implementing
@@ -310,6 +323,7 @@ EOF
 }
 
 @test "chain_all + no_confirm: max_features defaults to 20 when omitted" {
+  write_ready_project
   lean_spec ensure demo
   write_valid_spec demo
   lean_spec advance demo specifying implementing
@@ -347,6 +361,7 @@ EOF
 }
 
 @test "chain_all + no_confirm: spec_next reason uses the absolute plugin-root path, not a bare relative one" {
+  write_ready_project
   lean_spec ensure demo
   write_valid_spec demo
   lean_spec advance demo specifying implementing
