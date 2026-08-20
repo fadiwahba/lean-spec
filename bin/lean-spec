@@ -232,6 +232,9 @@ def _gate_close_requires_verdict(root, slug):
         verdict = extract_verdict(f.read())
     if verdict != required:
         fail(f"cannot close '{slug}': review.md verdict is '{verdict}', required '{required}'", 2)
+    errors = validate_artifact(root, slug, "review.md", rules)
+    if errors:
+        fail(f"cannot close '{slug}': " + "; ".join(errors), 2)
 
 
 def _gate_fix_requires_needs_fixes(root, slug):
@@ -276,21 +279,26 @@ def cmd_advance(root, args):
     # the notes.md gate honors a spike opt-out instead of only reading the
     # global rules.toml default (which the model cannot vary per feature).
     tdd_override = None
+    visual_review = False
     positional = []
     for a in args:
         if a == "--no-tdd":
             tdd_override = False
         elif a == "--tdd":
             tdd_override = True
+        elif a == "--visual":
+            visual_review = True
         else:
             positional.append(a)
     if len(positional) != 3:
-        fail("usage: lean-spec advance <slug> <from> <to> [--tdd|--no-tdd]", 1)
+        fail("usage: lean-spec advance <slug> <from> <to> [--tdd|--no-tdd] [--visual]", 1)
     slug, frm, to = positional
     validate_slug(slug)
     for p in (frm, to):
         if p not in VALID_PHASES:
             fail(f"unknown phase '{p}' — valid phases: {', '.join(VALID_PHASES)}", 1)
+    if visual_review and (frm, to) != ("implementing", "reviewing"):
+        fail("--visual is only valid for the implementing -> reviewing transition", 1)
     # Fail fast on a missing feature before feature_lock's makedirs creates a
     # (lockfile-only) directory for a slug that was never `ensure`d. The real
     # check still runs inside the lock below; this only avoids the litter.
@@ -317,6 +325,8 @@ def cmd_advance(root, args):
         wf["updated_at"] = ts
         if tdd_override is not None:
             wf["tdd"] = tdd_override
+        if visual_review:
+            wf["visual_review"] = True
         wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
         path = workflow_path(root, slug)
         atomic_write_json(path, wf)
@@ -452,6 +462,22 @@ def cmd_provider(root, args):
     if action == "argv":
         print(json.dumps({"schema_version": 1, "owner": owner, "provider": provider, "argv": argv}))
         return 0
+    auth_check = config.get("auth_check")
+    if not isinstance(auth_check, list) or not auth_check or not all(
+        isinstance(part, str) and part for part in auth_check
+    ):
+        fail(
+            f"provider configuration for '{owner}' requires auth_check as a non-empty argv list before provider run",
+            1,
+        )
+    try:
+        require_executable(auth_check)
+    except ValueError as error:
+        fail(str(error), 1)
+    auth = subprocess.run(auth_check, cwd=root, capture_output=True, text=True)
+    if auth.returncode != 0:
+        message = auth.stderr.strip() or auth.stdout.strip() or "authentication check returned a non-zero exit status"
+        fail(f"provider '{provider}' authentication check failed: {message}", 1)
     completed = subprocess.run(argv, cwd=root, capture_output=True, text=True)
     if completed.returncode != 0:
         message = completed.stderr.strip() or completed.stdout.strip() or "provider command failed"
@@ -651,6 +677,25 @@ def validate_artifact(root, slug, artifact, rules, project=False):
         verdict = extract_verdict(text)
         if verdict is None:
             errors.append("review.md missing a 'verdict: APPROVE|NEEDS_FIXES|BLOCKED' line")
+        workflow = load_workflow(root, slug, required=False)
+        if isinstance(workflow, dict) and workflow.get("visual_review") is True:
+            if "Visual Fidelity" not in headings:
+                errors.append("review.md missing required Visual Fidelity section for a visual review")
+            prefix = f".lean-spec/features/{slug}/evidence/visual/"
+            citations = re.findall(re.escape(prefix) + r"[^\s)]+|evidence/visual/[^\s)]+", text)
+            if not citations:
+                errors.append("review.md has no cited visual evidence file")
+            visual_root = os.path.realpath(os.path.join(feature_dir(root, slug), "evidence", "visual"))
+            for citation in citations:
+                if citation.startswith(prefix):
+                    evidence_path = os.path.join(root, citation)
+                else:
+                    evidence_path = os.path.join(feature_dir(root, slug), citation)
+                resolved = os.path.realpath(evidence_path)
+                if os.path.commonpath((visual_root, resolved)) != visual_root:
+                    errors.append(f"visual evidence citation escapes evidence/visual: {citation}")
+                elif not os.path.isfile(resolved):
+                    errors.append(f"cited visual evidence file not found: {citation}")
 
     return errors
 
@@ -682,16 +727,16 @@ def cmd_validate(root, args):
 # ---------------------------------------------------------------------------
 
 def resolve_next(root, slug):
-    """Returns dict: {slug, phase, action, skill, reason}."""
+    """Returns host-neutral next-step data for a feature."""
     wf = load_workflow(root, slug)
     phase = wf.get("phase")
-    result = {"slug": slug, "phase": phase, "action": None, "skill": None, "reason": None}
+    result = {"slug": slug, "phase": phase, "action": None, "step": None, "reason": None}
     if phase == "specifying":
         result["action"] = "skill"
-        result["skill"] = "/lean-spec:implement"
+        result["step"] = "implement"
     elif phase == "implementing":
         result["action"] = "skill"
-        result["skill"] = "/lean-spec:review"
+        result["step"] = "review"
     elif phase == "reviewing":
         review_path = os.path.join(feature_dir(root, slug), "review.md")
         if not os.path.isfile(review_path):
@@ -702,10 +747,10 @@ def resolve_next(root, slug):
                 verdict = extract_verdict(f.read())
             if verdict == "APPROVE":
                 result["action"] = "skill"
-                result["skill"] = "/lean-spec:close"
+                result["step"] = "close"
             elif verdict == "NEEDS_FIXES":
                 result["action"] = "skill"
-                result["skill"] = "/lean-spec:fix"
+                result["step"] = "fix"
             elif verdict == "BLOCKED":
                 result["action"] = "blocked"
                 result["reason"] = "review.md verdict is BLOCKED — escalate"
@@ -722,7 +767,7 @@ def resolve_next(root, slug):
 
 def format_next_text(r):
     if r["action"] == "skill":
-        return f"{r['skill']} {r['slug']}"
+        return f"/lean-spec:{r['step']} {r['slug']}"
     if r["action"] == "closed":
         return f"{r['slug']}: closed — nothing to do"
     return f"{r['slug']}: blocked — {r['reason']}"
@@ -1029,8 +1074,7 @@ def cmd_auto_tick(root, args):
                 data["cycles"] = cycles + 1
                 result = _auto_result(
                     "READY", data,
-                    next_step=next_state["skill"].rsplit(":", 1)[-1],
-                    skill=next_state["skill"],
+                    next_step=next_state["step"],
                 )
         elif action == "blocked":
             data["status"] = "blocked"
@@ -1047,8 +1091,7 @@ def cmd_auto_tick(root, args):
                     if next_state["action"] == "skill":
                         result = _auto_result(
                             "READY", data,
-                            next_step=next_state["skill"].rsplit(":", 1)[-1],
-                            skill=next_state["skill"],
+                            next_step=next_state["step"],
                         )
                     else:
                         data["status"] = "blocked"

@@ -6,8 +6,9 @@ plan      = { model = "session" }                  # interview runs in the main 
 spec      = { provider = "claude", model = "opus" }
 implement = { provider = "claude", model = "sonnet" }
 review    = { provider = "claude", model = "opus" }
-# Codex accepts an explicit reasoning effort:
-# implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium" }
+# Codex accepts an explicit reasoning effort. `provider run` requires an
+# explicit argv-form authentication check before it launches an agent:
+# implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium", auth_check = ["codex", "login", "status"] }
 # Gemini and Claude expose no documented headless effort flag, so omit effort.
 # fix inherits implement when omitted
 

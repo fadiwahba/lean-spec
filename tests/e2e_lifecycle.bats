@@ -96,7 +96,8 @@ gate() {
 import json
 d = json.loads('''$next_output''')
 assert d['action'] == 'skill', d
-assert d['skill'] == '/lean-spec:close', d
+assert d['step'] == 'close', d
+assert 'skill' not in d, d
 print('ok')
 "
   [ "$output" = "ok" ]
@@ -183,7 +184,8 @@ print('ok')
 import json
 d = json.loads('''$next_output''')
 assert d['action'] == 'skill', d
-assert d['skill'] == '/lean-spec:fix', d
+assert d['step'] == 'fix', d
+assert 'skill' not in d, d
 print('ok')
 "
   [ "$output" = "ok" ]

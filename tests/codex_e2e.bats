@@ -26,3 +26,45 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
+
+@test "installed Codex runtime drives a feature from specifying to closed through CLI gates" {
+  run python3 "$INSTALLER" --project "$LEAN_SPEC_TESTDIR"
+  [ "$status" -eq 0 ]
+
+  run bash -c '
+    set -euo pipefail
+    cli=.lean-spec/runtime/bin/lean-spec
+    "$cli" ensure codex-lifecycle
+    cat > .lean-spec/features/codex-lifecycle/spec.md <<"EOF"
+## Scope
+One deterministic slice.
+## Acceptance Criteria
+The lifecycle closes.
+## Out of Scope
+None.
+## Coder Guardrails
+Use the CLI.
+EOF
+    "$cli" advance codex-lifecycle specifying implementing
+    cat > .lean-spec/features/codex-lifecycle/notes.md <<"EOF"
+## What was built
+The lifecycle fixture.
+## How to verify
+Run the CLI checks.
+## TDD
+Red then green.
+EOF
+    "$cli" advance codex-lifecycle implementing reviewing
+    cat > .lean-spec/features/codex-lifecycle/review.md <<"EOF"
+## Verdict
+verdict: APPROVE
+## Spec Compliance
+Meets the fixture scope.
+## Code Quality
+CLI gates were used.
+EOF
+    "$cli" advance codex-lifecycle reviewing closed
+    "$cli" assert codex-lifecycle closed
+  '
+  [ "$status" -eq 0 ]
+}

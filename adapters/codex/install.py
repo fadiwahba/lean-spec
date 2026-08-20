@@ -28,6 +28,16 @@ def copy_tree(source: Path, destination: Path, dry_run: bool) -> None:
     shutil.copytree(source, destination, dirs_exist_ok=True)
 
 
+def copy_codex_skill(source: Path, destination: Path, dry_run: bool) -> None:
+    """Copy one canonical skill and render its installed runtime path."""
+    copy_tree(source, destination, dry_run)
+    canonical = source / "SKILL.md"
+    rendered = canonical.read_text(encoding="utf-8").replace(
+        "bin/lean-spec", ".lean-spec/runtime/bin/lean-spec"
+    )
+    write_text(destination / "SKILL.md", rendered, dry_run)
+
+
 def write_text(path: Path, text: str, dry_run: bool) -> None:
     if dry_run:
         print(f"write {path}")
@@ -141,7 +151,11 @@ def main() -> int:
     copy_tree(ROOT / "examples", runtime / "examples", args.dry_run)
     for skill in (ROOT / "skills").iterdir():
         if skill.is_dir():
-            copy_tree(skill, project / ".agents" / "skills" / f"lean-spec-{skill.name}", args.dry_run)
+            copy_codex_skill(
+                skill,
+                project / ".agents" / "skills" / f"lean-spec-{skill.name}",
+                args.dry_run,
+            )
 
     for role in ("architect", "coder", "reviewer"):
         source = ROOT / "agents" / f"{role}.md"

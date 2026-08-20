@@ -1,6 +1,8 @@
 # Codex host adapter — plan
 
-> Status: DRAFT — needs Fady's sign-off.
+> Status: historical research record. The accepted requirements are in
+> [`CODEX_ADAPTER_SPEC.md`](CODEX_ADAPTER_SPEC.md); the completed task plan is
+> [`superpowers/plans/2026-08-20-codex-host-adapter.md`](superpowers/plans/2026-08-20-codex-host-adapter.md).
 > Goal: make lean-spec work with **OpenAI Codex CLI as the host/orchestrator**, the same way it works with Claude Code today. Core principles stay unchanged: skills describe, hooks enforce, `bin/lean-spec` mutates.
 > Branch: `feat/codex-host-adapter`.
 

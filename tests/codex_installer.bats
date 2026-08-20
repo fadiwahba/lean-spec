@@ -51,6 +51,8 @@ assert len(hooks['Stop']) == 1
 PY
   [ -x .lean-spec/runtime/bin/lean-spec ]
   [ -f .agents/skills/lean-spec-plan/SKILL.md ]
+  grep -F '.lean-spec/runtime/bin/lean-spec validate --project PRD.md' .agents/skills/lean-spec-plan/SKILL.md
+  ! grep -F 'bin/lean-spec validate --project PRD.md' .agents/skills/lean-spec-plan/SKILL.md
   [ -f .codex/agents/lean-spec-architect.toml ]
   grep -Fx 'model = "gpt-5.6-sol"' .codex/agents/lean-spec-architect.toml
   grep -Fx 'model = "gpt-5.6-terra"' .codex/agents/lean-spec-coder.toml

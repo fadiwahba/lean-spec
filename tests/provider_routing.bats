@@ -68,3 +68,39 @@ EOF
   [[ "$output" == *'"provider": "codex"'* ]]
   [[ "$output" == *'"model_reasoning_effort=medium"'* ]]
 }
+
+@test "provider run requires an explicit auth check before agent dispatch" {
+  mkdir -p .lean-spec fake-bin
+  cat > .lean-spec/rules.toml <<'EOF'
+[agents]
+implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium" }
+EOF
+  cat > fake-bin/codex <<'EOF'
+#!/usr/bin/env bash
+exit 99
+EOF
+  chmod +x fake-bin/codex
+
+  run env PATH="$PWD/fake-bin:$PATH" "$LEAN_SPEC_BIN" provider run implement --prompt 'write notes'
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"auth_check"* ]]
+}
+
+@test "provider run stops when the configured auth check fails" {
+  mkdir -p .lean-spec fake-bin
+  cat > .lean-spec/rules.toml <<'EOF'
+[agents]
+implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium", auth_check = ["false"] }
+EOF
+  cat > fake-bin/codex <<'EOF'
+#!/usr/bin/env bash
+exit 99
+EOF
+  chmod +x fake-bin/codex
+
+  run env PATH="$PWD/fake-bin:$PATH" "$LEAN_SPEC_BIN" provider run implement --prompt 'write notes'
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"authentication check failed"* ]]
+}

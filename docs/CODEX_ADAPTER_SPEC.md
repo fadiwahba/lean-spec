@@ -1,6 +1,6 @@
 # Codex host adapter and deterministic orchestration — requirements spec
 
-> Status: DRAFT FOR FADY REVIEW
+> Status: IMPLEMENTED
 > Branch: `feat/codex-host-adapter`
 > Research source: `docs/CODEX_ADAPTER_PLAN.md`
 > This is a standalone implementation spec. It is not a lean-spec lifecycle artifact.

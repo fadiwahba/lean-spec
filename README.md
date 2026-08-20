@@ -116,11 +116,11 @@ Then drive the lifecycle from inside Claude Code:
 
 ### Codex
 
-The Codex plugin distributes the canonical skills. For a project checkout,
-install the runtime adapter once:
+Use the direct installer from a lean-spec source checkout. Run it once from
+the target Git repository:
 
 ```bash
-python3 adapters/codex/install.py --project /absolute/path/to/project
+python3 /path/to/lean-spec/adapters/codex/install.py --project "$PWD"
 ```
 
 It installs project-owned runtime files below `.lean-spec/runtime`, skills in
@@ -128,8 +128,14 @@ It installs project-owned runtime files below `.lean-spec/runtime`, skills in
 `.codex/hooks.json`, and one marked block in root `AGENTS.md`. It is safe to
 run again. Codex discovers the installed skills as `$lean-spec-<name>`.
 
-The installer does not use symlinks. Contributors may use symlinks locally;
-normal users get copied, versioned files.
+The repository also contains a skills-only Codex plugin manifest. If Lean
+Spec is available from a configured marketplace, install it with Codex's
+`/plugins` browser and start a new session. The project installer remains
+required because the documented plugin manifest only declares skills; the
+adapter must add project hooks, agents, and `AGENTS.md` instructions.
+
+The installer does not use symlinks. Contributors may use symlinks locally.
+Normal project installation uses copied, versioned files.
 
 Optionally override the generated Codex role models in `.lean-spec/rules.toml`:
 
@@ -167,7 +173,7 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 
 | Command | What it does | When to use it |
 |---|---|---|
-| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, `docs/`, `.lean-spec/features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
+| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, project documents, `.lean-spec/features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
 | `/lean-spec:plan ["<idea>"] [--refine] [--regenerate]` | Runs a short interview (≤3 rounds) and writes `.lean-spec/PRD.md` + `.lean-spec/CONSTITUTION.md`. Grounds itself in an existing repo's stack/conventions for brownfield. `--refine` folds in one blocker without re-interviewing; `--regenerate` redoes from scratch. | Right after `init`. Use `--refine` when a blocker discovered mid-build needs the plan changed before the next slice. |
 
 **Per-feature lifecycle — repeat for each feature**
@@ -219,6 +225,15 @@ required_verdict = "APPROVE"                          # what `close` demands
 "review.md" = ["Verdict", "Spec Compliance", "Code Quality"]
 ```
 
+For an explicit external CLI dispatch, add a provider and an argv-form
+authentication check. `lean-spec provider run` runs that check before it
+launches the agent command; `provider argv` only prints the safe argv.
+
+```toml
+[agents]
+implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium", auth_check = ["codex", "login", "status"] }
+```
+
 ## Who does what
 
 | Phase | Owner | Default model · effort | Writes |
@@ -254,10 +269,11 @@ scripts/bootstrap-bats.sh    # one-time: vendors bats-core into .tools/ (gitigno
 
 Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
 
-## Documentation
+## Repository documentation
 
-- [`.lean-spec/PRD.md`](.lean-spec/PRD.md) — **what** we're building: architecture, skill surface, milestones, decisions.
-- [`.lean-spec/CONSTITUTION.md`](.lean-spec/CONSTITUTION.md) — **how** we build it: stack, invariants, delegation ladder, TDD policy, quality bars.
+- [`docs/PRD.md`](docs/PRD.md) — **what this repository builds**: architecture, skill surface, milestones, decisions.
+- [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) — **how this repository is built**: stack, invariants, delegation ladder, TDD policy, quality bars.
+- [`docs/CODEX_ADAPTER_SPEC.md`](docs/CODEX_ADAPTER_SPEC.md) — Codex adapter contract.
 
 ## Roadmap
 
@@ -267,7 +283,7 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
 | M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.4.x — see `CHANGELOG.md`) |
-| M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
+| M5 | Codex adapter and explicit CLI provider routing; no telemetry | ✅ done |
 
 ## Requirements
 

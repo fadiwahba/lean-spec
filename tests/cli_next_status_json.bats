@@ -25,6 +25,24 @@ print('ok')
   [ "$output" = "ok" ]
 }
 
+@test "next --json emits host-neutral semantic step data" {
+  lean_spec next demo --json
+  [ "$status" -eq 0 ]
+  run python3 -c "
+import json
+d = json.loads('''$output''')
+assert d == {
+    'slug': 'demo',
+    'phase': 'specifying',
+    'action': 'skill',
+    'step': 'implement',
+    'reason': None,
+}, d
+print('ok')
+"
+  [ "$output" = "ok" ]
+}
+
 @test "status --json (no slug) emits a JSON array covering every feature" {
   lean_spec_write_artifact second spec.md <<'EOF'
 # spec

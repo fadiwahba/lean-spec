@@ -99,6 +99,47 @@ EOF
   [ "$output" = "closed" ]
 }
 
+@test "visual review cannot close without a cited visual-evidence file" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
+  lean_spec advance demo implementing reviewing --visual
+  lean_spec_write_artifact demo review.md <<'EOF'
+## Verdict
+verdict: APPROVE
+## Visual Fidelity
+Looks right.
+EOF
+
+  lean_spec advance demo reviewing closed
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"visual evidence"* ]]
+  lean_spec assert demo reviewing
+  [ "$status" -eq 0 ]
+}
+
+@test "visual review closes with a cited file below the visual-evidence directory" {
+  write_valid_spec
+  lean_spec advance demo specifying implementing
+  write_valid_notes
+  lean_spec advance demo implementing reviewing --visual
+  mkdir -p .lean-spec/features/demo/evidence/visual
+  : > .lean-spec/features/demo/evidence/visual/home.png
+  lean_spec_write_artifact demo review.md <<'EOF'
+## Verdict
+verdict: APPROVE
+## Visual Fidelity
+![Home](evidence/visual/home.png)
+EOF
+
+  lean_spec advance demo reviewing closed
+
+  [ "$status" -eq 0 ]
+  lean_spec assert demo closed
+  [ "$status" -eq 0 ]
+}
+
 @test "advance reviewing -> closed is rejected without an APPROVE verdict" {
   write_valid_spec
   lean_spec advance demo specifying implementing

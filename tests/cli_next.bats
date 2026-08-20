@@ -119,7 +119,7 @@ EOF
   [[ "$output" == *"closed"* ]]
 }
 
-@test "next --json emits parseable JSON with action/skill/slug" {
+@test "next --json emits parseable host-neutral action/step/slug data" {
   lean_spec next demo --json
   [ "$status" -eq 0 ]
   run python3 -c "
@@ -127,7 +127,8 @@ import json
 d = json.loads('''$output''')
 assert d['slug'] == 'demo'
 assert d['action'] == 'skill'
-assert d['skill'] == '/lean-spec:implement'
+assert d['step'] == 'implement'
+assert 'skill' not in d
 print('ok')
 "
   [ "$output" = "ok" ]

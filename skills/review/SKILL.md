@@ -7,8 +7,10 @@ description: Advances an implemented feature to reviewing and dispatches the rev
 
 ## Steps
 
-1. `bin/lean-spec advance <slug> implementing reviewing` — the state
-   transition. Stop and surface the CLI's message on failure.
+1. `bin/lean-spec advance <slug> implementing reviewing [--visual]` — the
+   state transition. Pass `--visual` when requested. This records the visual
+   evidence gate in CLI-owned feature state. Stop and surface the CLI's
+   message on failure.
 2. Dispatch the `reviewer` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
    injected, `.lean-spec/features/<slug>/spec.md`, and `.lean-spec/features/<slug>/notes.md`
    (including its `## TDD` evidence). Pass `--visual` through when given —
@@ -20,10 +22,10 @@ description: Advances an implemented feature to reviewing and dispatches the rev
    ```
    bin/lean-spec validate <slug> review.md
    ```
-   With `--visual`, additionally confirm every cited screenshot file
-   exists under `.lean-spec/features/<slug>/evidence/visual/` and that a
-   `## Visual Fidelity` section is present — if either is missing, the
-   review is incomplete; dispatch the reviewer again.
+   When the transition used `--visual`, this CLI validation requires a
+   `## Visual Fidelity` section and a cited file below
+   `.lean-spec/features/<slug>/evidence/visual/`. If it fails, dispatch the
+   reviewer again.
 4. Report the verdict to the user. Do **not** decide what happens next
    yourself — run `bin/lean-spec next <slug>` and follow its routing
    (`close` on APPROVE, `fix` on NEEDS_FIXES, or
