@@ -238,7 +238,7 @@ Verify canonical skill metadata and generated Codex files are in sync, no hook w
 
 Document normal Codex install, direct installer, contributor symlink option, supported platforms, migration command, automatic-run commands, `NEEDS_INPUT`, and the explicit privacy decision: no lean-spec telemetry in this release.
 
-- [ ] **Step 4: Final review and commit**
+- [x] **Step 4: Final review and commit**
 
 Run: `git diff --check && bats tests`
 
