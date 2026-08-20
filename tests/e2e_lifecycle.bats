@@ -4,7 +4,7 @@
 # Drives one feature slug through the FULL lifecycle
 # interview(simulated) -> spec -> implement -> review -> closed against the
 # REAL bin/lean-spec CLI + the REAL hooks. No live model: the model-driven
-# artifacts (docs/PRD.md, docs/CONSTITUTION.md, spec.md, notes.md,
+# artifacts (.lean-spec/PRD.md, .lean-spec/CONSTITUTION.md, spec.md, notes.md,
 # review.md) are simulated fixture content from
 # tests/fixtures/demo-project/, written via the shared helpers in
 # scripts/lib/demo-lifecycle.sh (also sourced by scripts/demo.sh — DRY,
@@ -124,7 +124,7 @@ print('ok')
 
   run python3 -c "
 import json
-h = json.load(open('features/${slug}/workflow.json'))['history']
+h = json.load(open('.lean-spec/features/${slug}/workflow.json'))['history']
 assert [e['from'] for e in h] == ['specifying', 'implementing', 'reviewing'], h
 assert [e['to'] for e in h] == ['implementing', 'reviewing', 'closed'], h
 print('ok')
@@ -148,7 +148,7 @@ print('ok')
   # Pre-tool-use guard denies a hand-edit attempt mid-flow (the feature is
   # currently `implementing`) — the model must go through
   # `bin/lean-spec advance`, never Write/Edit the state file directly.
-  run guard "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"features/${slug}/workflow.json\"}}"
+  run guard "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".lean-spec/features/${slug}/workflow.json\"}}"
   [ "$status" -eq 0 ]
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
   # ...and the gate is real enforcement, not theater: the phase truly did
@@ -193,8 +193,8 @@ print('ok')
   # Exactly what /lean-spec:init leaves behind — no simulated /plan fill —
   # proving the /lean-spec:spec preflight would stop the flow here.
   mkdir -p docs
-  cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" docs/PRD.md
-  cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" docs/CONSTITUTION.md
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" .lean-spec/PRD.md
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" .lean-spec/CONSTITUTION.md
 
   lean_spec validate --project PRD.md
   [ "$status" -eq 2 ]

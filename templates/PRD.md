@@ -1,7 +1,7 @@
 # <project name> — Product Requirements Document
 
 > Written by the `/lean-spec:plan` interview. What we are building; how we
-> build it lives in `docs/CONSTITUTION.md`.
+> build it lives in `.lean-spec/CONSTITUTION.md`.
 
 ## Problem & Users
 

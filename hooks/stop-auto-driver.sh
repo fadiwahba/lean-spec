@@ -4,7 +4,7 @@
 # block the turn-end with a reason instructing the model to run
 # `bin/lean-spec next <slug>` (and dispatch the resulting skill). Cycle count
 # is mutated atomically (tmp + os.replace), matching the CLI's own state
-# discipline even though this file lives outside features/*/workflow.json.
+# discipline even though this file lives outside .lean-spec/features/*/workflow.json.
 set -euo pipefail
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
@@ -76,7 +76,7 @@ def atomic_write(path, data):
 
 
 def next_non_closed_slug(root):
-    features_root = os.path.join(root, "features")
+    features_root = os.path.join(root, ".lean-spec", "features")
     if not os.path.isdir(features_root):
         return None
     for name in sorted(os.listdir(features_root)):

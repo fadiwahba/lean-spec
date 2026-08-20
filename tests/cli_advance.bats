@@ -39,7 +39,7 @@ EOF
   write_valid_spec
   lean_spec advance demo specifying implementing
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "implementing" ]
 }
 
@@ -47,7 +47,7 @@ EOF
   lean_spec advance demo specifying implementing
   [ "$status" -eq 2 ]
   [[ "$output" == *"spec.md"* ]]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "specifying" ]
 }
 
@@ -57,7 +57,7 @@ EOF
   write_valid_notes
   lean_spec advance demo implementing reviewing
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "reviewing" ]
 }
 
@@ -67,7 +67,7 @@ EOF
   lean_spec advance demo implementing reviewing
   [ "$status" -eq 2 ]
   [[ "$output" == *"notes.md"* ]]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "implementing" ]
 }
 
@@ -81,7 +81,7 @@ verdict: APPROVE
 EOF
   lean_spec advance demo reviewing closed
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "closed" ]
 }
 
@@ -95,7 +95,7 @@ verdict: APPROVE — LGTM
 EOF
   lean_spec advance demo reviewing closed
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "closed" ]
 }
 
@@ -120,7 +120,7 @@ EOF
   lean_spec advance demo reviewing closed
   [ "$status" -eq 2 ]
   [[ "$output" == *"NEEDS_FIXES"* ]]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "reviewing" ]
 }
 
@@ -134,7 +134,7 @@ verdict: NEEDS_FIXES
 EOF
   lean_spec advance demo reviewing implementing
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "implementing" ]
 }
 
@@ -146,7 +146,7 @@ EOF
   lean_spec advance demo reviewing implementing
   [ "$status" -eq 2 ]
   [[ "$output" == *"review.md not found"* ]]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "reviewing" ]
 }
 
@@ -161,7 +161,7 @@ EOF
   lean_spec advance demo reviewing implementing
   [ "$status" -eq 2 ]
   [[ "$output" == *"NEEDS_FIXES"* ]]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "reviewing" ]
 }
 
@@ -170,7 +170,7 @@ EOF
   lean_spec advance demo specifying implementing
   run python3 -c "
 import json
-h = json.load(open('features/demo/workflow.json'))['history']
+h = json.load(open('.lean-spec/features/demo/workflow.json'))['history']
 assert len(h) == 1
 assert h[0]['from'] == 'specifying'
 assert h[0]['to'] == 'implementing'
@@ -234,24 +234,24 @@ EOF
   write_valid_spec
   lean_spec advance demo specifying implementing
   # simulate re-reading immediately after; file must be valid JSON always
-  run python3 -c "import json; json.load(open('features/demo/workflow.json')); print('valid')"
+  run python3 -c "import json; json.load(open('.lean-spec/features/demo/workflow.json')); print('valid')"
   [ "$output" = "valid" ]
 }
 
 @test "advance leaves no stray tmp files behind in the feature directory" {
   write_valid_spec
   lean_spec advance demo specifying implementing
-  run bash -c "ls -1 features/demo | grep -c '^\.workflow'"
+  run bash -c "ls -1 .lean-spec/features/demo | grep -c '^\.workflow'"
   [ "$output" = "0" ]
 }
 
 @test "a rejected illegal transition leaves workflow.json completely untouched" {
-  before_phase="$(python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])")"
-  before_updated="$(python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['updated_at'])")"
+  before_phase="$(python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])")"
+  before_updated="$(python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['updated_at'])")"
   lean_spec advance demo implementing reviewing
   [ "$status" -eq 2 ]
-  after_phase="$(python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])")"
-  after_updated="$(python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['updated_at'])")"
+  after_phase="$(python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])")"
+  after_updated="$(python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['updated_at'])")"
   [ "$before_phase" = "$after_phase" ]
   [ "$before_updated" = "$after_updated" ]
 }

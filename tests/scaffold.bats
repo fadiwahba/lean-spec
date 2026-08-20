@@ -87,14 +87,14 @@ print('ok')
   done
 }
 
-@test "gitignore excludes features/*/evidence/ and .tools/" {
-  grep -q 'features/\*/evidence/' "${LEAN_SPEC_REPO_ROOT}/.gitignore"
+@test "gitignore excludes .lean-spec/features/*/evidence/ and .tools/" {
+  grep -q '.lean-spec/features/\*/evidence/' "${LEAN_SPEC_REPO_ROOT}/.gitignore"
   grep -q '.tools/' "${LEAN_SPEC_REPO_ROOT}/.gitignore"
 }
 
-@test "gitignore excludes crash-leftover atomic temp files (features/*/.workflow* and .lean-spec/.auto*)" {
+@test "gitignore excludes crash-leftover atomic temp files (.lean-spec/features/*/.workflow* and .lean-spec/.auto*)" {
   gi="${LEAN_SPEC_REPO_ROOT}/.gitignore"
-  grep -qxF 'features/*/.workflow*' "$gi"
+  grep -qxF '.lean-spec/features/*/.workflow*' "$gi"
   grep -qxF '.lean-spec/.auto*' "$gi"
 }
 
@@ -103,7 +103,7 @@ print('ok')
   [ -f "$gi" ]
   # Fixed-string, whole-line matches (-xF): entries like .env/.next/.venv
   # contain a literal '.', which regex mode would treat as a wildcard.
-  grep -qxF 'features/*/evidence/' "$gi"   # lean-spec
+  grep -qxF '.lean-spec/features/*/evidence/' "$gi"   # lean-spec
   grep -qxF '.env' "$gi"                    # secrets (constitution mandate)
   grep -qxF 'node_modules/' "$gi"           # Node / React / Vite
   grep -qxF 'dist/' "$gi"                    # build artifacts
@@ -112,8 +112,8 @@ print('ok')
   grep -qxF '.venv/' "$gi"                   # Python
 }
 
-@test "examples/gitignore excludes crash-leftover atomic temp files (features/*/.workflow* and .lean-spec/.auto*)" {
+@test "examples/gitignore excludes crash-leftover atomic temp files (.lean-spec/features/*/.workflow* and .lean-spec/.auto*)" {
   gi="${LEAN_SPEC_REPO_ROOT}/examples/gitignore"
-  grep -qxF 'features/*/.workflow*' "$gi"
+  grep -qxF '.lean-spec/features/*/.workflow*' "$gi"
   grep -qxF '.lean-spec/.auto*' "$gi"
 }

@@ -24,14 +24,14 @@ write_auto() {
 # spec.md/notes.md first.
 write_valid_spec() {
   local slug="$1"
-  mkdir -p "features/${slug}"
-  echo "# spec" > "features/${slug}/spec.md"
+  mkdir -p ".lean-spec/features/${slug}"
+  echo "# spec" > ".lean-spec/features/${slug}/spec.md"
 }
 
 write_valid_notes() {
   local slug="$1"
-  mkdir -p "features/${slug}"
-  printf '## What was built\nstuff\n## TDD\nred/green\n' > "features/${slug}/notes.md"
+  mkdir -p ".lean-spec/features/${slug}"
+  printf '## What was built\nstuff\n## TDD\nred/green\n' > ".lean-spec/features/${slug}/notes.md"
 }
 
 @test "preserves arm provenance across a cycle rewrite (issue #21)" {
@@ -139,8 +139,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":3}
@@ -157,8 +157,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: BLOCKED" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: BLOCKED" > .lean-spec/features/demo/review.md
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":1}
 EOF
@@ -232,8 +232,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":3,"chain_all":true}
@@ -252,8 +252,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":1,"chain_all":true}
@@ -270,8 +270,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":5,"chain_all":true,"no_confirm":true,"max_features":20,"features_specced":0}
@@ -291,8 +291,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":5,"chain_all":true,"no_confirm":true,"max_features":3,"features_specced":3}
@@ -309,8 +309,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true}
@@ -328,8 +328,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true,"max_features":"garbage","features_specced":0}
@@ -346,8 +346,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true,"max_features":20,"features_specced":0}
@@ -363,8 +363,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true,"no_confirm":true,"max_features":20,"features_specced":0}
@@ -380,8 +380,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":1,"chain_all":true}
@@ -406,14 +406,14 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   write_valid_spec second
   lean_spec advance second specifying implementing
   write_valid_notes second
   lean_spec advance second implementing reviewing
-  # No features/second/review.md: `lean-spec next second` -> action "blocked".
+  # No .lean-spec/features/second/review.md: `lean-spec next second` -> action "blocked".
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":3,"chain_all":true}
 EOF
@@ -439,8 +439,8 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: BLOCKED" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: BLOCKED" > .lean-spec/features/demo/review.md
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":1,"chain_all":true}
 EOF
@@ -469,11 +469,11 @@ EOF
   lean_spec advance demo specifying implementing
   write_valid_notes demo
   lean_spec advance demo implementing reviewing
-  mkdir -p features/demo
-  echo "verdict: APPROVE" > features/demo/review.md
+  mkdir -p .lean-spec/features/demo
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
-  mkdir -p features/bad
-  echo '[]' > features/bad/workflow.json
+  mkdir -p .lean-spec/features/bad
+  echo '[]' > .lean-spec/features/bad/workflow.json
   write_auto <<'EOF'
 {"slug":"demo","gates_on":false,"max_cycles":20,"cycles":0,"chain_all":true}
 EOF

@@ -30,10 +30,10 @@ lean_spec() {
   run "${LEAN_SPEC_BIN}" "$@"
 }
 
-# Write features/<slug>/<artifact> with the given heredoc-piped content.
+# Write .lean-spec/features/<slug>/<artifact> with the given heredoc-piped content.
 # Usage: lean_spec_write_artifact demo spec.md <<'EOF' ... EOF
 lean_spec_write_artifact() {
   local slug="$1" artifact="$2"
-  mkdir -p "features/${slug}"
-  cat > "features/${slug}/${artifact}"
+  mkdir -p ".lean-spec/features/${slug}"
+  cat > ".lean-spec/features/${slug}/${artifact}"
 }

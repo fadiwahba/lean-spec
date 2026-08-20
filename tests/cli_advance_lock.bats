@@ -10,8 +10,8 @@ load 'helpers.bash'
 setup() {
   lean_spec_setup_repo
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
 }
 
 teardown() {
@@ -41,7 +41,7 @@ teardown() {
   # ...and the on-disk state is consistent: implementing, one history entry.
   run python3 -c "
 import json
-o = json.load(open('features/demo/workflow.json'))
+o = json.load(open('.lean-spec/features/demo/workflow.json'))
 assert o['phase'] == 'implementing', o['phase']
 assert isinstance(o['history'], list) and len(o['history']) == 1, o['history']
 print('ok')
@@ -53,5 +53,5 @@ print('ok')
   lean_spec advance neverexisted specifying implementing
   [ "$status" -eq 1 ]
   [[ "$output" == *"no such feature"* ]]
-  [ ! -d features/neverexisted ]
+  [ ! -d .lean-spec/features/neverexisted ]
 }

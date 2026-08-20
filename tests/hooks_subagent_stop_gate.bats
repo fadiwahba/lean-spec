@@ -34,8 +34,8 @@ gate_with() {
 
 @test "allows when specifying phase's spec.md exists and rules enforce nothing" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   run gate
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -43,8 +43,8 @@ gate_with() {
 
 @test "blocks when implementing phase's notes.md is missing" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
   run gate
   [[ "$output" == *'"decision": "block"'* ]]
@@ -53,10 +53,10 @@ gate_with() {
 
 @test "blocks when implementing phase's notes.md is missing TDD section (tdd default true)" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
-  echo "## What was built" > features/demo/notes.md
+  echo "## What was built" > .lean-spec/features/demo/notes.md
   run gate
   [[ "$output" == *'"decision": "block"'* ]]
   [[ "$output" == *"TDD"* ]]
@@ -64,46 +64,46 @@ gate_with() {
 
 @test "allows when implementing phase's notes.md has TDD evidence" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
-  printf '## What was built\nx\n## TDD\nred/green\n' > features/demo/notes.md
+  printf '## What was built\nx\n## TDD\nred/green\n' > .lean-spec/features/demo/notes.md
   run gate
   [ -z "$output" ]
 }
 
 @test "blocks when reviewing phase's review.md has no verdict" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
-  printf '## What was built\nx\n## TDD\nred/green\n' > features/demo/notes.md
+  printf '## What was built\nx\n## TDD\nred/green\n' > .lean-spec/features/demo/notes.md
   lean_spec advance demo implementing reviewing
-  echo "# review" > features/demo/review.md
+  echo "# review" > .lean-spec/features/demo/review.md
   run gate
   [[ "$output" == *'"decision": "block"'* ]]
 }
 
 @test "allows when reviewing phase's review.md has a verdict" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
-  printf '## What was built\nx\n## TDD\nred/green\n' > features/demo/notes.md
+  printf '## What was built\nx\n## TDD\nred/green\n' > .lean-spec/features/demo/notes.md
   lean_spec advance demo implementing reviewing
-  echo "verdict: NEEDS_FIXES" > features/demo/review.md
+  echo "verdict: NEEDS_FIXES" > .lean-spec/features/demo/review.md
   run gate
   [ -z "$output" ]
 }
 
 @test "allows silently once phase is closed" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
-  printf '## What was built\nx\n## TDD\nred/green\n' > features/demo/notes.md
+  printf '## What was built\nx\n## TDD\nred/green\n' > .lean-spec/features/demo/notes.md
   lean_spec advance demo implementing reviewing
-  echo "verdict: APPROVE" > features/demo/review.md
+  echo "verdict: APPROVE" > .lean-spec/features/demo/review.md
   lean_spec advance demo reviewing closed
   run gate
   [ "$status" -eq 0 ]
@@ -161,8 +161,8 @@ print(json.dumps({'stop_hook_active': False, 'noise': blob}))
 
 @test "does not crash on a stop payload that is valid JSON but not an object" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   # A non-object payload must not crash the stdin parse; the gate should
   # still resolve the feature and allow (valid spec.md).
   run gate_with '[1,2,3]'
@@ -172,8 +172,8 @@ print(json.dumps({'stop_hook_active': False, 'noise': blob}))
 
 @test "does not crash when auto.json is valid JSON but not an object" {
   lean_spec ensure demo
-  mkdir -p features/demo .lean-spec
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo .lean-spec
+  echo "# spec" > .lean-spec/features/demo/spec.md
   echo '[]' > .lean-spec/auto.json
   # A non-object auto.json must not crash the resolver; it falls back to the
   # most-recently-modified feature (demo, which has a valid spec.md).
@@ -184,9 +184,9 @@ print(json.dumps({'stop_hook_active': False, 'noise': blob}))
 
 @test "does not crash when the resolved workflow.json is valid JSON but not an object" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
-  echo '"not an object"' > features/demo/workflow.json
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
+  echo '"not an object"' > .lean-spec/features/demo/workflow.json
   # A non-object workflow.json must not crash the phase read; unknown phase
   # falls through to a silent allow.
   run gate

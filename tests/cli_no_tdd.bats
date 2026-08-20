@@ -10,8 +10,8 @@ load 'helpers.bash'
 setup() {
   lean_spec_setup_repo
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
 }
 
 teardown() {
@@ -21,27 +21,27 @@ teardown() {
 @test "advance --no-tdd records tdd:false in workflow.json" {
   lean_spec advance demo specifying implementing --no-tdd
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['tdd'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['tdd'])"
   [ "$output" = "False" ]
 }
 
 @test "validate notes.md without a TDD section passes when the feature opted out via --no-tdd" {
   lean_spec advance demo specifying implementing --no-tdd
-  printf '## What was built\nstuff\n' > features/demo/notes.md
+  printf '## What was built\nstuff\n' > .lean-spec/features/demo/notes.md
   lean_spec validate demo notes.md
   [ "$status" -eq 0 ]
 }
 
 @test "the phase gate lets a --no-tdd feature leave implementing without a TDD section" {
   lean_spec advance demo specifying implementing --no-tdd
-  printf '## What was built\nstuff\n' > features/demo/notes.md
+  printf '## What was built\nstuff\n' > .lean-spec/features/demo/notes.md
   lean_spec advance demo implementing reviewing
   [ "$status" -eq 0 ]
 }
 
 @test "default (no --no-tdd) still requires a TDD section in notes.md" {
   lean_spec advance demo specifying implementing
-  printf '## What was built\nstuff\n' > features/demo/notes.md
+  printf '## What was built\nstuff\n' > .lean-spec/features/demo/notes.md
   lean_spec validate demo notes.md
   [ "$status" -eq 2 ]
   [[ "$output" == *"TDD"* ]]
@@ -49,7 +49,7 @@ teardown() {
 
 @test "advance --tdd records tdd:true and re-enforces the TDD section" {
   lean_spec advance demo specifying implementing --tdd
-  printf '## What was built\nstuff\n' > features/demo/notes.md
+  printf '## What was built\nstuff\n' > .lean-spec/features/demo/notes.md
   lean_spec validate demo notes.md
   [ "$status" -eq 2 ]
   [[ "$output" == *"TDD"* ]]

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""lean-spec state CLI — the only writer of features/<slug>/workflow.json.
+"""lean-spec state CLI — the only writer of workflow state.
 
 Layer rule (see docs/CONSTITUTION.md): skills describe, hooks enforce, this
 CLI mutates. Nothing outside this file may write workflow.json.
 
 Subcommands:
-    ensure <slug>                  create workflow.json if absent (idempotent)
+    ensure <slug>                  create .lean-spec/features/<slug>/workflow.json if absent
     advance <slug> <from> <to>     atomic phase transition (tmp + os.replace)
     assert <slug> <phase>          exit 2 if current phase != <phase>
     validate <slug> <artifact>     rules.toml-driven artifact checks
@@ -14,6 +14,7 @@ Subcommands:
     auto arm <slug> [flags]        arm the Stop-hook auto driver (.lean-spec/auto.json)
     auto disarm                    remove .lean-spec/auto.json
     auto status [--json]           read-only auto-mode report
+    migrate-layout [--dry-run]     move legacy docs/ and features/ below .lean-spec/
 
 Exit codes:
     0   success
@@ -93,8 +94,16 @@ def validate_slug(slug):
         )
 
 
+def artifact_root(root):
+    return os.path.join(root, ".lean-spec")
+
+
+def project_doc_path(root, artifact):
+    return os.path.join(artifact_root(root), artifact)
+
+
 def feature_dir(root, slug):
-    return os.path.join(root, "features", slug)
+    return os.path.join(artifact_root(root), "features", slug)
 
 
 def workflow_path(root, slug):
@@ -111,7 +120,7 @@ def atomic_write_json(path, data, tmp_prefix=".workflowXXXXXX"):
     rather than leaving it 0600.
 
     `tmp_prefix` selects the crash-leftover pattern .gitignore already covers
-    (`features/*/.workflow*` for workflow.json, `.lean-spec/.auto*` for
+    (`.lean-spec/features/*/.workflow*` for workflow.json, `.lean-spec/.auto*` for
     auto.json) — a mismatched prefix would leave an interrupted write visible
     in `git status`.
     """
@@ -141,7 +150,7 @@ def atomic_write_json(path, data, tmp_prefix=".workflowXXXXXX"):
 @contextmanager
 def feature_lock(root, slug):
     """Advisory exclusive lock serializing a feature's read-modify-write.
-    The lockfile matches the gitignored `features/*/.workflow*` pattern, so
+    The lockfile matches the gitignored `.lean-spec/features/*/.workflow*` pattern, so
     it never shows up in git status. fcntl.flock is POSIX (macOS + Linux)."""
     d = feature_dir(root, slug)
     os.makedirs(d, exist_ok=True)
@@ -450,8 +459,8 @@ def _is_unfilled(body):
     return HTML_COMMENT_RE.sub("", body).strip() == ""
 
 
-# Built-in baseline sections for the two project-level docs (docs/PRD.md,
-# docs/CONSTITUTION.md), matching templates/{PRD,CONSTITUTION}.md. These are
+# Built-in baseline sections for the two project-level docs
+# (.lean-spec/PRD.md, .lean-spec/CONSTITUTION.md), matching templates. These are
 # not part of the per-feature rules.toml surface documented in PRD §7 (which
 # only covers spec.md/notes.md/review.md); the plan skill still needs a CLI
 # check (layer rule: no gate logic in skill prompts), so this baseline
@@ -467,7 +476,7 @@ def validate_artifact(root, slug, artifact, rules, project=False):
     """Returns list of error strings; empty list means valid."""
     errors = []
     if project:
-        path = os.path.join(root, "docs", artifact)
+        path = project_doc_path(root, artifact)
     else:
         path = os.path.join(feature_dir(root, slug), artifact)
     if not os.path.isfile(path):
@@ -534,7 +543,7 @@ def cmd_validate(root, args):
         artifact = args[1]
         rules = load_rules(root)
         errors = validate_artifact(root, None, artifact, rules, project=True)
-        label = f"docs/{artifact}"
+        label = f".lean-spec/{artifact}"
     elif len(args) == 2:
         slug, artifact = args
         validate_slug(slug)
@@ -603,7 +612,7 @@ def format_next_text(r):
 
 
 def list_feature_slugs(root):
-    features_root = os.path.join(root, "features")
+    features_root = os.path.join(artifact_root(root), "features")
     if not os.path.isdir(features_root):
         return []
     slugs = []
@@ -804,6 +813,51 @@ def cmd_auto(root, args):
 
 
 # ---------------------------------------------------------------------------
+# layout migration
+# ---------------------------------------------------------------------------
+
+def _legacy_layout_moves(root):
+    return [
+        (os.path.join(root, "docs", "PRD.md"), project_doc_path(root, "PRD.md")),
+        (os.path.join(root, "docs", "CONSTITUTION.md"), project_doc_path(root, "CONSTITUTION.md")),
+        (os.path.join(root, "features"), os.path.join(artifact_root(root), "features")),
+    ]
+
+
+def cmd_migrate_layout(root, args):
+    dry_run = args == ["--dry-run"]
+    if args and not dry_run:
+        fail("usage: lean-spec migrate-layout [--dry-run]", 1)
+
+    moves = [(source, destination) for source, destination in _legacy_layout_moves(root) if os.path.exists(source)]
+    conflicts = [
+        (source, destination)
+        for source, destination in moves
+        if os.path.exists(destination)
+    ]
+    if conflicts:
+        source, destination = conflicts[0]
+        fail(
+            f"layout migration conflict: both {os.path.relpath(source, root)} and "
+            f"{os.path.relpath(destination, root)} exist — resolve the conflict before retrying",
+            1,
+        )
+    if not moves:
+        print(f"{PROG}: layout already canonical")
+        return 0
+
+    for source, destination in moves:
+        print(f"{os.path.relpath(source, root)} -> {os.path.relpath(destination, root)}")
+    if dry_run:
+        return 0
+
+    for source, destination in moves:
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        os.replace(source, destination)
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # status
 # ---------------------------------------------------------------------------
 
@@ -864,6 +918,7 @@ COMMANDS = {
     "next": cmd_next,
     "status": cmd_status,
     "auto": cmd_auto,
+    "migrate-layout": cmd_migrate_layout,
 }
 
 

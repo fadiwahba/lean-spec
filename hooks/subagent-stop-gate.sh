@@ -53,7 +53,7 @@ if os.path.isfile(auto_path):
     except (json.JSONDecodeError, OSError):
         slug = None
 
-features_root = os.path.join(root, "features")
+features_root = os.path.join(root, ".lean-spec", "features")
 if slug is None and os.path.isdir(features_root):
     best = None
     best_mtime = -1

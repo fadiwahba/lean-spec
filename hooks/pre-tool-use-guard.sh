@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook: blocks direct hand-edits of the two state files that have a
 # designated CLI writer (CONSTITUTION principle 2):
-#   * features/*/workflow.json  -> written only by `bin/lean-spec advance/ensure`
+#   * .lean-spec/features/*/workflow.json -> written only by `bin/lean-spec advance/ensure`
 #   * .lean-spec/auto.json      -> written only by `bin/lean-spec auto arm/disarm`
 # Reads the hook JSON payload from stdin, checks tool_name + file_path (or
 # MultiEdit's file_path), and emits a permissionDecision deny when the target
@@ -60,11 +60,11 @@ if not isinstance(file_path, str):
     sys.exit(0)
 
 # Normalize `.`/`..` segments so a traversal that resolves back into
-# features/<slug>/workflow.json is still caught, and match case-insensitively
+# .lean-spec/features/<slug>/workflow.json is still caught, and match case-insensitively
 # so the plugin dev platform (case-preserving APFS) cannot dodge the guard
 # with Workflow.json / WORKFLOW.JSON landing on the same on-disk file.
 normalized = os.path.normpath(file_path)
-workflow = re.compile(r"(^|/)features/[^/]+/workflow\.json$", re.IGNORECASE)
+workflow = re.compile(r"(^|/)\.lean-spec/features/[^/]+/workflow\.json$", re.IGNORECASE)
 auto = re.compile(r"(^|/)\.lean-spec/auto\.json$", re.IGNORECASE)
 if workflow.search(normalized):
     print("deny:workflow")

@@ -9,8 +9,8 @@ load 'helpers.bash'
 setup() {
   lean_spec_setup_repo
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
 }
 
 teardown() {

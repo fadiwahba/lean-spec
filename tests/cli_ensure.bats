@@ -13,8 +13,8 @@ teardown() {
 @test "ensure creates workflow.json with phase specifying" {
   lean_spec ensure demo
   [ "$status" -eq 0 ]
-  [ -f features/demo/workflow.json ]
-  run python3 -c "import json; d=json.load(open('features/demo/workflow.json')); print(d['phase'])"
+  [ -f .lean-spec/features/demo/workflow.json ]
+  run python3 -c "import json; d=json.load(open('.lean-spec/features/demo/workflow.json')); print(d['phase'])"
   [ "$output" = "specifying" ]
 }
 
@@ -22,7 +22,7 @@ teardown() {
   lean_spec ensure demo
   run python3 -c "
 import json
-d = json.load(open('features/demo/workflow.json'))
+d = json.load(open('.lean-spec/features/demo/workflow.json'))
 assert d['history'] == []
 assert d['created_at']
 assert d['updated_at']
@@ -34,12 +34,12 @@ print('ok')
 
 @test "ensure is idempotent: re-running does not error or reset state" {
   lean_spec ensure demo
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
   lean_spec ensure demo
   [ "$status" -eq 0 ]
-  run python3 -c "import json; print(json.load(open('features/demo/workflow.json'))['phase'])"
+  run python3 -c "import json; print(json.load(open('.lean-spec/features/demo/workflow.json'))['phase'])"
   [ "$output" = "implementing" ]
 }
 

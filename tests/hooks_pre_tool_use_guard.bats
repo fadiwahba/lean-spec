@@ -14,29 +14,29 @@ guard() {
   echo "$1" | bash "${LEAN_SPEC_HOOKS}/pre-tool-use-guard.sh"
 }
 
-@test "denies Write to features/<slug>/workflow.json" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/workflow.json"}}'
+@test "denies Write to .lean-spec/features/<slug>/workflow.json" {
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/features/demo/workflow.json"}}'
   [ "$status" -eq 0 ]
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
-@test "denies Edit to features/<slug>/workflow.json" {
-  run guard '{"tool_name":"Edit","tool_input":{"file_path":"features/demo/workflow.json"}}'
+@test "denies Edit to .lean-spec/features/<slug>/workflow.json" {
+  run guard '{"tool_name":"Edit","tool_input":{"file_path":".lean-spec/features/demo/workflow.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
-@test "denies MultiEdit to features/<slug>/workflow.json" {
-  run guard '{"tool_name":"MultiEdit","tool_input":{"file_path":"features/demo/workflow.json"}}'
+@test "denies MultiEdit to .lean-spec/features/<slug>/workflow.json" {
+  run guard '{"tool_name":"MultiEdit","tool_input":{"file_path":".lean-spec/features/demo/workflow.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
 @test "denies nested-path workflow.json (absolute path)" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"/repo/features/demo/workflow.json"}}'
+  run guard '{"tool_name":"Write","tool_input":{"file_path":"/repo/.lean-spec/features/demo/workflow.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
 @test "allows Write to spec.md" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/spec.md"}}'
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/features/demo/spec.md"}}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -47,12 +47,12 @@ guard() {
 }
 
 @test "allows non-guarded tools even on workflow.json" {
-  run guard '{"tool_name":"Read","tool_input":{"file_path":"features/demo/workflow.json"}}'
+  run guard '{"tool_name":"Read","tool_input":{"file_path":".lean-spec/features/demo/workflow.json"}}'
   [ -z "$output" ]
 }
 
 @test "allows a file merely named workflowXjson.json (no false-positive substring match)" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/workflowXjson.json"}}'
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/features/demo/workflowXjson.json"}}'
   [ -z "$output" ]
 }
 
@@ -86,18 +86,18 @@ guard() {
 }
 
 @test "denies workflow.json regardless of case (case-insensitive filesystem bypass)" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/Workflow.json"}}'
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/features/demo/Workflow.json"}}'
   [ "$status" -eq 0 ]
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
 @test "denies workflow.json reached via a ./ prefix" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"./features/demo/workflow.json"}}'
+  run guard '{"tool_name":"Write","tool_input":{"file_path":"./.lean-spec/features/demo/workflow.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
-@test "denies workflow.json reached via a ../ traversal that normalizes back into features/" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/../other/workflow.json"}}'
+@test "denies workflow.json reached via a ../ traversal that normalizes back into .lean-spec/features/" {
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/features/demo/../other/workflow.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
@@ -135,7 +135,7 @@ guard() {
 }
 
 @test "denies auto.json reached via a ../ traversal that normalizes back in" {
-  run guard '{"tool_name":"Write","tool_input":{"file_path":"features/demo/../../.lean-spec/auto.json"}}'
+  run guard '{"tool_name":"Write","tool_input":{"file_path":".lean-spec/features/demo/../../.lean-spec/auto.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
@@ -202,7 +202,7 @@ print('ok')
 }
 
 @test "deny payload is valid JSON when PLUGIN_ROOT contains a backslash" {
-  run bash -c "CLAUDE_PLUGIN_ROOT='/tmp/pl\\\\ugin' bash '${LEAN_SPEC_HOOKS}/pre-tool-use-guard.sh' <<< '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"features/demo/workflow.json\"}}'"
+  run bash -c "CLAUDE_PLUGIN_ROOT='/tmp/pl\\\\ugin' bash '${LEAN_SPEC_HOOKS}/pre-tool-use-guard.sh' <<< '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\".lean-spec/features/demo/workflow.json\"}}'"
   [ "$status" -eq 0 ]
   run python3 -c "
 import json, sys
@@ -238,12 +238,12 @@ print(json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': 'README.md',
   rm -f "$payload_file"
 }
 
-@test "still denies a ~200KB Write targeting features/x/workflow.json (does not fail open)" {
+@test "still denies a ~200KB Write targeting .lean-spec/features/x/workflow.json (does not fail open)" {
   payload_file="$(mktemp "${BATS_TEST_TMPDIR:-${TMPDIR:-/tmp}}/payloadXXXXXX")"
   python3 -c "
 import json
 content = 'x' * 200000
-print(json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': 'features/x/workflow.json', 'content': content}}))
+print(json.dumps({'tool_name': 'Write', 'tool_input': {'file_path': '.lean-spec/features/x/workflow.json', 'content': content}}))
 " > "$payload_file"
   run bash -c "cat '${payload_file}' | bash '${LEAN_SPEC_HOOKS}/pre-tool-use-guard.sh'"
   [ "$status" -eq 0 ]

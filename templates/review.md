@@ -15,4 +15,4 @@ verdict: NEEDS_FIXES
 
 <!-- Optional, only with --visual reviews (UI/UX specs):
 ## Visual Fidelity
-Screenshots saved under features/<slug>/evidence/visual/, cited here. -->
+Screenshots saved under .lean-spec/features/<slug>/evidence/visual/, cited here. -->

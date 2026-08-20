@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # Guards finding [MEDIUM]: unvalidated slug -> path traversal / absolute
-# write. feature_dir() joins root/features/<slug> with no sanitization, so
-# a slug containing '/' (or being an absolute path) escapes features/.
+# write. feature_dir() joins root/.lean-spec/features/<slug> with no sanitization, so
+# a slug containing '/' (or being an absolute path) escapes .lean-spec/features/.
 
 load 'helpers.bash'
 
@@ -29,7 +29,7 @@ teardown() {
 @test "ensure still works for a normal slug" {
   lean_spec ensure demo
   [ "$status" -eq 0 ]
-  [ -f features/demo/workflow.json ]
+  [ -f .lean-spec/features/demo/workflow.json ]
 }
 
 @test "advance rejects a slug with path traversal" {
@@ -75,5 +75,5 @@ teardown() {
 @test "ensure rejects a slug containing a slash mid-string" {
   lean_spec ensure 'foo/bar'
   [ "$status" -ne 0 ]
-  [ ! -d "features/foo" ]
+  [ ! -d ".lean-spec/features/foo" ]
 }

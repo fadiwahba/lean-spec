@@ -16,7 +16,7 @@ teardown() {
 }
 
 write_non_dict_workflow() {
-  printf '[]' > features/demo/workflow.json
+  printf '[]' > .lean-spec/features/demo/workflow.json
 }
 
 @test "status on a non-dict workflow.json fails loudly, no traceback" {
@@ -36,9 +36,9 @@ write_non_dict_workflow() {
 }
 
 @test "advance on a dict workflow.json with non-list history fails loudly, no traceback" {
-  printf '{"phase":"specifying","history":"oops","created_at":"x","updated_at":"x"}' > features/demo/workflow.json
-  mkdir -p features/demo
-  echo "# spec" > features/demo/spec.md
+  printf '{"phase":"specifying","history":"oops","created_at":"x","updated_at":"x"}' > .lean-spec/features/demo/workflow.json
+  mkdir -p .lean-spec/features/demo
+  echo "# spec" > .lean-spec/features/demo/spec.md
   lean_spec advance demo specifying implementing
   [ "$status" -eq 1 ]
   [[ "$output" == *"corrupt workflow.json"* ]]

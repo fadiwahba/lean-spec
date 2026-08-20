@@ -178,9 +178,9 @@ EOF
   [ "$status" -eq 0 ]
 }
 
-@test "validate --project checks docs/PRD.md against baseline sections" {
+@test "validate --project checks .lean-spec/PRD.md against baseline sections" {
   mkdir -p docs
-  cat > docs/PRD.md <<'EOF'
+  cat > .lean-spec/PRD.md <<'EOF'
 ## Problem & Users
 x
 ## Features
@@ -198,7 +198,7 @@ EOF
 
 @test "validate --project reports missing PRD.md sections" {
   mkdir -p docs
-  cat > docs/PRD.md <<'EOF'
+  cat > .lean-spec/PRD.md <<'EOF'
 ## Problem & Users
 x
 EOF
@@ -207,9 +207,9 @@ EOF
   [[ "$output" == *"Features"* ]]
 }
 
-@test "validate --project checks docs/CONSTITUTION.md against baseline sections" {
+@test "validate --project checks .lean-spec/CONSTITUTION.md against baseline sections" {
   mkdir -p docs
-  cat > docs/CONSTITUTION.md <<'EOF'
+  cat > .lean-spec/CONSTITUTION.md <<'EOF'
 ## Stack
 x
 ## Principles
@@ -229,7 +229,7 @@ EOF
 
 @test "validate --project rejects an unfilled placeholder PRD.md" {
   mkdir -p docs
-  cat > docs/PRD.md <<'EOF'
+  cat > .lean-spec/PRD.md <<'EOF'
 ## Problem & Users
 <!-- Who has this problem, why now. -->
 ## Features
@@ -248,7 +248,7 @@ EOF
 
 @test "validate --project rejects a partially-filled PRD.md" {
   mkdir -p docs
-  cat > docs/PRD.md <<'EOF'
+  cat > .lean-spec/PRD.md <<'EOF'
 ## Problem & Users
 Real users hit a real problem.
 ## Features
@@ -267,7 +267,7 @@ EOF
 
 @test "validate --project rejects an unfilled CONSTITUTION.md" {
   mkdir -p docs
-  cat > docs/CONSTITUTION.md <<'EOF'
+  cat > .lean-spec/CONSTITUTION.md <<'EOF'
 ## Stack
 <!-- Languages, frameworks. -->
 ## Principles
@@ -288,7 +288,7 @@ EOF
 
 @test "validate --project treats a whitespace-only section as unfilled" {
   mkdir -p docs
-  cat > docs/PRD.md <<'EOF'
+  cat > .lean-spec/PRD.md <<'EOF'
 ## Problem & Users
 
 ## Features
@@ -307,7 +307,7 @@ EOF
 
 @test "validate --project passes a section that keeps the template comment and adds prose" {
   mkdir -p docs
-  cat > docs/PRD.md <<'EOF'
+  cat > .lean-spec/PRD.md <<'EOF'
 ## Problem & Users
 <!-- Who has this problem, why now. -->
 Real users hit a real problem.
@@ -326,8 +326,8 @@ EOF
 
 @test "the copied templates fail --project until filled" {
   mkdir -p docs
-  cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" docs/PRD.md
-  cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" docs/CONSTITUTION.md
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" .lean-spec/PRD.md
+  cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" .lean-spec/CONSTITUTION.md
 
   lean_spec validate --project PRD.md
   [ "$status" -eq 2 ]
@@ -375,7 +375,7 @@ EOF
 [required_sections]
 "PRD.md" = ["Rollout"]
 TOML
-  cat > docs/PRD.md <<'MD'
+  cat > .lean-spec/PRD.md <<'MD'
 ## Problem & Users
 real
 ## Features

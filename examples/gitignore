@@ -2,10 +2,10 @@
 # to touch .gitignore (a spec Coder Guardrail). Add project-specific entries below.
 
 # lean-spec: --visual review evidence (local audit aid, not the durable record)
-features/*/evidence/
+.lean-spec/features/*/evidence/
 
 # lean-spec: crash-leftover atomic-write temp files (tmp + os.replace never completed)
-features/*/.workflow*
+.lean-spec/features/*/.workflow*
 .lean-spec/.auto*
 
 # Secrets — never commit (see CONSTITUTION)

@@ -8,7 +8,7 @@ review    = { model = "opus",   effort = "high" }  # switch to "sonnet" to cut c
 
 [defaults]
 tdd = true                            # v4 default ON; --no-tdd or false to opt out
-constitution = "docs/CONSTITUTION.md" # injected into every agent dispatch prompt
+constitution = ".lean-spec/CONSTITUTION.md" # injected into every agent dispatch prompt
 required_verdict = "APPROVE"
 
 [required_sections]                   # additive, as v3
