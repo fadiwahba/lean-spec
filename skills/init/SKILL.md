@@ -1,6 +1,6 @@
 ---
 name: init
-description: One-time project bootstrap for lean-spec — scaffolds .lean-spec/rules.toml, docs/, features/, and a multi-ecosystem .gitignore. Fail-loud preflight; idempotent (safe to re-run).
+description: One-time project bootstrap for lean-spec — scaffolds .lean-spec/rules.toml, docs/, .lean-spec/features/, and a multi-ecosystem .gitignore. Fail-loud preflight; idempotent (safe to re-run).
 disable-model-invocation: true
 ---
 
@@ -22,19 +22,19 @@ safe to re-run (idempotent — never overwrites existing files).
    at the project root. If it already exists, leave it untouched (report
    that it already exists).
 
-3. **Scaffold `docs/`** — if `docs/PRD.md` or `docs/CONSTITUTION.md` do
+3. **Scaffold `docs/`** — if `.lean-spec/PRD.md` or `.lean-spec/CONSTITUTION.md` do
    not exist, copy the matching file from `templates/` into `docs/`. Do
    not overwrite either file if it already exists — `/lean-spec:plan` (or
    the user) fills these in next.
 
-4. **Scaffold `features/`** — create the empty `features/` directory if
+4. **Scaffold `.lean-spec/features/`** — create the empty `.lean-spec/features/` directory if
    absent (features are created individually by `/lean-spec:spec` via
    `bin/lean-spec ensure <slug>`; nothing to pre-populate here).
 
 5. **`.gitignore`** — ensure the project ignores build artifacts,
    dependency directories, and secrets across common ecosystems
    (Node/React/Vite, Next.js, Python) plus the lean-spec
-   `features/*/evidence/` evidence dir, so the coder never has to touch
+   `.lean-spec/features/*/evidence/` evidence dir, so the coder never has to touch
    `.gitignore` (a spec Coder Guardrail) whatever the stack. Merge the
    plugin's `examples/gitignore` into the project's `.gitignore`: create
    it from the template if absent; otherwise, for each non-comment,
@@ -46,8 +46,8 @@ safe to re-run (idempotent — never overwrites existing files).
 
 ## Never does
 
-- Overwrite an existing `docs/PRD.md`, `docs/CONSTITUTION.md`, or
+- Overwrite an existing `.lean-spec/PRD.md`, `.lean-spec/CONSTITUTION.md`, or
   `.lean-spec/rules.toml`.
-- Create or touch anything under `features/<slug>/` — that starts at
+- Create or touch anything under `.lean-spec/features/<slug>/` — that starts at
   `/lean-spec:spec`.
 - Make a git commit on the user's behalf without being asked.

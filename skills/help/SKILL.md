@@ -22,10 +22,10 @@ dispatch any agent — this skill only informs.
 
 ## Setup — run once per project
 
-- `/lean-spec:init` — scaffold `.lean-spec/`, `docs/`, `features/`,
+- `/lean-spec:init` — scaffold `.lean-spec/`, `docs/`, `.lean-spec/features/`,
   `.gitignore`; preflight the environment (python3 ≥ 3.11, git repo).
-- `/lean-spec:plan ["<idea>"]` — short interview → `docs/PRD.md` +
-  `docs/CONSTITUTION.md` (grounds itself in an existing repo for
+- `/lean-spec:plan ["<idea>"]` — short interview → `.lean-spec/PRD.md` +
+  `.lean-spec/CONSTITUTION.md` (grounds itself in an existing repo for
   brownfield). `--refine` folds in a blocker without re-interviewing.
 
 ## Per feature — repeat
@@ -58,8 +58,8 @@ dispatch any agent — this skill only informs.
 - `/lean-spec:status [<slug>]` — where each feature is.
 - `/lean-spec:help` — this overview.
 
-Full detail: `README.md` (command reference), `docs/PRD.md` (what it is),
-`docs/CONSTITUTION.md` (how it's built).
+Full detail: `README.md` (command reference), `.lean-spec/PRD.md` (what it is),
+`.lean-spec/CONSTITUTION.md` (how it's built).
 
 ## Never does
 

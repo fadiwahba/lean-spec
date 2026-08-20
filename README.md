@@ -27,7 +27,7 @@ init → plan → spec → implement → review → close
 
 Each phase has **one owner** (a specific model + effort level), produces **one mandatory artifact** (a validated markdown file), and passes through **one gate** before the next phase can start. The rules aren't polite suggestions in a prompt — they're enforced by the harness: a state machine, file-write guards, and validation hooks that **block** the model when it tries to cut a corner.
 
-The result: a repeatable, auditable trail for every change, where `git log` and the `features/` folder tell the whole story.
+The result: a repeatable, auditable trail for every change, where `git log` and the `.lean-spec/features/` folder tell the whole story.
 
 ## Why it exists
 
@@ -104,8 +104,8 @@ claude --plugin-dir ~/tools/lean-spec
 Then drive the lifecycle from inside Claude Code:
 
 ```
-/lean-spec:init                  scaffold .lean-spec/, docs/, features/, .gitignore  (run once)
-/lean-spec:plan "<your idea>"    short interview → docs/PRD.md + docs/CONSTITUTION.md
+/lean-spec:init                  scaffold .lean-spec/, docs/, .lean-spec/features/, .gitignore  (run once)
+/lean-spec:plan "<your idea>"    short interview → .lean-spec/PRD.md + .lean-spec/CONSTITUTION.md
 /lean-spec:spec                  architect proposes & specs the NEXT slice
 /lean-spec:implement <slug>      coder implements it, RED → GREEN TDD
 /lean-spec:review <slug>         reviewer gives a verdict  (--visual for UI specs)
@@ -124,8 +124,8 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 
 | Command | What it does | When to use it |
 |---|---|---|
-| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, `docs/`, `features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
-| `/lean-spec:plan ["<idea>"] [--refine] [--regenerate]` | Runs a short interview (≤3 rounds) and writes `docs/PRD.md` + `docs/CONSTITUTION.md`. Grounds itself in an existing repo's stack/conventions for brownfield. `--refine` folds in one blocker without re-interviewing; `--regenerate` redoes from scratch. | Right after `init`. Use `--refine` when a blocker discovered mid-build needs the plan changed before the next slice. |
+| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, `docs/`, `.lean-spec/features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
+| `/lean-spec:plan ["<idea>"] [--refine] [--regenerate]` | Runs a short interview (≤3 rounds) and writes `.lean-spec/PRD.md` + `.lean-spec/CONSTITUTION.md`. Grounds itself in an existing repo's stack/conventions for brownfield. `--refine` folds in one blocker without re-interviewing; `--regenerate` redoes from scratch. | Right after `init`. Use `--refine` when a blocker discovered mid-build needs the plan changed before the next slice. |
 
 **Per-feature lifecycle — repeat for each feature**
 
@@ -194,7 +194,7 @@ The `auto` / `auto-all` drivers (see the [command reference](#command-reference)
 Or use Claude Code built-ins directly — no plugin code involved:
 
 ```
-/goal features/<slug>/workflow.json has "phase": "closed", or stop after 20 turns
+/goal .lean-spec/features/<slug>/workflow.json has "phase": "closed", or stop after 20 turns
 /loop /lean-spec:auto-all
 claude -p "/lean-spec:auto <slug>"          # headless / CI
 ```
@@ -213,8 +213,8 @@ Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/dem
 
 ## Documentation
 
-- [`docs/PRD.md`](docs/PRD.md) — **what** we're building: architecture, skill surface, milestones, decisions.
-- [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) — **how** we build it: stack, invariants, delegation ladder, TDD policy, quality bars.
+- [`.lean-spec/PRD.md`](.lean-spec/PRD.md) — **what** we're building: architecture, skill surface, milestones, decisions.
+- [`.lean-spec/CONSTITUTION.md`](.lean-spec/CONSTITUTION.md) — **how** we build it: stack, invariants, delegation ladder, TDD policy, quality bars.
 
 ## Roadmap
 

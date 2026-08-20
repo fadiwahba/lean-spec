@@ -20,6 +20,12 @@ guard() {
   [[ "$output" == *'"permissionDecision": "deny"'* ]]
 }
 
+@test "denies Codex apply_patch that targets workflow state" {
+  run guard '{"tool_name":"apply_patch","tool_input":{"patch":"*** Begin Patch\n*** Update File: .lean-spec/features/demo/workflow.json\n*** End Patch"}}'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"permissionDecision": "deny"'* ]]
+}
+
 @test "denies Edit to .lean-spec/features/<slug>/workflow.json" {
   run guard '{"tool_name":"Edit","tool_input":{"file_path":".lean-spec/features/demo/workflow.json"}}'
   [[ "$output" == *'"permissionDecision": "deny"'* ]]

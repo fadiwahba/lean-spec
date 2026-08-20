@@ -142,7 +142,7 @@ print('ok')
 }
 
 @test "next --all with no features reports gracefully" {
-  rm -rf features
+  rm -rf .lean-spec/features
   lean_spec next --all
   [ "$status" -eq 0 ]
   [[ "$output" == *"no features"* ]]

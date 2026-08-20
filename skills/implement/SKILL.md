@@ -19,9 +19,9 @@ disable-model-invocation: true
    only the global default and rejects a `--no-tdd` `notes.md`. If the
    transition fails (wrong phase), stop and show the CLI's message; do
    not force it.
-3. Dispatch the `coder` agent via Task, with `docs/CONSTITUTION.md`
-   injected, `features/<slug>/spec.md`, and the resolved TDD mode. The
-   coder implements and writes `features/<slug>/notes.md` (with `## TDD`
+3. Dispatch the `coder` agent via Task, with `.lean-spec/CONSTITUTION.md`
+   injected, `.lean-spec/features/<slug>/spec.md`, and the resolved TDD mode. The
+   coder implements and writes `.lean-spec/features/<slug>/notes.md` (with `## TDD`
    evidence when TDD mode is on).
 4. `SubagentStop` validates `notes.md` automatically when the coder
    finishes. Backstop:

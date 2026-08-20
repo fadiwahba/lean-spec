@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Runs the project interview and writes docs/PRD.md + docs/CONSTITUTION.md. Use --refine to fold in a blocker discovered during implementation, or --regenerate to redo from scratch. Runs in the session model, not a dispatched agent.
+description: Runs the project interview and writes .lean-spec/PRD.md + .lean-spec/CONSTITUTION.md. Use --refine to fold in a blocker discovered during implementation, or --regenerate to redo from scratch. Runs in the session model, not a dispatched agent.
 disable-model-invocation: true
 ---
 
@@ -57,8 +57,8 @@ Keep it to what's needed to fill `templates/PRD.md` and
 ## Write the docs
 
 1. Copy the structure of `templates/PRD.md` and `templates/CONSTITUTION.md`
-   into `docs/PRD.md` and `docs/CONSTITUTION.md`, filling every section
-   from the interview answers. Keep `docs/CONSTITUTION.md` short — it is
+   into `.lean-spec/PRD.md` and `.lean-spec/CONSTITUTION.md`, filling every section
+   from the interview answers. Keep `.lean-spec/CONSTITUTION.md` short — it is
    injected into every agent dispatch.
 2. If the TDD answer is "no automated tests," set `tdd = false` under
    `[defaults]` in `.lean-spec/rules.toml` in this same step — the

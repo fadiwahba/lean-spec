@@ -16,10 +16,10 @@ Only meaningful when `bin/lean-spec next <slug>` says so (i.e.
    routes to close, BLOCKED stops the line, a missing verdict is not a
    fix) — so a wrong call fails loudly here rather than silently
    re-opening an approved or blocked feature.
-2. Dispatch the `coder` agent via Task, with `docs/CONSTITUTION.md`
-   injected, `features/<slug>/spec.md`, and `features/<slug>/review.md`'s
+2. Dispatch the `coder` agent via Task, with `.lean-spec/CONSTITUTION.md`
+   injected, `.lean-spec/features/<slug>/spec.md`, and `.lean-spec/features/<slug>/review.md`'s
    findings. The coder appends a new `## Cycle N` section to
-   `features/<slug>/notes.md` rather than rewriting history, addressing
+   `.lean-spec/features/<slug>/notes.md` rather than rewriting history, addressing
    each finding with TDD unless the feature opted out at `/lean-spec:implement`.
 3. Backstop validate:
    ```

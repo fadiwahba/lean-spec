@@ -49,29 +49,35 @@ if not isinstance(tool_input, dict):
     print("allow")
     sys.exit(0)
 
-guarded_tools = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
-if tool_name not in guarded_tools:
-    print("allow")
-    sys.exit(0)
-
-file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
-if not isinstance(file_path, str):
-    print("allow")
-    sys.exit(0)
-
 # Normalize `.`/`..` segments so a traversal that resolves back into
 # .lean-spec/features/<slug>/workflow.json is still caught, and match case-insensitively
 # so the plugin dev platform (case-preserving APFS) cannot dodge the guard
 # with Workflow.json / WORKFLOW.JSON landing on the same on-disk file.
-normalized = os.path.normpath(file_path)
 workflow = re.compile(r"(^|/)\.lean-spec/features/[^/]+/workflow\.json$", re.IGNORECASE)
 auto = re.compile(r"(^|/)\.lean-spec/auto\.json$", re.IGNORECASE)
-if workflow.search(normalized):
-    print("deny:workflow")
-elif auto.search(normalized):
-    print("deny:auto")
+
+if tool_name == "apply_patch":
+    patch = tool_input.get("patch", "")
+    if not isinstance(patch, str):
+        print("allow")
+        sys.exit(0)
+    paths = re.findall(r"^\*\*\* (?:Add|Delete|Update) File: (.+)$", patch, re.MULTILINE)
+elif tool_name in {"Write", "Edit", "MultiEdit", "NotebookEdit"}:
+    file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+    paths = [file_path] if isinstance(file_path, str) else []
 else:
     print("allow")
+    sys.exit(0)
+
+for file_path in paths:
+    normalized = os.path.normpath(file_path)
+    if workflow.search(normalized):
+        print("deny:workflow")
+        sys.exit(0)
+    if auto.search(normalized):
+        print("deny:auto")
+        sys.exit(0)
+print("allow")
 ')"
 
 # Build the decision with json.dumps, NEVER string interpolation into a JSON

@@ -1,6 +1,6 @@
 ---
 name: respec
-description: Revises an existing features/<slug>/spec.md in place (the --refine path named separately in the PRD's lifecycle diagram). Equivalent to /lean-spec:spec <slug> --refine.
+description: Revises an existing .lean-spec/features/<slug>/spec.md in place (the --refine path named separately in the PRD's lifecycle diagram). Equivalent to /lean-spec:spec <slug> --refine.
 disable-model-invocation: true
 ---
 

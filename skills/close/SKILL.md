@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 1. `bin/lean-spec advance <slug> reviewing closed`. This single call is
    the whole gate: the CLI itself refuses the transition unless
-   `features/<slug>/review.md` has `verdict: APPROVE` (or whatever
+   `.lean-spec/features/<slug>/review.md` has `verdict: APPROVE` (or whatever
    `.lean-spec/rules.toml`'s `[defaults].required_verdict` is set to) —
    see CONSTITUTION "close requires verdict: APPROVE. No manual override
    path exists." If it fails, stop and show the CLI's message; there is
