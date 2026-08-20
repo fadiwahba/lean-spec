@@ -31,12 +31,14 @@ determinism without a tokenizer dependency (stdlib only) — it is not exact
 LLM-token accounting, just a cheap cap to catch runaway artifacts.
 """
 import fcntl
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -671,6 +673,18 @@ def auto_path(root):
     return os.path.join(root, AUTO_DIR, AUTO_FILE)
 
 
+@contextmanager
+def auto_lock(root):
+    directory = artifact_root(root)
+    os.makedirs(directory, exist_ok=True)
+    fd = os.open(os.path.join(directory, ".auto.lock"), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
 def load_auto(root):
     """Returns the parsed auto.json, or None when disarmed. Fails loudly on a
     corrupt/non-object file rather than silently treating it as disarmed."""
@@ -687,6 +701,14 @@ def load_auto(root):
     return data
 
 
+def auto_run_id(data):
+    run_id = data.get("run_id")
+    if isinstance(run_id, str) and run_id:
+        return run_id
+    legacy = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return "legacy-" + hashlib.sha256(legacy.encode()).hexdigest()[:24]
+
+
 def _parse_positive_int(raw, flag):
     try:
         value = int(raw)
@@ -694,6 +716,20 @@ def _parse_positive_int(raw, flag):
         fail(f"{flag} must be an integer (found '{raw}')", 1)
     if value < 1:
         fail(f"{flag} must be >= 1 (found {value})", 1)
+    return value
+
+
+def _auto_int(data, key, default, minimum=0):
+    value = data.get(key, default)
+    if isinstance(value, bool):
+        fail(f"auto tick rejected: {key} must be an integer", 1)
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        fail(f"auto tick rejected: {key} must be an integer", 1)
+    if value < minimum:
+        fail(f"auto tick rejected: {key} must be >= {minimum}", 1)
+    data[key] = value
     return value
 
 
@@ -741,7 +777,11 @@ def cmd_auto_arm(root, args):
         fail("--no-confirm requires --chain-all (it only governs the end of a chain)", 1)
 
     data = {
+        "schema_version": 1,
+        "run_id": str(uuid.uuid4()),
         "slug": slug,
+        "expected_phase": load_workflow(root, slug)["phase"],
+        "status": "armed",
         "gates_on": gates_on,
         "max_cycles": max_cycles,
         "cycles": 0,
@@ -760,6 +800,141 @@ def cmd_auto_arm(root, args):
             data["max_features"] = max_features
             data["features_specced"] = 0
     atomic_write_json(auto_path(root), data, tmp_prefix=".autoXXXXXX")
+    return 0
+
+
+def _auto_result(outcome, data, **extra):
+    result = {
+        "schema_version": 1,
+        "outcome": outcome,
+        "slug": data["slug"],
+        "expected_phase": data["expected_phase"],
+    }
+    result.update(extra)
+    return result
+
+
+def _write_auto_result(root, data, event_id, result):
+    data["last_event_id"] = event_id
+    data["last_result"] = result
+    atomic_write_json(auto_path(root), data, tmp_prefix=".autoXXXXXX")
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+def _next_non_closed_slug(root):
+    for candidate in list_feature_slugs(root):
+        if load_workflow(root, candidate).get("phase") != "closed":
+            return candidate
+    return None
+
+
+def cmd_auto_tick(root, args):
+    run_id = event_id = None
+    as_json = False
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--json":
+            as_json = True
+        elif arg in ("--run-id", "--event-id"):
+            if index + 1 >= len(args):
+                fail(f"{arg} requires a value", 1)
+            value = args[index + 1]
+            if arg == "--run-id":
+                run_id = value
+            else:
+                event_id = value
+            index += 1
+        else:
+            fail("usage: lean-spec auto tick --run-id <id> --event-id <id> [--json]", 1)
+        index += 1
+    if not run_id or not event_id:
+        fail("usage: lean-spec auto tick --run-id <id> --event-id <id> [--json]", 1)
+
+    with auto_lock(root):
+        data = load_auto(root)
+        if data is None:
+            fail("auto run is disarmed", 2)
+        if auto_run_id(data) != run_id:
+            fail("auto tick rejected: run id does not match the armed run", 2)
+        if data.get("last_event_id") == event_id:
+            result = data.get("last_result")
+            if not isinstance(result, dict):
+                fail("auto tick rejected: duplicate event has no stored result", 1)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+
+        slug = data.get("slug")
+        if not isinstance(slug, str):
+            fail("auto tick rejected: armed run is missing slug", 1)
+        workflow = load_workflow(root, slug)
+        expected_phase = data.get("expected_phase", workflow.get("phase"))
+        if not isinstance(expected_phase, str):
+            fail("auto tick rejected: armed run has an invalid expected phase", 1)
+        if workflow.get("phase") != expected_phase:
+            fail(
+                f"auto tick rejected: expected phase '{expected_phase}', found '{workflow.get('phase')}'",
+                2,
+            )
+        data.setdefault("schema_version", 1)
+        data.setdefault("run_id", run_id)
+        data.setdefault("expected_phase", expected_phase)
+        data.setdefault("status", "armed")
+        cycles = _auto_int(data, "cycles", 0)
+        max_cycles = _auto_int(data, "max_cycles", DEFAULT_MAX_CYCLES, 1)
+
+        next_state = resolve_next(root, slug)
+        action = next_state["action"]
+        if action == "skill":
+            if cycles >= max_cycles:
+                data["status"] = "blocked"
+                result = _auto_result("BLOCKED", data, reason="maximum auto cycles reached")
+            else:
+                data["cycles"] = cycles + 1
+                result = _auto_result(
+                    "READY", data,
+                    next_step=next_state["skill"].rsplit(":", 1)[-1],
+                    skill=next_state["skill"],
+                )
+        elif action == "blocked":
+            data["status"] = "blocked"
+            result = _auto_result("BLOCKED", data, reason=next_state["reason"])
+        elif action == "closed":
+            if data.get("chain_all"):
+                next_slug = _next_non_closed_slug(root)
+                if next_slug is not None:
+                    next_workflow = load_workflow(root, next_slug)
+                    data["slug"] = next_slug
+                    data["expected_phase"] = next_workflow["phase"]
+                    data["cycles"] = 0
+                    next_state = resolve_next(root, next_slug)
+                    if next_state["action"] == "skill":
+                        result = _auto_result(
+                            "READY", data,
+                            next_step=next_state["skill"].rsplit(":", 1)[-1],
+                            skill=next_state["skill"],
+                        )
+                    else:
+                        data["status"] = "blocked"
+                        result = _auto_result("BLOCKED", data, reason="next chained feature is not actionable")
+                elif data.get("no_confirm"):
+                    features_specced = _auto_int(data, "features_specced", 0)
+                    max_features = _auto_int(data, "max_features", DEFAULT_MAX_FEATURES, 1)
+                    if features_specced >= max_features:
+                        data["status"] = "complete"
+                        result = _auto_result("COMPLETE", data)
+                    else:
+                        data["features_specced"] = features_specced + 1
+                        result = _auto_result("READY", data, next_step="spec")
+                else:
+                    data["status"] = "complete"
+                    result = _auto_result("COMPLETE", data)
+            else:
+                data["status"] = "complete"
+                result = _auto_result("COMPLETE", data)
+        else:
+            fail("auto tick rejected: unknown next-step action", 1)
+        _write_auto_result(root, data, event_id, result)
     return 0
 
 
@@ -786,6 +961,7 @@ def cmd_auto_status(root, args):
             print(f"{PROG}: auto: disarmed")
         return 0
     info = dict(data)
+    info["run_id"] = auto_run_id(data)
     info["armed"] = True
     if as_json:
         print(json.dumps(info, indent=2, sort_keys=True))
@@ -799,6 +975,7 @@ AUTO_SUBCOMMANDS = {
     "arm": cmd_auto_arm,
     "disarm": cmd_auto_disarm,
     "status": cmd_auto_status,
+    "tick": cmd_auto_tick,
 }
 
 

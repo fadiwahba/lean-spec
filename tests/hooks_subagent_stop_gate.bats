@@ -11,7 +11,7 @@ teardown() {
 }
 
 gate() {
-  echo '{}' | bash "${LEAN_SPEC_HOOKS}/subagent-stop-gate.sh"
+  echo '{"lean_spec":{"slug":"demo"}}' | bash "${LEAN_SPEC_HOOKS}/subagent-stop-gate.sh"
 }
 
 gate_with() {
@@ -19,7 +19,7 @@ gate_with() {
 }
 
 @test "allows when no features exist at all" {
-  run gate
+  run gate_with '{"lean_spec":{"slug":"other"}}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
@@ -155,7 +155,7 @@ print(json.dumps({'stop_hook_active': False, 'noise': blob}))
   echo '{"slug":"other","gates_on":false,"max_cycles":20,"cycles":0}' > .lean-spec/auto.json
   # demo has no spec.md (would block); other also has none, but auto.json
   # pins "other" as the active feature, so the block message must name it.
-  run gate
+  run gate_with '{}'
   [[ "$output" == *"other"* ]]
 }
 

@@ -10,6 +10,12 @@ teardown() {
   lean_spec_teardown_repo
 }
 
+@test "Stop hook delegates auto state mutation to the CLI" {
+  hook="${LEAN_SPEC_HOOKS}/stop-auto-driver.sh"
+  ! grep -Eq 'rm[[:space:]].*auto\.json|os\.remove|atomic_write' "$hook"
+  grep -q 'auto tick --run-id' "$hook"
+}
+
 driver() {
   echo "$1" | bash "${LEAN_SPEC_HOOKS}/stop-auto-driver.sh"
 }
@@ -72,7 +78,7 @@ EOF
   [[ "$output" == *"/lean-spec:implement is model-invocation-disabled"* ]]
   [[ "$output" == *"skills/implement/SKILL.md"* ]]
   [[ "$output" == *"'demo'"* ]]
-  [[ "$output" != *'\'* ]]
+  [[ "$output" == *"decision"* ]]
 }
 
 @test "increments cycles atomically on each block" {
@@ -117,7 +123,7 @@ EOF
   run driver '{"stop_hook_active": true}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "disarms and allows stop when next-resolution fails (unknown slug)" {
@@ -130,7 +136,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [[ "$output" != *'"decision"'* ]]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "stops and removes auto.json once feature is closed" {
@@ -148,7 +154,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "stops and removes auto.json when review verdict is BLOCKED" {
@@ -165,7 +171,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "stops and removes auto.json once cycle cap is reached" {
@@ -176,7 +182,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "removes auto.json and allows when slug field is missing/blank" {
@@ -185,7 +191,7 @@ EOF
 EOF
   run driver '{}'
   [ "$status" -eq 0 ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "coerces string-numeric cycles/max_cycles and still blocks and increments" {
@@ -211,7 +217,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [[ "$output" != *'"decision"'* ]]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "disarms and removes auto.json when max_cycles is garbage text" {
@@ -222,7 +228,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [[ "$output" != *'"decision"'* ]]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "chain_all: closing one feature chains to the next non-closed feature" {
@@ -261,7 +267,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "chain_all + no_confirm: no feature remains and cap not hit emits spec_next, increments features_specced" {
@@ -300,7 +306,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "chain_all + no_confirm: max_features defaults to 20 when omitted" {
@@ -337,7 +343,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "chain_all + no_confirm: spec_next reason uses the absolute plugin-root path, not a bare relative one" {
@@ -389,7 +395,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "chain_all: chaining to a blocked feature stops the chain and escalates" {
@@ -420,7 +426,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [[ "$output" != *'"decision"'* ]]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "block reason contains no stray backslash-backtick (regression guard)" {
@@ -447,7 +453,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "does not crash and disarms when auto.json is valid JSON but not an object" {
@@ -457,7 +463,7 @@ EOF
   run driver '{}'
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  [ ! -f .lean-spec/auto.json ]
+  [ -f .lean-spec/auto.json ]
 }
 
 @test "chain_all: a sibling non-object workflow.json does not crash the scan (no traceback)" {

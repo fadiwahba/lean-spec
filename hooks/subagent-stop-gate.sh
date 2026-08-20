@@ -34,18 +34,29 @@ if [ "$stop_hook_active" = "true" ]; then
   exit 0
 fi
 
+payload_slug="$(printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    data = json.loads(sys.stdin.read())
+except (json.JSONDecodeError, ValueError):
+    data = {}
+lean_spec = data.get("lean_spec") if isinstance(data, dict) else {}
+slug = lean_spec.get("slug") if isinstance(lean_spec, dict) else ""
+print(slug if isinstance(slug, str) else "")
+')"
+
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
-resolved="$(python3 - "$PROJECT_ROOT" <<'PYEOF'
+resolved="$(python3 - "$PROJECT_ROOT" "$payload_slug" <<'PYEOF'
 import json
 import os
 import sys
 
-root = sys.argv[1]
+root, payload_slug = sys.argv[1:]
 auto_path = os.path.join(root, ".lean-spec", "auto.json")
-slug = None
+slug = payload_slug or None
 
-if os.path.isfile(auto_path):
+if slug is None and os.path.isfile(auto_path):
     try:
         with open(auto_path) as f:
             data = json.load(f)
@@ -53,23 +64,11 @@ if os.path.isfile(auto_path):
     except (json.JSONDecodeError, OSError):
         slug = None
 
-features_root = os.path.join(root, ".lean-spec", "features")
-if slug is None and os.path.isdir(features_root):
-    best = None
-    best_mtime = -1
-    for name in os.listdir(features_root):
-        wf_path = os.path.join(features_root, name, "workflow.json")
-        if os.path.isfile(wf_path):
-            mtime = os.path.getmtime(wf_path)
-            if mtime > best_mtime:
-                best_mtime = mtime
-                best = name
-    slug = best
-
 if slug is None:
     print("__none__ __none__")
     sys.exit(0)
 
+features_root = os.path.join(root, ".lean-spec", "features")
 wf_path = os.path.join(features_root, slug, "workflow.json")
 try:
     with open(wf_path) as f:
