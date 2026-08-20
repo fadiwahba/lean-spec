@@ -8,6 +8,7 @@ features/*/evidence/
 *.bak
 tmp/
 .superpowers/
+.worktrees/
 
 # crash-leftover atomic-write temp files (tmp + os.replace never completed)
 features/*/.workflow*
