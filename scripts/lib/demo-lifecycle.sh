@@ -24,25 +24,25 @@ DEMO_SLUG="hello-cli"
 # docs are already-answered output, copied in rather than asked for.
 demo_scaffold_project() {
   local target_root="$1"
-  mkdir -p "${target_root}/.lean-spec" "${target_root}/docs" "${target_root}/features"
+  mkdir -p "${target_root}/.lean-spec"
   cp "${DEMO_REPO_ROOT}/examples/rules.toml" "${target_root}/.lean-spec/rules.toml"
-  cp "${DEMO_FIXTURE_DIR}/docs/PRD.md" "${target_root}/docs/PRD.md"
-  cp "${DEMO_FIXTURE_DIR}/docs/CONSTITUTION.md" "${target_root}/docs/CONSTITUTION.md"
+  cp "${DEMO_FIXTURE_DIR}/docs/PRD.md" "${target_root}/.lean-spec/PRD.md"
+  cp "${DEMO_FIXTURE_DIR}/docs/CONSTITUTION.md" "${target_root}/.lean-spec/CONSTITUTION.md"
 }
 
 # Simulate the architect agent: write features/<slug>/spec.md.
 demo_write_spec() {
   local target_root="$1" slug="$2"
-  mkdir -p "${target_root}/features/${slug}"
-  cp "${DEMO_FIXTURE_DIR}/features/${DEMO_SLUG}/spec.md" "${target_root}/features/${slug}/spec.md"
+  mkdir -p "${target_root}/.lean-spec/features/${slug}"
+  cp "${DEMO_FIXTURE_DIR}/features/${DEMO_SLUG}/spec.md" "${target_root}/.lean-spec/features/${slug}/spec.md"
 }
 
 # Simulate the coder agent: write features/<slug>/notes.md (with the
 # required ## TDD evidence section).
 demo_write_notes() {
   local target_root="$1" slug="$2"
-  mkdir -p "${target_root}/features/${slug}"
-  cp "${DEMO_FIXTURE_DIR}/features/${DEMO_SLUG}/notes.md" "${target_root}/features/${slug}/notes.md"
+  mkdir -p "${target_root}/.lean-spec/features/${slug}"
+  cp "${DEMO_FIXTURE_DIR}/features/${DEMO_SLUG}/notes.md" "${target_root}/.lean-spec/features/${slug}/notes.md"
 }
 
 # Simulate the reviewer agent: write features/<slug>/review.md with the
@@ -51,10 +51,10 @@ demo_write_notes() {
 # a NEEDS_FIXES/BLOCKED demo run doesn't need its own fixture copy.
 demo_write_review() {
   local target_root="$1" slug="$2" verdict="${3:-APPROVE}"
-  mkdir -p "${target_root}/features/${slug}"
+  mkdir -p "${target_root}/.lean-spec/features/${slug}"
   sed "s/^verdict: .*/verdict: ${verdict}/" \
     "${DEMO_FIXTURE_DIR}/features/${DEMO_SLUG}/review.md" \
-    > "${target_root}/features/${slug}/review.md"
+    > "${target_root}/.lean-spec/features/${slug}/review.md"
 }
 
 # Feed a hook synthetic stdin JSON exactly as Claude Code's harness would.

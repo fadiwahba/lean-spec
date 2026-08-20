@@ -349,6 +349,7 @@ def cmd_assert(root, args):
 
 DEFAULT_RULES = {
     "defaults": {"tdd": True, "required_verdict": "APPROVE"},
+    "agents": {},
     "required_sections": {},
     "max_tokens": {},
 }
@@ -359,6 +360,7 @@ def load_rules(root):
     path = os.path.join(root, ".lean-spec", "rules.toml")
     rules = {
         "defaults": dict(DEFAULT_RULES["defaults"]),
+        "agents": {},
         "required_sections": {},
         "max_tokens": {},
     }
@@ -374,7 +376,7 @@ def load_rules(root):
     # tables. A wrong-typed container (e.g. `required_sections = "foo"`) would
     # otherwise blow up the .update() below with a raw traceback — validate
     # the container shape before the value shapes (CONSTITUTION principle 8).
-    for key in ("defaults", "required_sections", "max_tokens"):
+    for key in ("defaults", "agents", "required_sections", "max_tokens"):
         if key in data and not isinstance(data[key], dict):
             fail(
                 f"invalid .lean-spec/rules.toml: [{key}] must be a table "
@@ -382,6 +384,7 @@ def load_rules(root):
                 1,
             )
     rules["defaults"].update(data.get("defaults", {}))
+    rules["agents"].update(data.get("agents", {}))
     rules["required_sections"].update(data.get("required_sections", {}))
     rules["max_tokens"].update(data.get("max_tokens", {}))
 
@@ -419,6 +422,42 @@ def load_rules(root):
             1,
         )
     return rules
+
+
+def cmd_provider(root, args):
+    if len(args) < 3 or args[0] not in ("argv", "run"):
+        fail("usage: lean-spec provider argv|run <owner> --prompt <text>", 1)
+    action, owner = args[:2]
+    if args[2:3] != ["--prompt"] or len(args) != 4:
+        fail("usage: lean-spec provider argv|run <owner> --prompt <text>", 1)
+    config = load_rules(root)["agents"].get(owner)
+    if not isinstance(config, dict):
+        fail(f"provider configuration missing for owner '{owner}' in [agents]", 1)
+    provider = config.get("provider")
+    model = config.get("model")
+    effort = config.get("effort")
+    if not isinstance(provider, str):
+        fail(f"provider configuration for '{owner}' requires provider", 1)
+    if effort is not None and not isinstance(effort, str):
+        fail(f"provider configuration for '{owner}' has invalid effort", 1)
+    try:
+        module_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "adapters")
+        if module_dir not in sys.path:
+            sys.path.insert(0, module_dir)
+        from providers import build_argv, require_executable
+        argv = build_argv(provider, model, effort, args[3])
+        require_executable(argv)
+    except ValueError as error:
+        fail(str(error), 1)
+    if action == "argv":
+        print(json.dumps({"schema_version": 1, "owner": owner, "provider": provider, "argv": argv}))
+        return 0
+    completed = subprocess.run(argv, cwd=root, capture_output=True, text=True)
+    if completed.returncode != 0:
+        message = completed.stderr.strip() or completed.stdout.strip() or "provider command failed"
+        fail(f"provider '{provider}' failed: {message}", 2)
+    print(completed.stdout, end="")
+    return 0
 
 
 VERDICT_RE = re.compile(r"^verdict:\s*(APPROVE|NEEDS_FIXES|BLOCKED)\b", re.IGNORECASE)
@@ -472,6 +511,82 @@ PROJECT_DOC_SECTIONS = {
     "PRD.md": ["Problem & Users", "Features", "Constraints", "Quality Bar", "Non-Goals"],
     "CONSTITUTION.md": ["Stack", "Principles", "Delegation", "Quality Bars", "Process", "Non-Goals"],
 }
+
+READINESS_SECTIONS = (
+    (
+        "Existing System & Behaviour",
+        "What existing product behaviour, users, data, APIs, or integrations must remain unchanged?",
+        "The feature workflow cannot decide compatibility requirements without an explicit preservation boundary.",
+    ),
+    (
+        "Compatibility & Migration",
+        "What compatibility limits or migration requirements apply, or should the project record that none are needed?",
+        "An unattended run must not guess whether existing users, data, or clients need a migration path.",
+    ),
+    (
+        "Regression Checks",
+        "Which regression checks and verification command must pass before a feature can close?",
+        "The project needs an explicit regression check before unattended implementation can start.",
+    ),
+)
+
+
+def emit_outcome(result, as_json):
+    """Emit the host-neutral, versioned workflow result contract."""
+    if as_json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
+    outcome = result["outcome"]
+    if outcome == "NEEDS_INPUT":
+        print(f"{outcome}: {result['question']}")
+    elif outcome == "READY":
+        print(f"{outcome}: {result['step']}")
+    else:
+        print(outcome)
+
+
+def project_readiness(root):
+    prd_path = project_doc_path(root, "PRD.md")
+    if not os.path.isfile(prd_path):
+        return READINESS_SECTIONS[0]
+    with open(prd_path, encoding="utf-8") as f:
+        bodies = _section_bodies(f.read())
+    for requirement in READINESS_SECTIONS:
+        section = requirement[0]
+        if section not in bodies or _is_unfilled(bodies[section]):
+            return requirement
+    return None
+
+
+def cmd_readiness(root, args):
+    as_json = "--json" in args
+    args = [arg for arg in args if arg != "--json"]
+    if args not in ([], ["--no-confirm"]):
+        fail("usage: lean-spec readiness [--no-confirm] [--json]", 1)
+
+    missing = project_readiness(root)
+    if missing is not None:
+        _, question, reason = missing
+        emit_outcome({
+            "schema_version": 1,
+            "outcome": "NEEDS_INPUT",
+            "input_scope": "project",
+            "slug": None,
+            "question": question,
+            "reason": reason,
+            "resume_step": "plan",
+        }, as_json)
+        return 0
+    emit_outcome({
+        "schema_version": 1,
+        "outcome": "READY",
+        "step": "spec",
+        "slug": None,
+        "owner": "architect",
+        "artifact": "spec.md",
+        "gate": "project-readiness-valid",
+    }, as_json)
+    return 0
 
 
 def validate_artifact(root, slug, artifact, rules, project=False):
@@ -1095,6 +1210,8 @@ COMMANDS = {
     "next": cmd_next,
     "status": cmd_status,
     "auto": cmd_auto,
+    "provider": cmd_provider,
+    "readiness": cmd_readiness,
     "migrate-layout": cmd_migrate_layout,
 }
 

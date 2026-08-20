@@ -1,16 +1,15 @@
 ---
 name: review
 description: Advances an implemented feature to reviewing and dispatches the reviewer agent to write review.md with a verdict. Use --visual for UI/UX specs to capture Playwright screenshot evidence.
-disable-model-invocation: true
 ---
 
-# /lean-spec:review <slug> [--visual]
+# `review` <slug> [--visual]
 
 ## Steps
 
 1. `bin/lean-spec advance <slug> implementing reviewing` — the state
    transition. Stop and surface the CLI's message on failure.
-2. Dispatch the `reviewer` agent via Task, with `.lean-spec/CONSTITUTION.md`
+2. Dispatch the `reviewer` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
    injected, `.lean-spec/features/<slug>/spec.md`, and `.lean-spec/features/<slug>/notes.md`
    (including its `## TDD` evidence). Pass `--visual` through when given —
    the reviewer then drives the running app with a browser scripted
@@ -27,7 +26,7 @@ disable-model-invocation: true
    review is incomplete; dispatch the reviewer again.
 4. Report the verdict to the user. Do **not** decide what happens next
    yourself — run `bin/lean-spec next <slug>` and follow its routing
-   (`/lean-spec:close` on APPROVE, `/lean-spec:fix` on NEEDS_FIXES, or
+   (`close` on APPROVE, `fix` on NEEDS_FIXES, or
    report BLOCKED and stop).
 5. Commit: `review(<slug>): <verdict>`.
 

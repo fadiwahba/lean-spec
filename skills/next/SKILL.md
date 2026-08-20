@@ -3,7 +3,7 @@ name: next
 description: Read-only — reports the next lifecycle step for a feature (or every feature with --all), by calling bin/lean-spec next. Safe to invoke any time; makes no state changes.
 ---
 
-# /lean-spec:next [<slug>|--all]
+# `next` [<slug>|--all]
 
 Passthrough to the CLI resolver — this skill contains no routing logic of
 its own (the CLI decides; see `bin/lean-spec`'s `resolve_next`).
@@ -12,7 +12,7 @@ its own (the CLI decides; see `bin/lean-spec`'s `resolve_next`).
 
 1. No argument or a `<slug>`: run `bin/lean-spec next <slug>`. Report its
    output verbatim: the named skill to dispatch next, or, for `reviewing`
-   phase, whichever of `/lean-spec:close`, `/lean-spec:fix`, or a
+   phase, whichever of `close`, `fix`, or a
    `BLOCKED`/missing-verdict report applies; or `closed — nothing to do`.
 2. `--all`: run `bin/lean-spec next --all` and report the per-feature
    list.

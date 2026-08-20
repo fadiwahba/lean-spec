@@ -1,0 +1,7 @@
+<!-- lean-spec:begin -->
+# lean-spec
+
+Use `.lean-spec/runtime/bin/lean-spec` as the only writer of lean-spec state.
+Do not edit `.lean-spec/features/*/workflow.json` or `.lean-spec/auto.json` directly.
+Read the installed `.agents/skills/lean-spec-*/SKILL.md` instructions before running a lifecycle step.
+<!-- lean-spec:end -->

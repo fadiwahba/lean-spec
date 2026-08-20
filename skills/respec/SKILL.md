@@ -1,20 +1,19 @@
 ---
 name: respec
-description: Revises an existing .lean-spec/features/<slug>/spec.md in place (the --refine path named separately in the PRD's lifecycle diagram). Equivalent to /lean-spec:spec <slug> --refine.
-disable-model-invocation: true
+description: Revises an existing .lean-spec/features/<slug>/spec.md in place (the --refine path named separately in the PRD's lifecycle diagram). Equivalent to `spec` <slug> --refine.
 ---
 
-# /lean-spec:respec <slug>
+# `respec` <slug>
 
 The PRD's lifecycle diagram (§4.1) names the refine arrow `respec`
 separately from `spec`; this skill is that named entry point. It is
-identical in behavior to `/lean-spec:spec <slug> --refine` — see
+identical in behavior to `spec` <slug> --refine` — see
 `skills/spec/SKILL.md` for the full procedure (dispatch the architect
 agent with the revision reason, validate via `bin/lean-spec validate
 <slug> spec.md`, commit `spec(<slug>): refine — <reason>`).
 
 Use this when a blocker discovered while implementing feeds back into a
-spec revision *without* going through `/lean-spec:plan --refine` first
+spec revision *without* going through `plan` --refine` first
 (the PRD/CONSTITUTION didn't need to change, just this one spec).
 
 ## Never does

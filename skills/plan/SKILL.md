@@ -1,13 +1,12 @@
 ---
 name: plan
 description: Runs the project interview and writes .lean-spec/PRD.md + .lean-spec/CONSTITUTION.md. Use --refine to fold in a blocker discovered during implementation, or --regenerate to redo from scratch. Runs in the session model, not a dispatched agent.
-disable-model-invocation: true
 ---
 
-# /lean-spec:plan ["<idea>"] [--refine] [--regenerate]
+# `plan` ["<idea>"] [--refine] [--regenerate]
 
 Runs in the session model directly (`rules.toml` → `[agents] plan = {
-model = "session" }`) — no Task dispatch. You are the planner here.
+model = "session" }`) — no subagent dispatch. You are the planner here.
 
 ## Modes
 
@@ -38,14 +37,14 @@ normal.
 
 ## Interview (≤3 rounds, default mode)
 
-Use `AskUserQuestion` to cover, across up to three rounds:
+Ask one targeted question to cover, across up to three rounds:
 
 1. Problem & users — what problem, who has it, why now.
 2. Features — the feature list (no upfront per-feature detail — that's
-   what `/lean-spec:spec` derives later, one slice at a time).
+   what `spec` derives later, one slice at a time).
 3. Constraints, quality bar, and non-goals — explicitly ask whether this
    project wants TDD (`.lean-spec/rules.toml` defaults `tdd = true`, i.e.
-   every `/lean-spec:implement`/`fix` run demands a RED-then-GREEN test
+   every `implement`/`fix` run demands a RED-then-GREEN test
    suite). Do not let the answer land only in prose: a Quality Bar that
    says "no test suite" while `rules.toml` still enforces TDD is a
    contradiction the coder agent will hit mid-implementation, not
@@ -77,6 +76,6 @@ Keep it to what's needed to fill `templates/PRD.md` and
 
 ## Never does
 
-- Decompose the PRD into per-feature specs — that is `/lean-spec:spec`'s
+- Decompose the PRD into per-feature specs — that is `spec`'s
   job, one slice at a time (R8).
 - Skip the `bin/lean-spec validate --project` check before committing.

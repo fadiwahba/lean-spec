@@ -192,7 +192,7 @@ print('ok')
 @test "e2e negative: spec preflight refuses placeholder project docs" {
   # Exactly what /lean-spec:init leaves behind — no simulated /plan fill —
   # proving the /lean-spec:spec preflight would stop the flow here.
-  mkdir -p docs
+  mkdir -p .lean-spec
   cp "${LEAN_SPEC_REPO_ROOT}/templates/PRD.md" .lean-spec/PRD.md
   cp "${LEAN_SPEC_REPO_ROOT}/templates/CONSTITUTION.md" .lean-spec/CONSTITUTION.md
 

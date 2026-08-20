@@ -10,7 +10,7 @@
 
 <h1 align="center">lean-spec</h1>
 
-<p align="center"><em>A Claude Code plugin that turns AI-assisted development into a disciplined lifecycle the model can't skip its way around.</em></p>
+<p align="center"><em>An agent-neutral, deterministic development lifecycle with Claude and Codex adapters.</em></p>
 
 ---
 
@@ -113,6 +113,40 @@ Then drive the lifecycle from inside Claude Code:
 /lean-spec:close <slug>          APPROVE-gated — closes the feature
 /lean-spec:next · :status        read-only: where am I, what's next
 ```
+
+### Codex
+
+The Codex plugin distributes the canonical skills. For a project checkout,
+install the runtime adapter once:
+
+```bash
+python3 adapters/codex/install.py --project /absolute/path/to/project
+```
+
+It installs project-owned runtime files below `.lean-spec/runtime`, skills in
+`.agents/skills`, custom agents in `.codex/agents`, hook configuration in
+`.codex/hooks.json`, and one marked block in root `AGENTS.md`. It is safe to
+run again. Codex discovers the installed skills as `$lean-spec-<name>`.
+
+The installer does not use symlinks. Contributors may use symlinks locally;
+normal users get copied, versioned files.
+
+### Project artifacts and migration
+
+Generated lean-spec artifacts live below `.lean-spec/`: `PRD.md`,
+`CONSTITUTION.md`, `features/`, and `auto.json`. To move an older project:
+
+```bash
+bin/lean-spec migrate-layout --dry-run
+bin/lean-spec migrate-layout
+```
+
+`--no-confirm` skips approval of a proposed slice. It never permits the agent
+to invent a missing requirement. `bin/lean-spec readiness --no-confirm --json`
+returns one `NEEDS_INPUT` question when a preservation, migration, or
+regression decision is missing.
+
+lean-spec sends no analytics or telemetry in this release.
 
 Repeat `spec → implement → review → close` for each feature. That's the whole loop.
 

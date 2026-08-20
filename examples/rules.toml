@@ -1,9 +1,14 @@
 # per-phase owner; precedence: CLI flag > this file > agent frontmatter default
 [agents]
+# `provider` is required only when using `lean-spec provider ...` to dispatch
+# an installed headless CLI. The host may otherwise own phase dispatch.
 plan      = { model = "session" }                  # interview runs in the main session
-spec      = { model = "opus",   effort = "xhigh" }
-implement = { model = "sonnet", effort = "high" }
-review    = { model = "opus",   effort = "high" }  # switch to "sonnet" to cut cost
+spec      = { provider = "claude", model = "opus" }
+implement = { provider = "claude", model = "sonnet" }
+review    = { provider = "claude", model = "opus" }
+# Codex accepts an explicit reasoning effort:
+# implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium" }
+# Gemini and Claude expose no documented headless effort flag, so omit effort.
 # fix inherits implement when omitted
 
 [defaults]

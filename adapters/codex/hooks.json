@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(apply_patch|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".lean-spec/runtime/hooks/pre-tool-use-guard.sh"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".lean-spec/runtime/hooks/subagent-stop-gate.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".lean-spec/runtime/hooks/stop-auto-driver.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

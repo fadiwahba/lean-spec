@@ -12,6 +12,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MARKER_BEGIN = "<!-- lean-spec:begin -->"
 MARKER_END = "<!-- lean-spec:end -->"
+ROLE_MODELS = {
+    "architect": ("gpt-5.6-sol", "high"),
+    "coder": ("gpt-5.6-terra", "medium"),
+    "reviewer": ("gpt-5.6-sol", "high"),
+}
 
 
 def copy_tree(source: Path, destination: Path, dry_run: bool) -> None:
@@ -26,45 +31,59 @@ def write_text(path: Path, text: str, dry_run: bool) -> None:
         print(f"write {path}")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
+    path.write_text(text, encoding="utf-8")
 
 
-def merge_agents_md(path: Path, dry_run: bool) -> None:
-    block = "\n".join((
-        MARKER_BEGIN,
-        "# lean-spec",
-        "Use `.lean-spec/runtime/bin/lean-spec` as the only writer of lean-spec state.",
-        "Do not edit `.lean-spec/features/*/workflow.json` or `.lean-spec/auto.json` directly.",
-        "Read the installed `.agents/skills/lean-spec-*/SKILL.md` instructions before running a lifecycle step.",
-        MARKER_END,
-        "",
-    ))
-    current = path.read_text() if path.exists() else ""
-    if MARKER_BEGIN in current and MARKER_END in current:
+def merged_agents_md(path: Path) -> str:
+    block = (ROOT / "adapters" / "codex" / "AGENTS.md.fragment").read_text(encoding="utf-8") + "\n"
+    current = path.read_text(encoding="utf-8") if path.exists() else ""
+    has_begin = MARKER_BEGIN in current
+    has_end = MARKER_END in current
+    if has_begin != has_end:
+        raise ValueError(f"{path} has an incomplete lean-spec marker block")
+    if has_begin:
         before, _, remainder = current.partition(MARKER_BEGIN)
         _, _, after = remainder.partition(MARKER_END)
         current = before.rstrip() + "\n\n" + block + after.lstrip()
     else:
         current = current.rstrip() + ("\n\n" if current.strip() else "") + block
-    write_text(path, current, dry_run)
+    return current
 
 
-def hook_config() -> dict:
-    runtime = ".lean-spec/runtime"
-    return {
-        "hooks": {
-            "PreToolUse": [{
-                "matcher": "^(apply_patch|Bash)$",
-                "hooks": [{"type": "command", "command": f"{runtime}/hooks/pre-tool-use-guard.sh"}],
-            }],
-            "SubagentStop": [{
-                "hooks": [{"type": "command", "command": f"{runtime}/hooks/subagent-stop-gate.sh"}],
-            }],
-            "Stop": [{
-                "hooks": [{"type": "command", "command": f"{runtime}/hooks/stop-auto-driver.sh"}],
-            }],
-        }
-    }
+def merge_agents_md(path: Path, dry_run: bool) -> None:
+    write_text(path, merged_agents_md(path), dry_run)
+
+
+def desired_hook_config() -> dict:
+    config = json.loads((ROOT / "adapters" / "codex" / "hooks.json").read_text(encoding="utf-8"))
+    if not isinstance(config, dict) or not isinstance(config.get("hooks"), dict):
+        raise ValueError("bundled Codex hooks configuration is invalid")
+    return config
+
+
+def merge_hook_config(path: Path, desired: dict) -> dict:
+    if not path.exists():
+        return desired
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ValueError(f"{path} is not valid JSON: {error.msg}") from error
+    if not isinstance(existing, dict) or not isinstance(existing.get("hooks"), dict):
+        raise ValueError(f"{path} must contain an object at hooks")
+    for event, entries in existing["hooks"].items():
+        if not isinstance(event, str) or not isinstance(entries, list):
+            raise ValueError(f"{path} has an unsupported hooks entry for {event!r}")
+
+    merged = dict(existing)
+    hooks = dict(existing["hooks"])
+    for event, entries in desired["hooks"].items():
+        current = list(hooks.get(event, []))
+        for entry in entries:
+            if entry not in current:
+                current.append(entry)
+        hooks[event] = current
+    merged["hooks"] = hooks
+    return merged
 
 
 def main() -> int:
@@ -76,8 +95,16 @@ def main() -> int:
     if not (project / ".git").exists():
         parser.error("--project must be a git repository")
 
+    try:
+        desired_hooks = desired_hook_config()
+        merged_hooks = merge_hook_config(project / ".codex" / "hooks.json", desired_hooks)
+        merged_agents_md(project / "AGENTS.md")
+    except ValueError as error:
+        parser.error(str(error))
+
     runtime = project / ".lean-spec" / "runtime"
     copy_tree(ROOT / "bin", runtime / "bin", args.dry_run)
+    copy_tree(ROOT / "adapters", runtime / "adapters", args.dry_run)
     copy_tree(ROOT / "hooks", runtime / "hooks", args.dry_run)
     copy_tree(ROOT / "templates", runtime / "templates", args.dry_run)
     copy_tree(ROOT / "examples", runtime / "examples", args.dry_run)
@@ -88,12 +115,15 @@ def main() -> int:
     for role in ("architect", "coder", "reviewer"):
         source = ROOT / "agents" / f"{role}.md"
         content = source.read_text()
+        model, effort = ROLE_MODELS[role]
         write_text(
             project / ".codex" / "agents" / f"lean-spec-{role}.toml",
-            f'name = "lean-spec-{role}"\ndescription = "Lean-spec {role} role"\ndeveloper_instructions = {json.dumps(content)}\n',
+            f'name = "lean-spec-{role}"\ndescription = "Lean-spec {role} role"\n'
+            f'model = "{model}"\nmodel_reasoning_effort = "{effort}"\n'
+            f'developer_instructions = {json.dumps(content)}\n',
             args.dry_run,
         )
-    write_text(project / ".codex" / "hooks.json", json.dumps(hook_config(), indent=2) + "\n", args.dry_run)
+    write_text(project / ".codex" / "hooks.json", json.dumps(merged_hooks, indent=2) + "\n", args.dry_run)
     merge_agents_md(project / "AGENTS.md", args.dry_run)
     if not args.dry_run:
         for script in (runtime / "bin").iterdir():

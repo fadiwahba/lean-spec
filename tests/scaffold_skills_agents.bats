@@ -71,10 +71,10 @@ print('ok')
   done
 }
 
-@test "mutating skills set disable-model-invocation: true" {
+@test "mutating skills have generated Codex explicit-only policies" {
   for name in init plan spec respec implement review fix close auto auto-all; do
-    run parse_frontmatter "${LEAN_SPEC_REPO_ROOT}/skills/${name}/SKILL.md"
-    [[ "$output" == *"disable-model-invocation=true"* ]]
+    run grep -Fx '  allow_implicit_invocation: false' "${LEAN_SPEC_REPO_ROOT}/skills/${name}/agents/openai.yaml"
+    [ "$status" -eq 0 ]
   done
 }
 
@@ -87,10 +87,10 @@ print('ok')
 
 @test "help skill orients a new user: names the lifecycle skills and read-only ones" {
   f="${LEAN_SPEC_REPO_ROOT}/skills/help/SKILL.md"
-  grep -q '/lean-spec:init' "$f"
-  grep -q '/lean-spec:spec' "$f"
-  grep -q '/lean-spec:close' "$f"
-  grep -q '/lean-spec:auto-all' "$f"
+  grep -q '`init`' "$f"
+  grep -q '`spec`' "$f"
+  grep -q '`close`' "$f"
+  grep -q '`auto-all`' "$f"
   grep -qi 'read-only' "$f"
 }
 
