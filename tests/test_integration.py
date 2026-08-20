@@ -292,6 +292,22 @@ class CodexAdapterTests(IntegrationCase):
         self.write_review("codex-demo")
         self.require_ok(self.process(str(runtime), "advance", "codex-demo", "reviewing", "closed"))
 
+    def test_installed_stop_hook_routes_to_the_installed_codex_skill(self) -> None:
+        self.require_ok(self.install_codex())
+        runtime = self.project / ".lean-spec/runtime/bin/lean-spec"
+        self.require_ok(self.process(str(runtime), "ensure", "demo"))
+        self.write_spec()
+        self.require_ok(self.process(str(runtime), "advance", "demo", "specifying", "implementing"))
+        self.write_notes()
+        self.require_ok(self.process(str(runtime), "advance", "demo", "implementing", "reviewing"))
+        self.write_review()
+        self.require_ok(self.process(str(runtime), "advance", "demo", "reviewing", "closed"))
+        self.write_ready_project()
+        self.require_ok(self.process(str(runtime), "auto", "arm", "demo", "--chain-all", "--no-confirm"))
+        result = self.process("bash", str(self.project / ".lean-spec/runtime/hooks/stop-auto-driver.sh"), input="{}")
+        self.require_ok(result)
+        self.assertIn(".agents/skills/lean-spec-spec/SKILL.md", json.loads(result.stdout)["reason"])
+
 
 class ProviderAndEndToEndTests(IntegrationCase):
     def provider_environment(self, *, auth_check: str = "") -> dict[str, str]:

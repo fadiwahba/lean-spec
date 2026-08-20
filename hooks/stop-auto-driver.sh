@@ -7,6 +7,11 @@ PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && p
 LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
 payload="$(cat || true)"
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+if [ -d "$PROJECT_ROOT/.agents/skills/lean-spec-spec" ]; then
+  SKILL_PATH_FORMAT="$PROJECT_ROOT/.agents/skills/lean-spec-{step}/SKILL.md"
+else
+  SKILL_PATH_FORMAT="$PLUGIN_ROOT/skills/{step}/SKILL.md"
+fi
 
 status_json="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" auto status --json)"
 run_id="$(printf '%s' "$status_json" | python3 -c '
@@ -27,7 +32,7 @@ result="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" auto tick --run-id "$run_id" --even
 
 reason="$(printf '%s' "$result" | python3 -c '
 import json, sys
-root = sys.argv[1]
+skill_path_format, lean_spec = sys.argv[1:]
 try:
     result = json.load(sys.stdin)
 except Exception:
@@ -37,10 +42,11 @@ if result.get("outcome") != "READY":
 step = result.get("next_step")
 slug = result.get("slug", "")
 if step == "spec":
-    print(f"lean-spec auto-all: read {root}/skills/spec/SKILL.md now and perform its no-confirm steps. Stop safely with NEEDS_INPUT if a required decision is missing. Only if the architect returns exactly NO_REMAINING_SCOPE, run `{root}/bin/lean-spec auto complete --run-id {result.get('run_id', '')} --no-remaining-scope` and stop. If the output is malformed, stop and ask one targeted question; never run auto complete.")
+    run_id = result.get("run_id", "")
+    print(f"lean-spec auto-all: read {skill_path_format.format(step=step)} now and perform its no-confirm steps. Stop safely with NEEDS_INPUT if a required decision is missing. Only if the architect returns exactly NO_REMAINING_SCOPE, run `{lean_spec} auto complete --run-id {run_id} --no-remaining-scope` and stop. If the output is malformed, stop and ask one targeted question; never run auto complete.")
 elif isinstance(step, str) and step:
-    print(f"lean-spec auto: read {root}/skills/{step}/SKILL.md now and perform its steps for {slug!r}.")
-' "$PLUGIN_ROOT")"
+    print(f"lean-spec auto: read {skill_path_format.format(step=step)} now and perform its steps for {slug!r}.")
+' "$SKILL_PATH_FORMAT" "$LEAN_SPEC")"
 
 if [ -n "$reason" ]; then
   python3 -c 'import json, sys; print(json.dumps({"decision": "block", "reason": sys.stdin.read()}))' <<< "$reason"
