@@ -26,7 +26,7 @@ Only meaningful when `bin/lean-spec next <slug>` says so (i.e.
    bin/lean-spec validate <slug> notes.md
    ```
 4. Commit: `fix(<slug>): cycle N — <summary>`.
-5. Tell the user to run `review` <slug>` next (or `auto`
+5. Tell the user to run `review <slug>` next (or `auto`
    to let the Stop-hook driver do it).
 
 ## Never does

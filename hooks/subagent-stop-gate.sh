@@ -17,11 +17,7 @@ except (ValueError, json.JSONDecodeError):
     data = {}
 print(data.get("agent_id", "") if isinstance(data, dict) else "")
 ')"
-if [ -z "$agent_id" ]; then
-  # Claude does not provide Codex's agent_id binding. Keep its established
-  # payload/auto-state resolution path so the same canonical hook continues
-  # to validate artifacts for both hosts.
-  stop_hook_active="$(printf '%s' "$payload" | python3 -c '
+stop_hook_active="$(printf '%s' "$payload" | python3 -c '
 import json, sys
 try:
     data = json.loads(sys.stdin.read())
@@ -29,7 +25,11 @@ except (json.JSONDecodeError, ValueError):
     data = {}
 print("true" if isinstance(data, dict) and data.get("stop_hook_active") else "false")
 ')"
-  [ "$stop_hook_active" = "true" ] && exit 0
+[ "$stop_hook_active" = "true" ] && exit 0
+if [ -z "$agent_id" ]; then
+  # Claude does not provide Codex's agent_id binding. Keep its established
+  # payload/auto-state resolution path so the same canonical hook continues
+  # to validate artifacts for both hosts.
   payload_slug="$(printf '%s' "$payload" | python3 -c '
 import json, sys
 try:

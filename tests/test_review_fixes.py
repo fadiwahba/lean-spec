@@ -160,6 +160,17 @@ class ValidationAndHookTests(RepoCase):
         self.assertEqual(allowed.returncode, 0, allowed.stderr)
         self.assertEqual(allowed.stdout, "")
 
+    def test_codex_subagent_stop_allows_a_hook_continuation_once(self) -> None:
+        self.ensure()
+        self.write(".lean-spec/features/demo/spec.md", "# Spec\n")
+        self.assertEqual(self.lean("advance", "demo", "specifying", "implementing").returncode, 0)
+        self.assertEqual(self.lean("dispatch", "prepare", "demo", "coder").returncode, 0)
+        self.assertEqual(self.lean("dispatch", "bind", "agent-1", "lean-spec-coder").returncode, 0)
+        payload = json.dumps({"agent_id": "agent-1", "agent_type": "lean-spec-coder", "stop_hook_active": True})
+        allowed = self.cmd("bash", str(HOOKS / "subagent-stop-gate.sh"), input=payload)
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+        self.assertEqual(allowed.stdout, "")
+
     def test_dispatch_cancel_recovers_from_a_failed_agent_launch(self) -> None:
         self.ensure()
         prepared = self.lean("dispatch", "prepare", "demo", "architect")

@@ -5,9 +5,10 @@ description: Drives every non-closed feature to closed, sequentially, one .lean-
 
 # `auto-all` [--gates-on] [--no-confirm] [--max-features=N]
 
-Same hook-owned mechanism as `auto`, with `chain_all: true` so
-`hooks/stop-auto-driver.sh` picks the next non-closed feature (sorted by
-slug) instead of stopping when one closes.
+Same CLI-owned mechanism as `auto`, with `chain_all: true` so
+`bin/lean-spec auto tick` picks the next non-closed feature (sorted by slug)
+instead of stopping when one closes. The Stop hook only forwards its event to
+that CLI command.
 
 `--no-confirm` additionally chains into speccing the *next* slice — one
 at a time, never batch-decomposed (R8 unchanged) — instead of stopping
@@ -26,7 +27,7 @@ skill behaves exactly as it always has: drains only what already has a
    - **`--no-confirm` not set:** report that and stop — this skill never
      runs `spec` to create new work.
    - **`--no-confirm` set (cold start):** before writing `auto.json` at
-     all, inline the exact same flow that `spec` --no-confirm`
+     all, inline the exact same flow that `spec --no-confirm`
      defines — **run its `## Preflight (fail-loud)` section first** (this
      is the one entry point where the PRD is most likely still an
      unfilled `init` skeleton, so skipping it is not safe
@@ -57,7 +58,7 @@ skill behaves exactly as it always has: drains only what already has a
    `cycles` to 0). When none remain **and `--no-confirm` is not set**, it
    removes `auto.json` and allows the stop. **When `--no-confirm` is
    set** and none remain, the hook instead (bounded by `max_features`)
-   points you at `spec` --no-confirm` for the next slice before
+   points you at `spec --no-confirm` for the next slice before
    falling back to the same stop once the cap is hit or the PRD is fully
    covered. Only if that architect response is exactly `NO_REMAINING_SCOPE`,
    run the exact `bin/lean-spec auto complete --run-id <id> --no-remaining-scope`
