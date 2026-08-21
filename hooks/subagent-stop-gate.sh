@@ -1,113 +1,108 @@
 #!/usr/bin/env bash
-# SubagentStop hook: the moment an agent finishes, validate the artifact its
-# phase requires. Backstops the phase-gate check that skills also run via
-# bin/lean-spec, per CONSTITUTION principle 4 (validation runs at
-# SubagentStop early, and at the phase gate as a backstop).
+# Codex SubagentStop hook. Codex supplies agent_id/agent_type, not arbitrary
+# caller metadata. The CLI binds that identity to prepared lean-spec work at
+# SubagentStart, then this hook validates the recorded artifact.
 set -euo pipefail
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 LEAN_SPEC="${PLUGIN_ROOT}/bin/lean-spec"
-
-# Active feature is resolved from on-disk state; the payload is only
-# consulted for stop_hook_active: an invalid artifact is blocked once (one
-# retry for the agent), and a continuation that still fails passes through —
-# the phase gate is the backstop (CONSTITUTION principle 4). Without this,
-# an agent that can never satisfy validation would be re-blocked forever.
 payload="$(cat || true)"
-# NOTE: pass payload on stdin, not argv — the SubagentStop payload can be
-# arbitrarily large (transcript-derived fields), and Linux caps a single
-# argv string at roughly 128KB (MAX_ARG_STRLEN). A large payload passed as
-# an argument makes python3 abort with Argument list too long, which under
-# set -euo pipefail kills this hook (fails OPEN). Stdin has no such limit.
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+agent_id="$(printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except (ValueError, json.JSONDecodeError):
+    data = {}
+print(data.get("agent_id", "") if isinstance(data, dict) else "")
+')"
 stop_hook_active="$(printf '%s' "$payload" | python3 -c '
 import json, sys
 try:
     data = json.loads(sys.stdin.read())
 except (json.JSONDecodeError, ValueError):
     data = {}
-# Valid-but-non-object JSON (a bare array/scalar) must not crash .get below.
-if not isinstance(data, dict):
-    data = {}
-print("true" if data.get("stop_hook_active") else "false")
+print("true" if isinstance(data, dict) and data.get("stop_hook_active") else "false")
 ')"
-if [ "$stop_hook_active" = "true" ]; then
-  exit 0
-fi
-
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
-resolved="$(python3 - "$PROJECT_ROOT" <<'PYEOF'
+[ "$stop_hook_active" = "true" ] && exit 0
+if [ -z "$agent_id" ]; then
+  # Claude does not provide Codex's agent_id binding. Keep its established
+  # payload/auto-state resolution path so the same canonical hook continues
+  # to validate artifacts for both hosts.
+  payload_slug="$(printf '%s' "$payload" | python3 -c '
+import json, sys
+try:
+    data = json.loads(sys.stdin.read())
+except (json.JSONDecodeError, ValueError):
+    data = {}
+lean_spec = data.get("lean_spec") if isinstance(data, dict) else {}
+slug = lean_spec.get("slug") if isinstance(lean_spec, dict) else ""
+print(slug if isinstance(slug, str) else "")
+')"
+  resolved="$(python3 - "$PROJECT_ROOT" "$payload_slug" <<'PYEOF'
 import json
 import os
 import sys
 
-root = sys.argv[1]
-auto_path = os.path.join(root, ".lean-spec", "auto.json")
-slug = None
-
-if os.path.isfile(auto_path):
+root, slug = sys.argv[1:]
+if not slug:
     try:
-        with open(auto_path) as f:
-            data = json.load(f)
-        slug = data.get("slug") if isinstance(data, dict) else None
-    except (json.JSONDecodeError, OSError):
+        with open(os.path.join(root, ".lean-spec", "auto.json")) as f:
+            auto = json.load(f)
+        slug = auto.get("slug") if isinstance(auto, dict) else None
+    except (OSError, json.JSONDecodeError):
         slug = None
-
-features_root = os.path.join(root, "features")
-if slug is None and os.path.isdir(features_root):
-    best = None
-    best_mtime = -1
-    for name in os.listdir(features_root):
-        wf_path = os.path.join(features_root, name, "workflow.json")
-        if os.path.isfile(wf_path):
-            mtime = os.path.getmtime(wf_path)
-            if mtime > best_mtime:
-                best_mtime = mtime
-                best = name
-    slug = best
-
-if slug is None:
+if not isinstance(slug, str) or not slug:
     print("__none__ __none__")
-    sys.exit(0)
-
-wf_path = os.path.join(features_root, slug, "workflow.json")
+    raise SystemExit(0)
 try:
-    with open(wf_path) as f:
-        wf = json.load(f)
-    phase = wf.get("phase", "__none__") if isinstance(wf, dict) else "__none__"
-except (json.JSONDecodeError, OSError):
-    phase = "__none__"
-
-print(f"{slug} {phase}")
+    with open(os.path.join(root, ".lean-spec", "features", slug, "workflow.json")) as f:
+        workflow = json.load(f)
+    phase = workflow.get("phase") if isinstance(workflow, dict) else None
+except (OSError, json.JSONDecodeError):
+    phase = None
+artifact = {"specifying": "spec.md", "implementing": "notes.md", "reviewing": "review.md"}.get(phase)
+print(f"{slug} {artifact or '__none__'}")
 PYEOF
 )"
-read -r slug phase <<< "$resolved"
-
-if [ "$slug" = "__none__" ] || [ -z "$slug" ]; then
+  read -r slug artifact <<< "$resolved"
+  [ "$slug" = "__none__" ] || [ "$artifact" = "__none__" ] || [ -z "$slug" ] && exit 0
+  set +e
+  validator_output="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" validate "$slug" "$artifact" 2>&1)"
+  status=$?
+  set -e
+  if [ "$status" -ne 0 ]; then
+    printf '%s' "$validator_output" | python3 -c '
+import json, sys
+print(json.dumps({"decision": "block", "reason": sys.stdin.read()}))
+'
+  fi
   exit 0
 fi
 
-case "$phase" in
-  specifying) artifact="spec.md" ;;
-  implementing) artifact="notes.md" ;;
-  reviewing) artifact="review.md" ;;
-  *) exit 0 ;;
-esac
+set +e
+identity="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" dispatch resolve "$agent_id" 2>/dev/null)"
+status=$?
+set -e
+[ "$status" -eq 0 ] || exit 0
+
+read -r slug artifact <<< "$(printf '%s' "$identity" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+print(data["slug"], data["artifact"])
+')"
 
 set +e
 validator_output="$(cd "$PROJECT_ROOT" && "$LEAN_SPEC" validate "$slug" "$artifact" 2>&1)"
 status=$?
 set -e
-
 if [ "$status" -ne 0 ]; then
-  # Same stdin-not-argv fix as above: the validator output is bounded in
-  # practice but is not exempt from the argv limit, so route it the same way.
   printf '%s' "$validator_output" | python3 -c '
-import json
-import sys
-
+import json, sys
 print(json.dumps({"decision": "block", "reason": sys.stdin.read()}))
 '
+  exit 0
 fi
 
-exit 0
+cd "$PROJECT_ROOT" && "$LEAN_SPEC" dispatch complete "$agent_id"

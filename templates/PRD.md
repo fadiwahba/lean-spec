@@ -1,7 +1,7 @@
 # <project name> — Product Requirements Document
 
 > Written by the `/lean-spec:plan` interview. What we are building; how we
-> build it lives in `docs/CONSTITUTION.md`.
+> build it lives in `.lean-spec/CONSTITUTION.md`.
 
 ## Problem & Users
 
@@ -20,6 +20,22 @@
 ## Quality Bar
 
 <!-- What "done" means: tests, review rigor, non-negotiables. -->
+
+## Existing System & Behaviour
+
+<!-- For an existing system: affected area and behaviour, users, data, APIs,
+     or integrations that must remain unchanged. For a scaffold-only project,
+     state explicitly that no product behaviour exists yet. -->
+
+## Compatibility & Migration
+
+<!-- Compatibility limits and any data/API/configuration migration. State
+     explicitly when none is required. -->
+
+## Regression Checks
+
+<!-- The regression checks and exact verification command required before a
+     feature can close. -->
 
 ## Non-Goals
 

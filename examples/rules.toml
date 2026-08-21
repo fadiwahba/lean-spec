@@ -1,14 +1,26 @@
 # per-phase owner; precedence: CLI flag > this file > agent frontmatter default
 [agents]
+# `provider` is required only when using `lean-spec provider ...` to dispatch
+# an installed headless CLI. The host may otherwise own phase dispatch.
 plan      = { model = "session" }                  # interview runs in the main session
-spec      = { model = "opus",   effort = "xhigh" }
-implement = { model = "sonnet", effort = "high" }
-review    = { model = "opus",   effort = "high" }  # switch to "sonnet" to cut cost
+# `spec`, `implement`, and `review` intentionally have no default provider.
+# Native host agents own those phases. Add a provider only for an explicit
+# `lean-spec provider run` workflow.
+# Provider values are CLI adapter IDs: `codex`, `claude`, and `gemini`.
+# Use an exact model ID accepted by the installed provider CLI. Examples:
+# implement = { provider = "codex", model = "gpt-5.4", effort = "medium" } # OpenAI Codex
+# review = { provider = "claude", model = "opus" }                          # Anthropic Claude
+# spec = { provider = "gemini", model = "gemini-3.7-flash" }                # Google Gemini
+# Codex accepts an explicit reasoning effort. Claude and Gemini have no
+# documented headless effort flag in this adapter, so omit effort for them.
+# `lean-spec provider run` additionally requires `auth_check = ["..."]`.
+# Use a command verified for your installed provider; `provider argv` does not
+# require it and safely shows the exact command before a run.
 # fix inherits implement when omitted
 
 [defaults]
 tdd = true                            # v4 default ON; --no-tdd or false to opt out
-constitution = "docs/CONSTITUTION.md" # injected into every agent dispatch prompt
+constitution = ".lean-spec/CONSTITUTION.md" # injected into every agent dispatch prompt
 required_verdict = "APPROVE"
 
 [required_sections]                   # additive, as v3

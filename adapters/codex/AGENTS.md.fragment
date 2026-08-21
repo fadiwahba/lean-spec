@@ -1,0 +1,13 @@
+<!-- lean-spec:begin -->
+# lean-spec
+
+Use `.lean-spec/runtime/bin/lean-spec` as the only writer of lean-spec state.
+Do not edit `.lean-spec/features/*/workflow.json` or `.lean-spec/auto.json` directly.
+Read the installed `.agents/skills/lean-spec-*/SKILL.md` instructions before running a lifecycle step.
+Before launching a lean-spec architect, coder, or reviewer subagent, run
+`.lean-spec/runtime/bin/lean-spec dispatch prepare <slug> <role>`. The
+SubagentStart hook binds the resulting Codex agent ID. Do not write
+`.lean-spec/dispatch.json` yourself. If the launch fails before the hook binds
+an agent ID, run `.lean-spec/runtime/bin/lean-spec dispatch cancel` before
+trying again.
+<!-- lean-spec:end -->

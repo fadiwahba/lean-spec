@@ -1,6 +1,6 @@
 # <project name> — Constitution
 
-> How we build. What we build lives in `docs/PRD.md`. Injected into every
+> How we build. What we build lives in `.lean-spec/PRD.md`. Injected into every
 > agent dispatch — keep it short.
 
 ## Stack

@@ -1,7 +1,7 @@
 # hello-cli — Product Requirements Document
 
 > F9 fixture: this is the "interview output" for the demo target project
-> used by `scripts/demo.sh` and `tests/e2e_lifecycle.bats`. It is
+> used by `scripts/demo.sh` and `tests/test_integration.py`. It is
 > hand-written here to simulate what `/lean-spec:plan`'s interview would
 > produce — no live model is involved in the e2e proof (PRD §11 F9).
 

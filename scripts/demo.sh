@@ -9,9 +9,9 @@
 # No live model: the model-driven artifacts (docs/PRD.md,
 # docs/CONSTITUTION.md, spec.md, notes.md, review.md) are simulated fixture
 # content from tests/fixtures/demo-project/, via the same helpers
-# (scripts/lib/demo-lifecycle.sh) that tests/e2e_lifecycle.bats uses — the
+# (scripts/lib/demo-lifecycle.sh) that tests/test_integration.py uses — the
 # two stay in sync by construction (DRY). This script is a human-watchable
-# walkthrough, not the correctness proof; tests/e2e_lifecycle.bats is.
+# walkthrough, not the correctness proof; the Python integration suite is.
 #
 # Usage: ./scripts/demo.sh
 set -euo pipefail

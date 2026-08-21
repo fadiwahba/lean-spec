@@ -10,7 +10,10 @@
 
 <h1 align="center">lean-spec</h1>
 
-<p align="center"><em>A Claude Code plugin that turns AI-assisted development into a disciplined lifecycle the model can't skip its way around.</em></p>
+<p align="center"><em>An agent-neutral, deterministic development lifecycle with Claude and Codex adapters.</em></p>
+
+Lean Spec supports macOS and Linux with Python 3.11+, Git, and Bash. Windows
+is not a first-class target in this release.
 
 ---
 
@@ -27,7 +30,7 @@ init → plan → spec → implement → review → close
 
 Each phase has **one owner** (a specific model + effort level), produces **one mandatory artifact** (a validated markdown file), and passes through **one gate** before the next phase can start. The rules aren't polite suggestions in a prompt — they're enforced by the harness: a state machine, file-write guards, and validation hooks that **block** the model when it tries to cut a corner.
 
-The result: a repeatable, auditable trail for every change, where `git log` and the `features/` folder tell the whole story.
+The result: a repeatable, auditable trail for every change, where `git log` and the `.lean-spec/features/` folder tell the whole story.
 
 ## Why it exists
 
@@ -104,8 +107,8 @@ claude --plugin-dir ~/tools/lean-spec
 Then drive the lifecycle from inside Claude Code:
 
 ```
-/lean-spec:init                  scaffold .lean-spec/, docs/, features/, .gitignore  (run once)
-/lean-spec:plan "<your idea>"    short interview → docs/PRD.md + docs/CONSTITUTION.md
+/lean-spec:init                  scaffold .lean-spec/, docs/, .lean-spec/features/, .gitignore  (run once)
+/lean-spec:plan "<your idea>"    short interview → .lean-spec/PRD.md + .lean-spec/CONSTITUTION.md
 /lean-spec:spec                  architect proposes & specs the NEXT slice
 /lean-spec:implement <slug>      coder implements it, RED → GREEN TDD
 /lean-spec:review <slug>         reviewer gives a verdict  (--visual for UI specs)
@@ -113,6 +116,67 @@ Then drive the lifecycle from inside Claude Code:
 /lean-spec:close <slug>          APPROVE-gated — closes the feature
 /lean-spec:next · :status        read-only: where am I, what's next
 ```
+
+### Codex
+
+Use the direct installer from a lean-spec source checkout. Run it once from
+the target Git repository:
+
+```bash
+python3 /path/to/lean-spec/adapters/codex/install.py --project "$PWD"
+```
+
+It installs project-owned runtime files below `.lean-spec/runtime`, skills in
+`.agents/skills`, custom agents in `.codex/agents`, hook configuration in
+`.codex/hooks.json`, and one marked block in root `AGENTS.md`. It is safe to
+run again. Codex discovers the installed skills as `$lean-spec-<name>`.
+
+The repository also contains a Codex plugin. If Lean Spec is available from a
+configured marketplace, install it with Codex's `/plugins` browser, start a
+new session, then run `$lean-spec-bootstrap` from the target Git repository. Bootstrap
+runs the same project installer above. Bootstrap installs project runtime,
+custom agents, `AGENTS.md` instructions, hooks, and the canonical lifecycle
+skills. Before hooks run, use Codex's `/hooks` screen to review and trust the
+project hook definitions.
+
+The installer does not use symlinks. Contributors may use symlinks locally.
+Normal project installation uses copied, versioned files. A Codex installation
+also initializes the copied rules template with this default role profile:
+
+Override it in `.lean-spec/rules.toml` before re-running the installer when
+you want different generated Codex role models:
+
+```toml
+[hosts.codex]
+spec = { model = "gpt-5.6-sol", effort = "high" }
+implement = { model = "gpt-5.6-terra", effort = "medium" }
+review = { model = "gpt-5.6-sol", effort = "high" }
+```
+
+For headless external-provider dispatch, use the commented examples in
+[`examples/rules.toml`](examples/rules.toml). Provider values are stable adapter
+IDs (`codex`, `claude`, `gemini`), not company display names.
+
+During `$lean-spec-plan`, Codex uses a structured input form when the current
+session offers it. Otherwise it asks the same grouped interview questions in
+Markdown and waits for the reply.
+
+### Project artifacts and migration
+
+Generated lean-spec artifacts live below `.lean-spec/`: `PRD.md`,
+`CONSTITUTION.md`, `features/`, and `auto.json`. To move an older project:
+
+```bash
+bin/lean-spec migrate-layout --dry-run
+bin/lean-spec migrate-layout
+```
+
+`--no-confirm` skips approval of a proposed slice. It never permits the agent
+to invent a missing requirement. `bin/lean-spec readiness --no-confirm --json`
+returns one `NEEDS_INPUT` question when a preservation, migration, or
+regression decision is missing.
+
+lean-spec sends no analytics or telemetry in this release.
 
 Repeat `spec → implement → review → close` for each feature. That's the whole loop.
 
@@ -124,8 +188,8 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 
 | Command | What it does | When to use it |
 |---|---|---|
-| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, `docs/`, `features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
-| `/lean-spec:plan ["<idea>"] [--refine] [--regenerate]` | Runs a short interview (≤3 rounds) and writes `docs/PRD.md` + `docs/CONSTITUTION.md`. Grounds itself in an existing repo's stack/conventions for brownfield. `--refine` folds in one blocker without re-interviewing; `--regenerate` redoes from scratch. | Right after `init`. Use `--refine` when a blocker discovered mid-build needs the plan changed before the next slice. |
+| `/lean-spec:init` | Scaffolds `.lean-spec/rules.toml`, project documents, `.lean-spec/features/`, and `.gitignore`. Preflights the environment (python3 ≥ 3.11, inside a git repo) and fails loud if anything's missing. Idempotent — safe to re-run. | Once, before anything else — in a new **or** existing (brownfield) project. |
+| `/lean-spec:plan ["<idea>"] [--refine] [--regenerate]` | Runs a short interview (≤3 rounds) and writes `.lean-spec/PRD.md` + `.lean-spec/CONSTITUTION.md`. Grounds itself in an existing repo's stack/conventions for brownfield. `--refine` folds in one blocker without re-interviewing; `--regenerate` redoes from scratch. | Right after `init`. Use `--refine` when a blocker discovered mid-build needs the plan changed before the next slice. |
 
 **Per-feature lifecycle — repeat for each feature**
 
@@ -147,7 +211,7 @@ Every command is a skill invoked as `/lean-spec:<name>` inside Claude Code. Flag
 
 Both `auto` and `auto-all` also accept `--gates-on` — a flag reserved for stricter per-phase confirmation. It's a no-op today (every quality gate is already always-on via the CLI/hooks); it's recorded for forward-compatibility only, so you rarely need it.
 
-Auto mode is armed and disarmed **only** through the state CLI — `bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm] [--gates-on] [--max-cycles=N] [--max-features=N]`, `auto disarm`, `auto status [--json]`. `.lean-spec/auto.json` is that CLI's file the way `workflow.json` is `advance`'s, and a direct `Write`/`Edit` of it is denied by the PreToolUse guard: once the file exists the Stop hook starts driving phases whose skills are all model-invocation-disabled, so **starting or restarting an unattended run is your call, not the model's.** Run `bin/lean-spec auto status` any time to see whether a run is armed and what armed it.
+Auto state is changed **only** through the state CLI: `bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm] [--gates-on] [--max-cycles=N] [--max-features=N]`, `auto tick --run-id <id> --event-id <id>`, `auto complete --run-id <id> --no-remaining-scope`, and `auto disarm`. `auto tick` is called by the Stop hook; `auto complete` is only for the `NO_REMAINING_SCOPE` sentinel from `auto-all --no-confirm`. `.lean-spec/auto.json` is the CLI's file the way `workflow.json` is `advance`'s. A direct edit is denied by the PreToolUse guard, so starting or restarting an unattended run remains the user's choice. Run `bin/lean-spec auto status [--json]` to inspect a run.
 
 **Read-only — safe any time**
 
@@ -176,6 +240,15 @@ required_verdict = "APPROVE"                          # what `close` demands
 "review.md" = ["Verdict", "Spec Compliance", "Code Quality"]
 ```
 
+For an explicit external CLI dispatch, add a provider and an argv-form
+authentication check. `lean-spec provider run` runs that check before it
+launches the agent command; `provider argv` only prints the safe argv.
+
+```toml
+[agents]
+implement = { provider = "codex", model = "gpt-5.6-terra", effort = "medium", auth_check = ["codex", "login", "status"] }
+```
+
 ## Who does what
 
 | Phase | Owner | Default model · effort | Writes |
@@ -189,12 +262,12 @@ By default the coder is reviewed by a *different* model family (Opus reviews Son
 
 ## Hands-free mode
 
-The `auto` / `auto-all` drivers (see the [command reference](#command-reference)) run the lifecycle unattended. `--no-confirm` turns `auto-all` into a single hands-off command for a small/simple PRD: when nothing is left to drain (mid-run, or on a fresh project with no specs yet) it chains into `/lean-spec:spec` for the next slice instead of stopping, skipping the per-slice confirmation. Specs are still written strictly one at a time (never batch-decomposed); the architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully covered.
+The `auto` / `auto-all` drivers (see the [command reference](#command-reference)) run the lifecycle unattended. `--no-confirm` turns `auto-all` into a single hands-off command for a small/simple PRD: when nothing is left to drain (mid-run, or on a fresh project with no specs yet) it routes to the host's `spec` skill for the next slice instead of stopping, skipping the per-slice confirmation. Specs are still written strictly one at a time (never batch-decomposed); the architect emits a `NO_REMAINING_SCOPE` sentinel when the PRD is fully covered. Malformed architect output stops with `NEEDS_INPUT`; it never completes the run.
 
 Or use Claude Code built-ins directly — no plugin code involved:
 
 ```
-/goal features/<slug>/workflow.json has "phase": "closed", or stop after 20 turns
+/goal .lean-spec/features/<slug>/workflow.json has "phase": "closed", or stop after 20 turns
 /loop /lean-spec:auto-all
 claude -p "/lean-spec:auto <slug>"          # headless / CI
 ```
@@ -205,26 +278,26 @@ See the whole lifecycle run against a throwaway project — real CLI, real hooks
 
 ```bash
 ./scripts/demo.sh            # needs python3, git, and bash — drives a feature specifying → closed, then shows the gates rejecting a hand-edit and a non-APPROVE close
-scripts/bootstrap-bats.sh    # one-time: vendors bats-core into .tools/ (gitignored)
-.tools/bin/bats tests/       # the full suite, incl. the CI-enforced e2e drive
+python3 -m unittest discover -s tests -p 'test_*.py'  # the full suite, incl. the CI-enforced e2e drive
 ```
 
-Details: [`tests/e2e_lifecycle.bats`](tests/e2e_lifecycle.bats) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
+Details: [`tests/test_integration.py`](tests/test_integration.py) · [`scripts/demo.sh`](scripts/demo.sh) · [`tests/fixtures/demo-project/`](tests/fixtures/demo-project/).
 
-## Documentation
+## Repository documentation
 
-- [`docs/PRD.md`](docs/PRD.md) — **what** we're building: architecture, skill surface, milestones, decisions.
-- [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) — **how** we build it: stack, invariants, delegation ladder, TDD policy, quality bars.
+- [`docs/PRD.md`](docs/PRD.md) — **what this repository builds**: architecture, skill surface, milestones, decisions.
+- [`docs/CONSTITUTION.md`](docs/CONSTITUTION.md) — **how this repository is built**: stack, invariants, delegation ladder, TDD policy, quality bars.
+- [`docs/CODEX_ADAPTER_SPEC.md`](docs/CODEX_ADAPTER_SPEC.md) — Codex adapter contract.
 
 ## Roadmap
 
 | Milestone | Scope | Status |
 |---|---|---|
-| M0 | scaffold · BATS harness · CI | ✅ done |
+| M0 | scaffold · unittest harness · CI | ✅ done |
 | M1 | state CLI + enforcement hooks | ✅ done |
 | M2 | lifecycle skills + agents | ✅ done |
 | M3 | e2e demo ✅ · ship review ✅ · marketplace publish ✅ · headless CI smoke (deferred) → **1.0** | ✅ shipped (1.0, now 1.4.x — see `CHANGELOG.md`) |
-| M5 | external provider adapters (Gemini / OpenCode / Codex) · telemetry | post-1.0 |
+| M5 | Codex adapter and explicit CLI provider routing; no telemetry | ✅ done |
 
 ## Requirements
 

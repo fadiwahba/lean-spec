@@ -2,20 +2,21 @@
 .DS_Store
 
 # lean-spec review evidence (local audit aid — review.md citations are the durable record)
-features/*/evidence/
+.lean-spec/features/*/evidence/
 
 # backups & scratch
 *.bak
 tmp/
 .superpowers/
+.worktrees/
 
 # crash-leftover atomic-write temp files (tmp + os.replace never completed)
-features/*/.workflow*
+.lean-spec/features/*/.workflow*
 .lean-spec/.auto*
 
-# vendored test harness — bootstrapped by scripts/bootstrap-bats.sh
-.tools/
 
 # python bytecode (e.g. from `py_compile bin/lean-spec`)
 __pycache__/
 *.pyc
+# local developer tool cache
+.tools/

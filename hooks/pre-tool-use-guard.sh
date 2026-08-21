@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # PreToolUse hook: blocks direct hand-edits of the two state files that have a
 # designated CLI writer (CONSTITUTION principle 2):
-#   * features/*/workflow.json  -> written only by `bin/lean-spec advance/ensure`
+#   * .lean-spec/features/*/workflow.json -> written only by `bin/lean-spec advance/ensure`
 #   * .lean-spec/auto.json      -> written only by `bin/lean-spec auto arm/disarm`
+#   * .lean-spec/dispatch.json  -> written only by `bin/lean-spec dispatch`
 # Reads the hook JSON payload from stdin, checks tool_name + file_path (or
 # MultiEdit's file_path), and emits a permissionDecision deny when the target
 # matches. Any other input: allow silently (exit 0, no output) so the hook
@@ -49,29 +50,63 @@ if not isinstance(tool_input, dict):
     print("allow")
     sys.exit(0)
 
-guarded_tools = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
-if tool_name not in guarded_tools:
-    print("allow")
-    sys.exit(0)
-
-file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
-if not isinstance(file_path, str):
-    print("allow")
-    sys.exit(0)
-
 # Normalize `.`/`..` segments so a traversal that resolves back into
-# features/<slug>/workflow.json is still caught, and match case-insensitively
+# .lean-spec/features/<slug>/workflow.json is still caught, and match case-insensitively
 # so the plugin dev platform (case-preserving APFS) cannot dodge the guard
 # with Workflow.json / WORKFLOW.JSON landing on the same on-disk file.
-normalized = os.path.normpath(file_path)
-workflow = re.compile(r"(^|/)features/[^/]+/workflow\.json$", re.IGNORECASE)
+workflow = re.compile(r"(^|/)\.lean-spec/features/[^/]+/workflow\.json$", re.IGNORECASE)
 auto = re.compile(r"(^|/)\.lean-spec/auto\.json$", re.IGNORECASE)
-if workflow.search(normalized):
-    print("deny:workflow")
-elif auto.search(normalized):
-    print("deny:auto")
+dispatch = re.compile(r"(^|/)\.lean-spec/dispatch\.json$", re.IGNORECASE)
+
+if tool_name == "apply_patch":
+    # Codex sends the full patch in `command`. Keep `patch` as a
+    # compatibility fallback for hosts that use the older shape.
+    patch = tool_input.get("command") or tool_input.get("patch", "")
+    if not isinstance(patch, str):
+        print("allow")
+        sys.exit(0)
+    paths = re.findall(r"^\*\*\* (?:Add|Delete|Update) File: (.+)$", patch, re.MULTILINE)
+elif tool_name in {"Write", "Edit", "MultiEdit", "NotebookEdit"}:
+    file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+    paths = [file_path] if isinstance(file_path, str) else []
+elif tool_name == "Bash":
+    command = tool_input.get("command", "")
+    if not isinstance(command, str):
+        print("allow")
+        sys.exit(0)
+    # Shell syntax and embedded interpreters cannot be parsed safely enough
+    # to distinguish every direct write. The designated CLI never needs a
+    # state-file path, so deny any command that refers to one.
+    command = command.replace(chr(39), " ")
+    shell_workflow = re.compile(r"(^|[\s\"/])\.lean-spec/features/[^\s\"/]+/workflow\.json(?=$|[\s\";|&])", re.IGNORECASE)
+    shell_auto = re.compile(r"(^|[\s\"/])\.lean-spec/auto\.json(?=$|[\s\";|&])", re.IGNORECASE)
+    shell_dispatch = re.compile(r"(^|[\s\"/])\.lean-spec/dispatch\.json(?=$|[\s\";|&])", re.IGNORECASE)
+    if shell_workflow.search(command):
+        print("deny:workflow")
+        sys.exit(0)
+    if shell_auto.search(command):
+        print("deny:auto")
+        sys.exit(0)
+    if shell_dispatch.search(command):
+        print("deny:dispatch")
+        sys.exit(0)
+    paths = []
 else:
     print("allow")
+    sys.exit(0)
+
+for file_path in paths:
+    normalized = os.path.normpath(file_path)
+    if workflow.search(normalized):
+        print("deny:workflow")
+        sys.exit(0)
+    if auto.search(normalized):
+        print("deny:auto")
+        sys.exit(0)
+    if dispatch.search(normalized):
+        print("deny:dispatch")
+        sys.exit(0)
+print("allow")
 ')"
 
 # Build the decision with json.dumps, NEVER string interpolation into a JSON
@@ -99,6 +134,10 @@ fi
 
 if [ "$decision" = "deny:auto" ]; then
   emit_deny ".lean-spec/auto.json is owned by the auto-driver — never hand-written. Use \`${PLUGIN_ROOT}/bin/lean-spec auto arm <slug> [--chain-all] [--no-confirm]\` (or \`auto disarm\`), or ask the user to run /lean-spec:auto (one feature) or /lean-spec:auto-all (every non-closed feature). Arming a run the user did not ask for is not yours to decide."
+fi
+
+if [ "$decision" = "deny:dispatch" ]; then
+  emit_deny ".lean-spec/dispatch.json is owned by the dispatch bridge — never hand-written. Let the active host adapter bind the explicit work identity through \`bin/lean-spec dispatch\`."
 fi
 
 exit 0

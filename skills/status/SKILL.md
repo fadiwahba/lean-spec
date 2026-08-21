@@ -3,7 +3,7 @@ name: status
 description: Read-only — reports current phase (and, in reviewing, the verdict) for one feature or every feature, by calling bin/lean-spec status. Safe to invoke any time; makes no state changes.
 ---
 
-# /lean-spec:status [<slug>]
+# `status` [<slug>]
 
 Passthrough to the CLI — this skill contains no logic of its own.
 

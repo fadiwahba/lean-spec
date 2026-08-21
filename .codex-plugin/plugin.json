@@ -1,0 +1,22 @@
+{
+  "name": "lean-spec",
+  "version": "1.6.0",
+  "description": "Deterministic, spec-driven development lifecycle with CLI-enforced artifacts and phase gates.",
+  "author": {
+    "name": "Fady Soliman"
+  },
+  "homepage": "https://github.com/fadiwahba/lean-spec",
+  "repository": "https://github.com/fadiwahba/lean-spec",
+  "license": "MIT",
+  "keywords": ["spec-driven-development", "tdd", "workflow", "lifecycle"],
+  "skills": "./adapters/codex/plugin/skills/",
+  "interface": {
+    "displayName": "Lean Spec",
+    "shortDescription": "Deterministic development lifecycle",
+    "longDescription": "A host-neutral lifecycle where the CLI validates artifacts and owns phase state.",
+    "developerName": "Fady Soliman",
+    "category": "Productivity",
+    "capabilities": ["Write"],
+    "websiteURL": "https://github.com/fadiwahba/lean-spec"
+  }
+}

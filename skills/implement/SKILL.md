@@ -1,10 +1,9 @@
 ---
 name: implement
 description: Advances a specced feature to implementing and dispatches the coder agent to build it with mandatory TDD (RED then GREEN), writing notes.md. Use --no-tdd to opt out for a spike.
-disable-model-invocation: true
 ---
 
-# /lean-spec:implement <slug> [--tdd|--no-tdd]
+# `implement` <slug> [--tdd|--no-tdd]
 
 ## Steps
 
@@ -19,9 +18,10 @@ disable-model-invocation: true
    only the global default and rejects a `--no-tdd` `notes.md`. If the
    transition fails (wrong phase), stop and show the CLI's message; do
    not force it.
-3. Dispatch the `coder` agent via Task, with `docs/CONSTITUTION.md`
-   injected, `features/<slug>/spec.md`, and the resolved TDD mode. The
-   coder implements and writes `features/<slug>/notes.md` (with `## TDD`
+3. Give the active host adapter the explicit work identity, then dispatch the
+   `coder` agent as a subagent, with `.lean-spec/CONSTITUTION.md`
+   injected, `.lean-spec/features/<slug>/spec.md`, and the resolved TDD mode. The
+   coder implements and writes `.lean-spec/features/<slug>/notes.md` (with `## TDD`
    evidence when TDD mode is on).
 4. `SubagentStop` validates `notes.md` automatically when the coder
    finishes. Backstop:

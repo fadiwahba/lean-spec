@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""lean-spec state CLI — the only writer of features/<slug>/workflow.json.
+"""lean-spec state CLI — the only writer of workflow state.
 
 Layer rule (see docs/CONSTITUTION.md): skills describe, hooks enforce, this
 CLI mutates. Nothing outside this file may write workflow.json.
 
 Subcommands:
-    ensure <slug>                  create workflow.json if absent (idempotent)
+    ensure <slug>                  create .lean-spec/features/<slug>/workflow.json if absent
     advance <slug> <from> <to>     atomic phase transition (tmp + os.replace)
     assert <slug> <phase>          exit 2 if current phase != <phase>
     validate <slug> <artifact>     rules.toml-driven artifact checks
@@ -14,6 +14,7 @@ Subcommands:
     auto arm <slug> [flags]        arm the Stop-hook auto driver (.lean-spec/auto.json)
     auto disarm                    remove .lean-spec/auto.json
     auto status [--json]           read-only auto-mode report
+    migrate-layout [--dry-run]     move legacy docs/ and features/ below .lean-spec/
 
 Exit codes:
     0   success
@@ -30,12 +31,14 @@ determinism without a tokenizer dependency (stdlib only) — it is not exact
 LLM-token accounting, just a cheap cap to catch runaway artifacts.
 """
 import fcntl
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -93,8 +96,16 @@ def validate_slug(slug):
         )
 
 
+def artifact_root(root):
+    return os.path.join(root, ".lean-spec")
+
+
+def project_doc_path(root, artifact):
+    return os.path.join(artifact_root(root), artifact)
+
+
 def feature_dir(root, slug):
-    return os.path.join(root, "features", slug)
+    return os.path.join(artifact_root(root), "features", slug)
 
 
 def workflow_path(root, slug):
@@ -111,7 +122,7 @@ def atomic_write_json(path, data, tmp_prefix=".workflowXXXXXX"):
     rather than leaving it 0600.
 
     `tmp_prefix` selects the crash-leftover pattern .gitignore already covers
-    (`features/*/.workflow*` for workflow.json, `.lean-spec/.auto*` for
+    (`.lean-spec/features/*/.workflow*` for workflow.json, `.lean-spec/.auto*` for
     auto.json) — a mismatched prefix would leave an interrupted write visible
     in `git status`.
     """
@@ -141,7 +152,7 @@ def atomic_write_json(path, data, tmp_prefix=".workflowXXXXXX"):
 @contextmanager
 def feature_lock(root, slug):
     """Advisory exclusive lock serializing a feature's read-modify-write.
-    The lockfile matches the gitignored `features/*/.workflow*` pattern, so
+    The lockfile matches the gitignored `.lean-spec/features/*/.workflow*` pattern, so
     it never shows up in git status. fcntl.flock is POSIX (macOS + Linux)."""
     d = feature_dir(root, slug)
     os.makedirs(d, exist_ok=True)
@@ -221,6 +232,9 @@ def _gate_close_requires_verdict(root, slug):
         verdict = extract_verdict(f.read())
     if verdict != required:
         fail(f"cannot close '{slug}': review.md verdict is '{verdict}', required '{required}'", 2)
+    errors = validate_artifact(root, slug, "review.md", rules)
+    if errors:
+        fail(f"cannot close '{slug}': " + "; ".join(errors), 2)
 
 
 def _gate_fix_requires_needs_fixes(root, slug):
@@ -265,21 +279,26 @@ def cmd_advance(root, args):
     # the notes.md gate honors a spike opt-out instead of only reading the
     # global rules.toml default (which the model cannot vary per feature).
     tdd_override = None
+    visual_review = False
     positional = []
     for a in args:
         if a == "--no-tdd":
             tdd_override = False
         elif a == "--tdd":
             tdd_override = True
+        elif a == "--visual":
+            visual_review = True
         else:
             positional.append(a)
     if len(positional) != 3:
-        fail("usage: lean-spec advance <slug> <from> <to> [--tdd|--no-tdd]", 1)
+        fail("usage: lean-spec advance <slug> <from> <to> [--tdd|--no-tdd] [--visual]", 1)
     slug, frm, to = positional
     validate_slug(slug)
     for p in (frm, to):
         if p not in VALID_PHASES:
             fail(f"unknown phase '{p}' — valid phases: {', '.join(VALID_PHASES)}", 1)
+    if visual_review and (frm, to) != ("implementing", "reviewing"):
+        fail("--visual is only valid for the implementing -> reviewing transition", 1)
     # Fail fast on a missing feature before feature_lock's makedirs creates a
     # (lockfile-only) directory for a slug that was never `ensure`d. The real
     # check still runs inside the lock below; this only avoids the litter.
@@ -306,6 +325,8 @@ def cmd_advance(root, args):
         wf["updated_at"] = ts
         if tdd_override is not None:
             wf["tdd"] = tdd_override
+        if visual_review:
+            wf["visual_review"] = True
         wf.setdefault("history", []).append({"from": frm, "to": to, "at": ts})
         path = workflow_path(root, slug)
         atomic_write_json(path, wf)
@@ -338,6 +359,7 @@ def cmd_assert(root, args):
 
 DEFAULT_RULES = {
     "defaults": {"tdd": True, "required_verdict": "APPROVE"},
+    "agents": {},
     "required_sections": {},
     "max_tokens": {},
 }
@@ -348,6 +370,7 @@ def load_rules(root):
     path = os.path.join(root, ".lean-spec", "rules.toml")
     rules = {
         "defaults": dict(DEFAULT_RULES["defaults"]),
+        "agents": {},
         "required_sections": {},
         "max_tokens": {},
     }
@@ -363,7 +386,7 @@ def load_rules(root):
     # tables. A wrong-typed container (e.g. `required_sections = "foo"`) would
     # otherwise blow up the .update() below with a raw traceback — validate
     # the container shape before the value shapes (CONSTITUTION principle 8).
-    for key in ("defaults", "required_sections", "max_tokens"):
+    for key in ("defaults", "agents", "required_sections", "max_tokens"):
         if key in data and not isinstance(data[key], dict):
             fail(
                 f"invalid .lean-spec/rules.toml: [{key}] must be a table "
@@ -371,6 +394,7 @@ def load_rules(root):
                 1,
             )
     rules["defaults"].update(data.get("defaults", {}))
+    rules["agents"].update(data.get("agents", {}))
     rules["required_sections"].update(data.get("required_sections", {}))
     rules["max_tokens"].update(data.get("max_tokens", {}))
 
@@ -408,6 +432,58 @@ def load_rules(root):
             1,
         )
     return rules
+
+
+def cmd_provider(root, args):
+    if len(args) < 3 or args[0] not in ("argv", "run"):
+        fail("usage: lean-spec provider argv|run <owner> --prompt <text>", 1)
+    action, owner = args[:2]
+    if args[2:3] != ["--prompt"] or len(args) != 4:
+        fail("usage: lean-spec provider argv|run <owner> --prompt <text>", 1)
+    config = load_rules(root)["agents"].get(owner)
+    if not isinstance(config, dict):
+        fail(f"provider configuration missing for owner '{owner}' in [agents]", 1)
+    provider = config.get("provider")
+    model = config.get("model")
+    effort = config.get("effort")
+    if not isinstance(provider, str):
+        fail(f"provider configuration for '{owner}' requires provider", 1)
+    if effort is not None and not isinstance(effort, str):
+        fail(f"provider configuration for '{owner}' has invalid effort", 1)
+    try:
+        module_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "adapters")
+        if module_dir not in sys.path:
+            sys.path.insert(0, module_dir)
+        from providers import build_argv, require_executable
+        argv = build_argv(provider, model, effort, args[3])
+        require_executable(argv)
+    except ValueError as error:
+        fail(str(error), 1)
+    if action == "argv":
+        print(json.dumps({"schema_version": 1, "owner": owner, "provider": provider, "argv": argv}))
+        return 0
+    auth_check = config.get("auth_check")
+    if not isinstance(auth_check, list) or not auth_check or not all(
+        isinstance(part, str) and part for part in auth_check
+    ):
+        fail(
+            f"provider configuration for '{owner}' requires auth_check as a non-empty argv list before provider run",
+            1,
+        )
+    try:
+        require_executable(auth_check)
+    except ValueError as error:
+        fail(str(error), 1)
+    auth = subprocess.run(auth_check, cwd=root, capture_output=True, text=True)
+    if auth.returncode != 0:
+        message = auth.stderr.strip() or auth.stdout.strip() or "authentication check returned a non-zero exit status"
+        fail(f"provider '{provider}' authentication check failed: {message}", 1)
+    completed = subprocess.run(argv, cwd=root, capture_output=True, text=True)
+    if completed.returncode != 0:
+        message = completed.stderr.strip() or completed.stdout.strip() or "provider command failed"
+        fail(f"provider '{provider}' failed: {message}", 2)
+    print(completed.stdout, end="")
+    return 0
 
 
 VERDICT_RE = re.compile(r"^verdict:\s*(APPROVE|NEEDS_FIXES|BLOCKED)\b", re.IGNORECASE)
@@ -450,8 +526,8 @@ def _is_unfilled(body):
     return HTML_COMMENT_RE.sub("", body).strip() == ""
 
 
-# Built-in baseline sections for the two project-level docs (docs/PRD.md,
-# docs/CONSTITUTION.md), matching templates/{PRD,CONSTITUTION}.md. These are
+# Built-in baseline sections for the two project-level docs
+# (.lean-spec/PRD.md, .lean-spec/CONSTITUTION.md), matching templates. These are
 # not part of the per-feature rules.toml surface documented in PRD §7 (which
 # only covers spec.md/notes.md/review.md); the plan skill still needs a CLI
 # check (layer rule: no gate logic in skill prompts), so this baseline
@@ -462,12 +538,88 @@ PROJECT_DOC_SECTIONS = {
     "CONSTITUTION.md": ["Stack", "Principles", "Delegation", "Quality Bars", "Process", "Non-Goals"],
 }
 
+READINESS_SECTIONS = (
+    (
+        "Existing System & Behaviour",
+        "What existing product behaviour, users, data, APIs, or integrations must remain unchanged?",
+        "The feature workflow cannot decide compatibility requirements without an explicit preservation boundary.",
+    ),
+    (
+        "Compatibility & Migration",
+        "What compatibility limits or migration requirements apply, or should the project record that none are needed?",
+        "An unattended run must not guess whether existing users, data, or clients need a migration path.",
+    ),
+    (
+        "Regression Checks",
+        "Which regression checks and verification command must pass before a feature can close?",
+        "The project needs an explicit regression check before unattended implementation can start.",
+    ),
+)
+
+
+def emit_outcome(result, as_json):
+    """Emit the host-neutral, versioned workflow result contract."""
+    if as_json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
+    outcome = result["outcome"]
+    if outcome == "NEEDS_INPUT":
+        print(f"{outcome}: {result['question']}")
+    elif outcome == "READY":
+        print(f"{outcome}: {result['step']}")
+    else:
+        print(outcome)
+
+
+def project_readiness(root):
+    prd_path = project_doc_path(root, "PRD.md")
+    if not os.path.isfile(prd_path):
+        return READINESS_SECTIONS[0]
+    with open(prd_path, encoding="utf-8") as f:
+        bodies = _section_bodies(f.read())
+    for requirement in READINESS_SECTIONS:
+        section = requirement[0]
+        if section not in bodies or _is_unfilled(bodies[section]):
+            return requirement
+    return None
+
+
+def cmd_readiness(root, args):
+    as_json = "--json" in args
+    args = [arg for arg in args if arg != "--json"]
+    if args not in ([], ["--no-confirm"]):
+        fail("usage: lean-spec readiness [--no-confirm] [--json]", 1)
+
+    missing = project_readiness(root)
+    if missing is not None:
+        _, question, reason = missing
+        emit_outcome({
+            "schema_version": 1,
+            "outcome": "NEEDS_INPUT",
+            "input_scope": "project",
+            "slug": None,
+            "question": question,
+            "reason": reason,
+            "resume_step": "plan",
+        }, as_json)
+        return 0
+    emit_outcome({
+        "schema_version": 1,
+        "outcome": "READY",
+        "step": "spec",
+        "slug": None,
+        "owner": "architect",
+        "artifact": "spec.md",
+        "gate": "project-readiness-valid",
+    }, as_json)
+    return 0
+
 
 def validate_artifact(root, slug, artifact, rules, project=False):
     """Returns list of error strings; empty list means valid."""
     errors = []
     if project:
-        path = os.path.join(root, "docs", artifact)
+        path = project_doc_path(root, artifact)
     else:
         path = os.path.join(feature_dir(root, slug), artifact)
     if not os.path.isfile(path):
@@ -503,17 +655,14 @@ def validate_artifact(root, slug, artifact, rules, project=False):
     if missing:
         errors.append(f"{artifact} missing required section(s): {', '.join(missing)}")
 
-    if project:
-        bodies = _section_bodies(text)
-        unfilled = [
-            s for s in required
-            if s in headings and _is_unfilled(bodies.get(s, ""))
-        ]
-        if unfilled:
-            errors.append(
-                f"{artifact} has unfilled placeholder section(s): "
-                f"{', '.join(unfilled)} — run /lean-spec:plan to fill them"
-            )
+    bodies = _section_bodies(text)
+    unfilled = [s for s in required if s in headings and _is_unfilled(bodies.get(s, ""))]
+    if unfilled:
+        remedy = "run /lean-spec:plan to fill them" if project else "write the required artifact content"
+        errors.append(
+            f"{artifact} has unfilled placeholder section(s): "
+            f"{', '.join(unfilled)} — {remedy}"
+        )
 
     cap = rules["max_tokens"].get(artifact)
     if cap is not None:
@@ -525,6 +674,25 @@ def validate_artifact(root, slug, artifact, rules, project=False):
         verdict = extract_verdict(text)
         if verdict is None:
             errors.append("review.md missing a 'verdict: APPROVE|NEEDS_FIXES|BLOCKED' line")
+        workflow = load_workflow(root, slug, required=False)
+        if isinstance(workflow, dict) and workflow.get("visual_review") is True:
+            if "Visual Fidelity" not in headings:
+                errors.append("review.md missing required Visual Fidelity section for a visual review")
+            prefix = f".lean-spec/features/{slug}/evidence/visual/"
+            citations = re.findall(re.escape(prefix) + r"[^\s)]+|evidence/visual/[^\s)]+", text)
+            if not citations:
+                errors.append("review.md has no cited visual evidence file")
+            visual_root = os.path.realpath(os.path.join(feature_dir(root, slug), "evidence", "visual"))
+            for citation in citations:
+                if citation.startswith(prefix):
+                    evidence_path = os.path.join(root, citation)
+                else:
+                    evidence_path = os.path.join(feature_dir(root, slug), citation)
+                resolved = os.path.realpath(evidence_path)
+                if os.path.commonpath((visual_root, resolved)) != visual_root:
+                    errors.append(f"visual evidence citation escapes evidence/visual: {citation}")
+                elif not os.path.isfile(resolved):
+                    errors.append(f"cited visual evidence file not found: {citation}")
 
     return errors
 
@@ -534,7 +702,7 @@ def cmd_validate(root, args):
         artifact = args[1]
         rules = load_rules(root)
         errors = validate_artifact(root, None, artifact, rules, project=True)
-        label = f"docs/{artifact}"
+        label = f".lean-spec/{artifact}"
     elif len(args) == 2:
         slug, artifact = args
         validate_slug(slug)
@@ -555,17 +723,40 @@ def cmd_validate(root, args):
 # next
 # ---------------------------------------------------------------------------
 
+NEXT_STEP_IDENTITY = {
+    "implement": ("coder", "notes.md", "implementation-artifact-valid", "implementing"),
+    "review": ("reviewer", "review.md", "review-artifact-valid", "reviewing"),
+    "close": ("orchestrator", "review.md", "approval-verdict-valid", "closed"),
+    "fix": ("coder", "notes.md", "needs-fixes-verdict-valid", "implementing"),
+}
+
+
+def _next_skill(result, step):
+    owner, artifact, gate, expected_phase = NEXT_STEP_IDENTITY[step]
+    result.update({
+        "action": "skill",
+        "step": step,
+        "outcome": "READY",
+        "owner": owner,
+        "artifact": artifact,
+        "gate": gate,
+        "expected_phase": expected_phase,
+    })
+
+
 def resolve_next(root, slug):
-    """Returns dict: {slug, phase, action, skill, reason}."""
+    """Returns host-neutral next-step data for a feature."""
     wf = load_workflow(root, slug)
     phase = wf.get("phase")
-    result = {"slug": slug, "phase": phase, "action": None, "skill": None, "reason": None}
+    result = {
+        "schema_version": 1, "slug": slug, "phase": phase, "action": None,
+        "step": None, "reason": None, "outcome": None, "owner": None,
+        "artifact": None, "gate": None, "expected_phase": phase,
+    }
     if phase == "specifying":
-        result["action"] = "skill"
-        result["skill"] = "/lean-spec:implement"
+        _next_skill(result, "implement")
     elif phase == "implementing":
-        result["action"] = "skill"
-        result["skill"] = "/lean-spec:review"
+        _next_skill(result, "review")
     elif phase == "reviewing":
         review_path = os.path.join(feature_dir(root, slug), "review.md")
         if not os.path.isfile(review_path):
@@ -575,35 +766,37 @@ def resolve_next(root, slug):
             with open(review_path) as f:
                 verdict = extract_verdict(f.read())
             if verdict == "APPROVE":
-                result["action"] = "skill"
-                result["skill"] = "/lean-spec:close"
+                _next_skill(result, "close")
             elif verdict == "NEEDS_FIXES":
-                result["action"] = "skill"
-                result["skill"] = "/lean-spec:fix"
+                _next_skill(result, "fix")
             elif verdict == "BLOCKED":
                 result["action"] = "blocked"
+                result["outcome"] = "BLOCKED"
                 result["reason"] = "review.md verdict is BLOCKED — escalate"
             else:
                 result["action"] = "blocked"
+                result["outcome"] = "BLOCKED"
                 result["reason"] = "review.md missing a valid verdict line"
     elif phase == "closed":
         result["action"] = "closed"
+        result["outcome"] = "COMPLETE"
     else:
         result["action"] = "blocked"
+        result["outcome"] = "BLOCKED"
         result["reason"] = f"unknown phase '{phase}'"
     return result
 
 
 def format_next_text(r):
     if r["action"] == "skill":
-        return f"{r['skill']} {r['slug']}"
+        return f"/lean-spec:{r['step']} {r['slug']}"
     if r["action"] == "closed":
         return f"{r['slug']}: closed — nothing to do"
     return f"{r['slug']}: blocked — {r['reason']}"
 
 
 def list_feature_slugs(root):
-    features_root = os.path.join(root, "features")
+    features_root = os.path.join(artifact_root(root), "features")
     if not os.path.isdir(features_root):
         return []
     slugs = []
@@ -656,10 +849,23 @@ AUTO_DIR = ".lean-spec"
 AUTO_FILE = "auto.json"
 DEFAULT_MAX_CYCLES = 20
 DEFAULT_MAX_FEATURES = 20
+AUTO_EVENT_HISTORY_LIMIT = 32
 
 
 def auto_path(root):
     return os.path.join(root, AUTO_DIR, AUTO_FILE)
+
+
+@contextmanager
+def auto_lock(root):
+    directory = artifact_root(root)
+    os.makedirs(directory, exist_ok=True)
+    fd = os.open(os.path.join(directory, ".auto.lock"), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 def load_auto(root):
@@ -678,6 +884,14 @@ def load_auto(root):
     return data
 
 
+def auto_run_id(data):
+    run_id = data.get("run_id")
+    if isinstance(run_id, str) and run_id:
+        return run_id
+    legacy = json.dumps(data, sort_keys=True, separators=(",", ":"))
+    return "legacy-" + hashlib.sha256(legacy.encode()).hexdigest()[:24]
+
+
 def _parse_positive_int(raw, flag):
     try:
         value = int(raw)
@@ -685,6 +899,20 @@ def _parse_positive_int(raw, flag):
         fail(f"{flag} must be an integer (found '{raw}')", 1)
     if value < 1:
         fail(f"{flag} must be >= 1 (found {value})", 1)
+    return value
+
+
+def _auto_int(data, key, default, minimum=0):
+    value = data.get(key, default)
+    if isinstance(value, bool):
+        fail(f"auto tick rejected: {key} must be an integer", 1)
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        fail(f"auto tick rejected: {key} must be an integer", 1)
+    if value < minimum:
+        fail(f"auto tick rejected: {key} must be >= {minimum}", 1)
+    data[key] = value
     return value
 
 
@@ -731,8 +959,14 @@ def cmd_auto_arm(root, args):
     if no_confirm and not chain_all:
         fail("--no-confirm requires --chain-all (it only governs the end of a chain)", 1)
 
+    initial_next = resolve_next(root, slug)
+    expected_phase = initial_next["expected_phase"] if initial_next["action"] == "skill" else initial_next["phase"]
     data = {
+        "schema_version": 1,
+        "run_id": str(uuid.uuid4()),
         "slug": slug,
+        "expected_phase": expected_phase,
+        "status": "armed",
         "gates_on": gates_on,
         "max_cycles": max_cycles,
         "cycles": 0,
@@ -743,6 +977,7 @@ def cmd_auto_arm(root, args):
         # See docs/CONSTITUTION.md "Known gap".
         "armed_by": "command",
         "armed_at": now_iso(),
+        "event_history": [],
     }
     if chain_all:
         data["chain_all"] = True
@@ -751,6 +986,188 @@ def cmd_auto_arm(root, args):
             data["max_features"] = max_features
             data["features_specced"] = 0
     atomic_write_json(auto_path(root), data, tmp_prefix=".autoXXXXXX")
+    return 0
+
+
+def _auto_result(outcome, data, **extra):
+    result = {
+        "schema_version": 1,
+        "outcome": outcome,
+        "run_id": auto_run_id(data),
+        "slug": data["slug"],
+        "expected_phase": data["expected_phase"],
+    }
+    result.update(extra)
+    return result
+
+
+def _write_auto_result(root, data, event_id, result):
+    data["last_event_id"] = event_id
+    data["last_result"] = result
+    history = data.get("event_history")
+    if not isinstance(history, list):
+        history = []
+    history = [item for item in history if isinstance(item, dict) and item.get("event_id") != event_id]
+    history.append({"event_id": event_id, "result": result})
+    data["event_history"] = history[-AUTO_EVENT_HISTORY_LIMIT:]
+    atomic_write_json(auto_path(root), data, tmp_prefix=".autoXXXXXX")
+    persisted = load_auto(root)
+    if (
+        persisted is None
+        or persisted.get("last_event_id") != event_id
+        or persisted.get("last_result") != result
+    ):
+        fail("auto state write could not be verified", 1)
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
+def _next_non_closed_slug(root):
+    for candidate in list_feature_slugs(root):
+        if load_workflow(root, candidate).get("phase") != "closed":
+            return candidate
+    return None
+
+
+def cmd_auto_tick(root, args):
+    run_id = event_id = None
+    as_json = False
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == "--json":
+            as_json = True
+        elif arg in ("--run-id", "--event-id"):
+            if index + 1 >= len(args):
+                fail(f"{arg} requires a value", 1)
+            value = args[index + 1]
+            if arg == "--run-id":
+                run_id = value
+            else:
+                event_id = value
+            index += 1
+        else:
+            fail("usage: lean-spec auto tick --run-id <id> --event-id <id> [--json]", 1)
+        index += 1
+    if not run_id or not event_id:
+        fail("usage: lean-spec auto tick --run-id <id> --event-id <id> [--json]", 1)
+
+    with auto_lock(root):
+        data = load_auto(root)
+        if data is None:
+            fail("auto run is disarmed", 2)
+        if auto_run_id(data) != run_id:
+            fail("auto tick rejected: run id does not match the armed run", 2)
+        for item in reversed(data.get("event_history", [])):
+            if isinstance(item, dict) and item.get("event_id") == event_id and isinstance(item.get("result"), dict):
+                print(json.dumps(item["result"], indent=2, sort_keys=True))
+                return 0
+        if data.get("last_event_id") == event_id:
+            result = data.get("last_result")
+            if not isinstance(result, dict):
+                fail("auto tick rejected: duplicate event has no stored result", 1)
+            print(json.dumps(result, indent=2, sort_keys=True))
+            return 0
+        if data.get("status") in {"complete", "blocked"}:
+            fail(f"auto tick rejected: run is {data['status']}", 2)
+
+        slug = data.get("slug")
+        if not isinstance(slug, str):
+            fail("auto tick rejected: armed run is missing slug", 1)
+        workflow = load_workflow(root, slug)
+        expected_phase = data.get("expected_phase", workflow.get("phase"))
+        if not isinstance(expected_phase, str):
+            fail("auto tick rejected: armed run has an invalid expected phase", 1)
+        if workflow.get("phase") != expected_phase:
+            fail(
+                f"auto tick rejected: expected phase '{expected_phase}', found '{workflow.get('phase')}'",
+                2,
+            )
+        data.setdefault("schema_version", 1)
+        data.setdefault("run_id", run_id)
+        data.setdefault("expected_phase", expected_phase)
+        data.setdefault("status", "armed")
+
+        if data.get("no_confirm"):
+            missing = project_readiness(root)
+            if missing is not None:
+                _, question, reason = missing
+                result = {
+                    "schema_version": 1,
+                    "outcome": "NEEDS_INPUT",
+                    "input_scope": "project",
+                    "slug": slug,
+                    "question": question,
+                    "reason": reason,
+                    "resume_step": "plan",
+                }
+                data["status"] = "needs_input"
+                data["pending_input"] = result
+                _write_auto_result(root, data, event_id, result)
+                return 0
+            if data.get("status") == "needs_input":
+                data["status"] = "armed"
+                data.pop("pending_input", None)
+        cycles = _auto_int(data, "cycles", 0)
+        max_cycles = _auto_int(data, "max_cycles", DEFAULT_MAX_CYCLES, 1)
+
+        next_state = resolve_next(root, slug)
+        action = next_state["action"]
+        if action == "skill":
+            if cycles >= max_cycles:
+                data["status"] = "blocked"
+                result = _auto_result("BLOCKED", data, reason="maximum auto cycles reached")
+            else:
+                data["cycles"] = cycles + 1
+                data["expected_phase"] = next_state["expected_phase"]
+                result = _auto_result(
+                    "READY", data,
+                    next_step=next_state["step"],
+                    owner=next_state["owner"],
+                    artifact=next_state["artifact"],
+                    gate=next_state["gate"],
+                )
+        elif action == "blocked":
+            data["status"] = "blocked"
+            result = _auto_result("BLOCKED", data, reason=next_state["reason"])
+        elif action == "closed":
+            if data.get("chain_all"):
+                next_slug = _next_non_closed_slug(root)
+                if next_slug is not None:
+                    next_workflow = load_workflow(root, next_slug)
+                    data["slug"] = next_slug
+                    data["expected_phase"] = next_workflow["phase"]
+                    data["cycles"] = 0
+                    next_state = resolve_next(root, next_slug)
+                    if next_state["action"] == "skill":
+                        data["expected_phase"] = next_state["expected_phase"]
+                        result = _auto_result(
+                            "READY", data,
+                            next_step=next_state["step"],
+                            owner=next_state["owner"],
+                            artifact=next_state["artifact"],
+                            gate=next_state["gate"],
+                        )
+                    else:
+                        data["status"] = "blocked"
+                        result = _auto_result("BLOCKED", data, reason="next chained feature is not actionable")
+                elif data.get("no_confirm"):
+                    features_specced = _auto_int(data, "features_specced", 0)
+                    max_features = _auto_int(data, "max_features", DEFAULT_MAX_FEATURES, 1)
+                    if features_specced >= max_features:
+                        data["status"] = "complete"
+                        result = _auto_result("COMPLETE", data)
+                    else:
+                        data["features_specced"] = features_specced + 1
+                        result = _auto_result("READY", data, next_step="spec")
+                else:
+                    data["status"] = "complete"
+                    result = _auto_result("COMPLETE", data)
+            else:
+                data["status"] = "complete"
+                result = _auto_result("COMPLETE", data)
+        else:
+            fail("auto tick rejected: unknown next-step action", 1)
+        _write_auto_result(root, data, event_id, result)
     return 0
 
 
@@ -777,7 +1194,8 @@ def cmd_auto_status(root, args):
             print(f"{PROG}: auto: disarmed")
         return 0
     info = dict(data)
-    info["armed"] = True
+    info["run_id"] = auto_run_id(data)
+    info["armed"] = data.get("status") in {"armed", "needs_input"}
     if as_json:
         print(json.dumps(info, indent=2, sort_keys=True))
     else:
@@ -786,11 +1204,160 @@ def cmd_auto_status(root, args):
     return 0
 
 
+def cmd_auto_complete(root, args):
+    as_json = "--json" in args
+    args = [arg for arg in args if arg != "--json"]
+    if len(args) != 3 or args[0] != "--run-id" or args[2] != "--no-remaining-scope":
+        fail("usage: lean-spec auto complete --run-id <id> --no-remaining-scope [--json]", 1)
+    run_id = args[1]
+    with auto_lock(root):
+        data = load_auto(root)
+        if data is None:
+            fail("auto run is disarmed", 2)
+        if auto_run_id(data) != run_id:
+            fail("auto complete rejected: run id does not match the armed run", 2)
+        if not data.get("chain_all") or not data.get("no_confirm"):
+            fail("auto complete rejected: no-remaining-scope applies only to auto-all --no-confirm", 2)
+        if _next_non_closed_slug(root) is not None:
+            fail("auto complete rejected: a non-closed feature remains", 2)
+        data["status"] = "complete"
+        data["completion_reason"] = "no_remaining_scope"
+        result = _auto_result("COMPLETE", data, reason="NO_REMAINING_SCOPE")
+        _write_auto_result(root, data, f"complete:{run_id}", result)
+    return 0
+
+
 AUTO_SUBCOMMANDS = {
     "arm": cmd_auto_arm,
     "disarm": cmd_auto_disarm,
     "status": cmd_auto_status,
+    "complete": cmd_auto_complete,
+    "tick": cmd_auto_tick,
 }
+
+
+# ---------------------------------------------------------------------------
+# dispatch identity (CLI-owned bridge between Codex lifecycle hooks)
+# ---------------------------------------------------------------------------
+
+DISPATCH_FILE = "dispatch.json"
+DISPATCH_ROLES = {
+    "architect": ("specifying", "spec.md", "spec-artifact-valid"),
+    "coder": ("implementing", "notes.md", "implementation-artifact-valid"),
+    "reviewer": ("reviewing", "review.md", "review-artifact-valid"),
+}
+
+
+def dispatch_path(root):
+    return os.path.join(artifact_root(root), DISPATCH_FILE)
+
+
+def load_dispatch(root):
+    path = dispatch_path(root)
+    if not os.path.isfile(path):
+        return {"schema_version": 1, "pending": None, "agents": {}}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        fail(f"corrupt {AUTO_DIR}/{DISPATCH_FILE}: {e}", 1)
+    if not isinstance(data, dict) or not isinstance(data.get("agents", {}), dict):
+        fail(f"corrupt {AUTO_DIR}/{DISPATCH_FILE}: invalid dispatch state", 1)
+    data.setdefault("schema_version", 1)
+    data.setdefault("pending", None)
+    data.setdefault("agents", {})
+    return data
+
+
+def write_dispatch(root, data):
+    atomic_write_json(dispatch_path(root), data, tmp_prefix=".dispatchXXXXXX")
+
+
+def cmd_dispatch_prepare(root, args):
+    if len(args) != 2:
+        fail("usage: lean-spec dispatch prepare <slug> <architect|coder|reviewer>", 1)
+    slug, owner = args
+    validate_slug(slug)
+    if owner not in DISPATCH_ROLES:
+        fail(f"unknown dispatch owner '{owner}'", 1)
+    expected_phase, artifact, gate = DISPATCH_ROLES[owner]
+    workflow = load_workflow(root, slug)
+    if workflow.get("phase") != expected_phase:
+        fail(f"cannot prepare {owner}: expected phase '{expected_phase}', found '{workflow.get('phase')}'", 2)
+    with auto_lock(root):
+        data = load_dispatch(root)
+        if data.get("pending") is not None:
+            fail("another lean-spec dispatch is pending agent binding", 2)
+        identity = {
+            "slug": slug, "owner": owner, "expected_phase": expected_phase,
+            "artifact": artifact, "gate": gate, "agent_type": f"lean-spec-{owner}",
+            "work_id": str(uuid.uuid4()),
+        }
+        data["pending"] = identity
+        write_dispatch(root, data)
+    print(json.dumps(identity, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_dispatch_bind(root, args):
+    if len(args) != 2:
+        fail("usage: lean-spec dispatch bind <agent-id> <agent-type>", 1)
+    agent_id, agent_type = args
+    with auto_lock(root):
+        data = load_dispatch(root)
+        pending = data.get("pending")
+        if not isinstance(pending, dict) or pending.get("agent_type") != agent_type:
+            return 0
+        data["agents"][agent_id] = pending
+        data["pending"] = None
+        write_dispatch(root, data)
+    return 0
+
+
+def cmd_dispatch_resolve(root, args):
+    if len(args) != 1:
+        fail("usage: lean-spec dispatch resolve <agent-id>", 1)
+    identity = load_dispatch(root)["agents"].get(args[0])
+    if not isinstance(identity, dict):
+        return 3
+    print(json.dumps(identity, indent=2, sort_keys=True))
+    return 0
+
+
+def cmd_dispatch_complete(root, args):
+    if len(args) != 1:
+        fail("usage: lean-spec dispatch complete <agent-id>", 1)
+    with auto_lock(root):
+        data = load_dispatch(root)
+        data["agents"].pop(args[0], None)
+        write_dispatch(root, data)
+    return 0
+
+
+def cmd_dispatch_cancel(root, args):
+    if args:
+        fail("usage: lean-spec dispatch cancel", 1)
+    with auto_lock(root):
+        data = load_dispatch(root)
+        if data.get("pending") is not None:
+            data["pending"] = None
+            write_dispatch(root, data)
+    return 0
+
+
+DISPATCH_SUBCOMMANDS = {
+    "prepare": cmd_dispatch_prepare,
+    "bind": cmd_dispatch_bind,
+    "resolve": cmd_dispatch_resolve,
+    "complete": cmd_dispatch_complete,
+    "cancel": cmd_dispatch_cancel,
+}
+
+
+def cmd_dispatch(root, args):
+    if not args or args[0] not in DISPATCH_SUBCOMMANDS:
+        fail("usage: lean-spec dispatch <prepare|bind|resolve|complete|cancel> ...", 1)
+    return DISPATCH_SUBCOMMANDS[args[0]](root, args[1:])
 
 
 def cmd_auto(root, args):
@@ -801,6 +1368,51 @@ def cmd_auto(root, args):
     if sub not in AUTO_SUBCOMMANDS:
         fail(f"unknown auto subcommand '{sub}' — {usage}", 1)
     return AUTO_SUBCOMMANDS[sub](root, rest)
+
+
+# ---------------------------------------------------------------------------
+# layout migration
+# ---------------------------------------------------------------------------
+
+def _legacy_layout_moves(root):
+    return [
+        (os.path.join(root, "docs", "PRD.md"), project_doc_path(root, "PRD.md")),
+        (os.path.join(root, "docs", "CONSTITUTION.md"), project_doc_path(root, "CONSTITUTION.md")),
+        (os.path.join(root, "features"), os.path.join(artifact_root(root), "features")),
+    ]
+
+
+def cmd_migrate_layout(root, args):
+    dry_run = args == ["--dry-run"]
+    if args and not dry_run:
+        fail("usage: lean-spec migrate-layout [--dry-run]", 1)
+
+    moves = [(source, destination) for source, destination in _legacy_layout_moves(root) if os.path.exists(source)]
+    conflicts = [
+        (source, destination)
+        for source, destination in moves
+        if os.path.exists(destination)
+    ]
+    if conflicts:
+        source, destination = conflicts[0]
+        fail(
+            f"layout migration conflict: both {os.path.relpath(source, root)} and "
+            f"{os.path.relpath(destination, root)} exist — resolve the conflict before retrying",
+            1,
+        )
+    if not moves:
+        print(f"{PROG}: layout already canonical")
+        return 0
+
+    for source, destination in moves:
+        print(f"{os.path.relpath(source, root)} -> {os.path.relpath(destination, root)}")
+    if dry_run:
+        return 0
+
+    for source, destination in moves:
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        os.replace(source, destination)
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -864,6 +1476,10 @@ COMMANDS = {
     "next": cmd_next,
     "status": cmd_status,
     "auto": cmd_auto,
+    "dispatch": cmd_dispatch,
+    "provider": cmd_provider,
+    "readiness": cmd_readiness,
+    "migrate-layout": cmd_migrate_layout,
 }
 
 
