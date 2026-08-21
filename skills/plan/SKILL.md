@@ -37,7 +37,11 @@ normal.
 
 ## Interview (≤3 rounds, default mode)
 
-Ask one targeted question to cover, across up to three rounds:
+Use up to three rounds of grouped, targeted questions. Each round may contain
+as many related fields as are needed to resolve its topic. Do not split a
+single topic into artificial one-question turns.
+
+Cover:
 
 1. Problem & users — what problem, who has it, why now.
 2. Features — the feature list (no upfront per-feature detail — that's
@@ -52,6 +56,10 @@ Ask one targeted question to cover, across up to three rounds:
 
 Keep it to what's needed to fill `templates/PRD.md` and
 `templates/CONSTITUTION.md`'s sections — don't over-interview.
+
+After round three, if a material requirement is still unknown, stop with
+`NEEDS_INPUT` and list the exact unanswered requirement(s). Do not write the
+PRD or CONSTITUTION from a guess.
 
 ## Write the docs
 
@@ -79,3 +87,4 @@ Keep it to what's needed to fill `templates/PRD.md` and
 - Decompose the PRD into per-feature specs — that is `spec`'s
   job, one slice at a time (R8).
 - Skip the `bin/lean-spec validate --project` check before committing.
+- Write the PRD or CONSTITUTION while material interview input is unresolved.

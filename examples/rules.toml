@@ -3,9 +3,9 @@
 # `provider` is required only when using `lean-spec provider ...` to dispatch
 # an installed headless CLI. The host may otherwise own phase dispatch.
 plan      = { model = "session" }                  # interview runs in the main session
-spec      = { provider = "claude", model = "opus" }
-implement = { provider = "claude", model = "sonnet" }
-review    = { provider = "claude", model = "opus" }
+# `spec`, `implement`, and `review` intentionally have no default provider.
+# Native host agents own those phases. Add a provider only for an explicit
+# `lean-spec provider run` workflow.
 # Provider values are CLI adapter IDs: `codex`, `claude`, and `gemini`.
 # Use an exact model ID accepted by the installed provider CLI. Examples:
 # implement = { provider = "codex", model = "gpt-5.4", effort = "medium" } # OpenAI Codex

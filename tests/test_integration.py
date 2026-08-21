@@ -6,6 +6,7 @@ import json
 import os
 import stat
 import sys
+import tomllib
 from concurrent.futures import ThreadPoolExecutor
 
 from tests.integration_helpers import CLI, HOOKS, REPO_ROOT, IntegrationCase
@@ -277,6 +278,16 @@ class CodexAdapterTests(IntegrationCase):
         architect = (self.project / ".codex/agents/lean-spec-architect.toml").read_text()
         self.assertIn('model = "gpt-5.6-terra"', architect)
         self.assertTrue((self.project / ".agents/skills/lean-spec-plan/SKILL.md").is_file())
+
+    def test_installer_renders_codex_host_profile_and_interview_input(self) -> None:
+        self.require_ok(self.install_codex())
+        rules = (self.project / ".lean-spec/runtime/examples/rules.toml").read_text()
+        installed_plan = (self.project / ".agents/skills/lean-spec-plan/SKILL.md").read_text()
+        self.assertIn("[hosts.codex]", rules)
+        self.assertEqual(tomllib.loads(rules)["agents"], {"plan": {"model": "session"}})
+        self.assertIn('spec = { model = "gpt-5.6-sol", effort = "high" }', rules)
+        self.assertIn("request_user_input", installed_plan)
+        self.assertIn("Markdown fallback", installed_plan)
 
     def test_installed_runtime_runs_lifecycle_and_enforces_guard(self) -> None:
         self.require_ok(self.install_codex())

@@ -140,9 +140,11 @@ skills. Before hooks run, use Codex's `/hooks` screen to review and trust the
 project hook definitions.
 
 The installer does not use symlinks. Contributors may use symlinks locally.
-Normal project installation uses copied, versioned files.
+Normal project installation uses copied, versioned files. A Codex installation
+also initializes the copied rules template with this default role profile:
 
-Optionally override the generated Codex role models in `.lean-spec/rules.toml`:
+Override it in `.lean-spec/rules.toml` before re-running the installer when
+you want different generated Codex role models:
 
 ```toml
 [hosts.codex]
@@ -154,6 +156,10 @@ review = { model = "gpt-5.6-sol", effort = "high" }
 For headless external-provider dispatch, use the commented examples in
 [`examples/rules.toml`](examples/rules.toml). Provider values are stable adapter
 IDs (`codex`, `claude`, `gemini`), not company display names.
+
+During `$lean-spec-plan`, Codex uses a structured input form when the current
+session offers it. Otherwise it asks the same grouped interview questions in
+Markdown and waits for the reply.
 
 ### Project artifacts and migration
 

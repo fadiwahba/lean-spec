@@ -30,6 +30,10 @@ class RepositorySurfaceTests(unittest.TestCase):
 
     def test_canonical_skills_agents_templates_and_policies_are_consistent(self) -> None:
         rules = tomllib.loads((ROOT / "examples/rules.toml").read_text())
+        self.assertEqual(rules["agents"], {"plan": {"model": "session"}})
+        plan = (ROOT / "skills" / "plan" / "SKILL.md").read_text()
+        self.assertIn("grouped, targeted questions", plan)
+        self.assertIn("NEEDS_INPUT", plan)
         for skill in SKILLS:
             with self.subTest(skill=skill):
                 content = (ROOT / "skills" / skill / "SKILL.md").read_text()

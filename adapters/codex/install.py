@@ -20,6 +20,23 @@ ROLE_MODELS = {
     "reviewer": ("gpt-5.6-sol", "high"),
 }
 ROLE_OWNERS = {"architect": "spec", "coder": "implement", "reviewer": "review"}
+CODEX_RULE_PROFILE = """
+[hosts.codex]
+spec = { model = "gpt-5.6-sol", effort = "high" }
+implement = { model = "gpt-5.6-terra", effort = "medium" }
+review = { model = "gpt-5.6-sol", effort = "high" }
+"""
+CODEX_PLAN_INTERVIEW = """
+
+## Codex structured interview
+
+When the current Codex session offers `request_user_input`, call it once per
+interview round to present the grouped questions as a structured input form.
+If the tool is unavailable, use the same grouped questions in Markdown and
+wait for the user's reply as the Markdown fallback. This presentation choice
+never changes the three-round limit or the `NEEDS_INPUT` rule in the canonical
+skill.
+"""
 
 
 def copy_tree(source: Path, destination: Path, dry_run: bool) -> None:
@@ -46,6 +63,8 @@ def copy_codex_skill(source: Path, destination: Path, dry_run: bool) -> None:
     rendered = canonical.read_text(encoding="utf-8").replace(
         "bin/lean-spec", ".lean-spec/runtime/bin/lean-spec"
     )
+    if source.name == "plan":
+        rendered += CODEX_PLAN_INTERVIEW
     write_text(destination / "SKILL.md", rendered, dry_run)
 
 
@@ -175,6 +194,9 @@ def main() -> int:
     copy_tree(ROOT / "hooks", runtime / "hooks", args.dry_run)
     copy_tree(ROOT / "templates", runtime / "templates", args.dry_run)
     copy_tree(ROOT / "examples", runtime / "examples", args.dry_run)
+    runtime_rules = runtime / "examples" / "rules.toml"
+    source_rules = (ROOT / "examples" / "rules.toml").read_text(encoding="utf-8")
+    write_text(runtime_rules, source_rules.rstrip() + "\n" + CODEX_RULE_PROFILE, args.dry_run)
     for skill in (ROOT / "skills").iterdir():
         if skill.is_dir():
             copy_codex_skill(

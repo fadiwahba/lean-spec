@@ -162,7 +162,11 @@ Facts that can be verified must not be asked as interview questions.
 - First run uses the current short project interview.
 - Brownfield runs prefill stack, test, CI, and repository facts before asking.
 - `plan --refine` means “update existing project documents using new information.” It may handle a blocker, repository change, compatibility decision, or incomplete context without restarting the full interview.
-- Ask one targeted question at a time and only for a required decision.
+- Use at most three rounds of grouped, targeted questions. A round may include
+  several related required decisions. If material input remains unresolved
+  after the third round, return `NEEDS_INPUT`; do not write from a guess.
+- When Codex exposes structured user input, use it for each round. Otherwise,
+  render the same grouped questions in Markdown and wait for the reply.
 - Validate the final PRD and Constitution through the CLI.
 
 ### 5.3 Interactive `spec`
